@@ -80,10 +80,10 @@ function _pager(str::AbstractString)
             redraw = true
             _jlgetch(term.in_stream)
         else
-            start_col, start_row, redraw =
+            start_row, start_col, redraw =
                 _pager_keyprocess(k,
-                                  start_col,
                                   start_row,
+                                  start_col,
                                   lines_cropped,
                                   columns_cropped,
                                   dsize[1]-1)
@@ -108,16 +108,16 @@ function _redraw(out::IO, in::IOBuffer)
 end
 
 """
-    _pager_keyprocess(k::Keystroke, start_col::Int, start_row::Int, lines_cropped::Int, columns_cropped::Int, display_rows::Int)
+    _pager_keyprocess(k::Keystroke, start_row::Int, start_col::Int, lines_cropped::Int, columns_cropped::Int, display_rows::Int)
 
 Process the keystroke `k` using the information in the other parameters. It
-returns the new `start_col`, the new `start_row`, and a `Bool` indicating
+returns the new `start_row`, the new `start_col`, and a `Bool` indicating
 whether the display must be redraw.
 
 """
 function _pager_keyprocess(k::Keystroke,
-                           start_col::Int,
                            start_row::Int,
+                           start_col::Int,
                            lines_cropped::Int,
                            columns_cropped::Int,
                            display_rows::Int)
@@ -194,8 +194,7 @@ function _pager_keyprocess(k::Keystroke,
         end
     end
 
-
-    return start_col, start_row, redraw
+    return start_row, start_col, redraw
 end
 
 """
