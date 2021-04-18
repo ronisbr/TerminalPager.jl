@@ -8,7 +8,6 @@ version = "0.0.1"
 [deps]
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
-RegistryCI = "0c95cc5f-2f7e-43fe-82dd-79dbcba86b32"
 
 [compat]
 Crayons = "4.0"
