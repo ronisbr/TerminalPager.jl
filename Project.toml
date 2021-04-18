@@ -1,0 +1,20 @@
+name = "Less"
+uuid = "0c614874-6106-40ed-a7c2-2f1cd0bff883"
+license = "MIT"
+desc = "Pure Julia implementation of the command less"
+authors = ["Ronan Arraes Jardim Chagas <ronisbr@gmail.com>"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+Crayons = "4.0"
+
+[deps]
+Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
