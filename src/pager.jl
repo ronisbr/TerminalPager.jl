@@ -14,6 +14,9 @@ Initialize the pager of the string `str`.
 
 """
 function _pager(str::AbstractString)
+    # Get the tokens (lines) of the input.
+    tokens = split(str, '\n')
+
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
@@ -57,10 +60,10 @@ function _pager(str::AbstractString)
         # Check if we need to redraw the screen.
         if redraw
             lines_cropped, columns_cropped = _view(io,
-                                                 str,
-                                                 (dsize[1]-1, dsize[2]),
-                                                 start_row,
-                                                 start_col)
+                                                   tokens,
+                                                   (dsize[1]-1, dsize[2]),
+                                                   start_row,
+                                                   start_col)
             _print_cmd_line(io, dsize)
             _redraw(term.out_stream, buf)
             redraw = false
@@ -191,14 +194,14 @@ function _pager_keyprocess(k::Keystroke,
 end
 
 """
-    _view(io::IO, str::AbstractString, screen_size::NTuple{2,Int}, start_row::Int, start_col::Int)
+    _view(io::IO, tokens::Vector{String}, screen_size::NTuple{2,Int}, start_row::Int, start_col::Int)
 
-Show a view of `str` in `io` considering the screen size `screen_size` and the
-start row and column `start_row` and `start_col`.
+Show a view of `tokens` in `io` considering the screen size `screen_size` and
+the start row and column `start_row` and `start_col`.
 
 """
 function _view(io::IO,
-               str::AbstractString,
+               tokens::Vector{T} where T<:AbstractString,
                screen_size::NTuple{2,Int},
                start_row::Int,
                start_col::Int)
@@ -209,9 +212,6 @@ function _view(io::IO,
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
     start_col ≤ 1 && (start_col = 1)
-
-    # We must split the string into lines.
-    tokens = split(str, '\n')
 
     # Printed lines.
     num_printed_lines = 0
