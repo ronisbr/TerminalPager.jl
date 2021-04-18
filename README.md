@@ -1,6 +1,8 @@
 Less
 ====
 
+[![CI](https://github.com/ronisbr/Less.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/ronisbr/Less.jl/actions/workflows/ci.yml)
+
 This package contains a pure Julia implementation of the command `less`.
 
 ## Usage
