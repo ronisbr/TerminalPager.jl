@@ -28,7 +28,7 @@
 """
 
     buf = IOBuffer()
-    lines_cropped, columns_cropped = Less._view(buf, str, (10, 9*3), 1, 1)
+    lines_cropped, columns_cropped = TerminalPager._view(buf, str, (10, 9*3), 1, 1)
     result = String(take!(buf))
 
     @test expected == result
@@ -52,7 +52,7 @@
 """
 
     buf = IOBuffer()
-    lines_cropped, columns_cropped = Less._view(buf, str, (10, 9*3), 3, 3)
+    lines_cropped, columns_cropped = TerminalPager._view(buf, str, (10, 9*3), 3, 3)
     result = String(take!(buf))
 
     @test expected == result

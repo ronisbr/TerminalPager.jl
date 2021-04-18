@@ -1,23 +1,25 @@
-module Less
+module TerminalPager
 
 using REPL
 
 using Crayons
 
 const CSI = "\x1b["
-const LESS_VERSION = v"0.0.1"
+const PKG_VERSION = v"0.0.1"
 
-include("./misc.jl")
 include("./input.jl")
+include("./misc.jl")
+include("./pager.jl")
 include("./screen.jl")
 include("./string.jl")
-include("./viewer.jl")
 
-function viewer(obj::Any)
+function pager(obj::Any)
     str = sprint(show, MIME"text/plain"(), obj, context = :color => true)
-    return viewer(str)
+    return pager(str)
 end
 
-viewer(obj::AbstractString) = return _viewer(obj)
+pager(obj::AbstractString) = return _pager(obj)
+
+const less = pager
 
 end # module

@@ -62,7 +62,7 @@ function _print_help(io::IO)
 
     help_str =
     """
-        $(_c)Less.jl $(LESS_VERSION)$(_d)
+        $(_c)TerminalPager.jl $(PKG_VERSION)$(_d)
 
         $(_b)Usage:$(_d)
 

@@ -3,17 +3,17 @@
 # Description
 # ==============================================================================
 #
-#   Functions related to the viewer.
+#   Functions related to the pager.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _viewer(str::AbstractString)
+    _pager(str::AbstractString)
 
-Initialize the viewer of the string `str`.
+Initialize the pager of the string `str`.
 
 """
-function _viewer(str::AbstractString)
+function _pager(str::AbstractString)
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
@@ -77,7 +77,7 @@ function _viewer(str::AbstractString)
             _jlgetch(term.in_stream)
         else
             start_col, start_row, redraw =
-                _viewer_keyprocess(k,
+                _pager_keyprocess(k,
                                    start_col,
                                    start_row,
                                    lines_cropped,
@@ -104,14 +104,14 @@ function _redraw(out::IO, in::IOBuffer)
 end
 
 """
-    _viewer_keyprocess(k::Keystroke, start_col::Int, start_row::Int, lines_cropped::Int, columns_cropped::Int, display_rows::Int)
+    _pager_keyprocess(k::Keystroke, start_col::Int, start_row::Int, lines_cropped::Int, columns_cropped::Int, display_rows::Int)
 
 Process the keystroke `k` using the information in the other parameters. It
 returns the new `start_col`, the new `start_row`, and a `Bool` indicating
 whether the display must be redraw.
 
 """
-function _viewer_keyprocess(k::Keystroke,
+function _pager_keyprocess(k::Keystroke,
                             start_col::Int,
                             start_row::Int,
                             lines_cropped::Int,

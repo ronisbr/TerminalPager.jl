@@ -1,4 +1,4 @@
-The Less.jl package is licensed under the MIT "Expat" License:
+The TerminalPager.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2021: Ronan Arraes Jardim Chagas.
 >
