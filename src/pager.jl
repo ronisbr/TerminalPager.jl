@@ -81,11 +81,11 @@ function _pager(str::AbstractString)
         else
             start_col, start_row, redraw =
                 _pager_keyprocess(k,
-                                   start_col,
-                                   start_row,
-                                   lines_cropped,
-                                   columns_cropped,
-                                   dsize[1]-1)
+                                  start_col,
+                                  start_row,
+                                  lines_cropped,
+                                  columns_cropped,
+                                  dsize[1]-1)
         end
     end
     REPL.Terminals.raw!(term, false)
@@ -115,11 +115,11 @@ whether the display must be redraw.
 
 """
 function _pager_keyprocess(k::Keystroke,
-                            start_col::Int,
-                            start_row::Int,
-                            lines_cropped::Int,
-                            columns_cropped::Int,
-                            display_rows::Int)
+                           start_col::Int,
+                           start_row::Int,
+                           lines_cropped::Int,
+                           columns_cropped::Int,
+                           display_rows::Int)
     redraw = false
 
     if k.ktype == :down
