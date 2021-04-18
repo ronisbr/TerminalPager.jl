@@ -71,16 +71,18 @@ function _print_help(io::IO)
 
               ←   : Move the display one column to the left.
         SHIFT ←   : Move the display 10 columns to the left.
+          ALT ←   : Go to the first column.
               →   : Move the display one column to the right.
         SHIFT →   : Move the display 10 columns to the right.
+          ALT →   : Go to the last column.
               ↑   : Move the display one line up.
         SHIFT ↑   : Move the display 5 lines up.
               ↓   : Move the display one line down.
         SHIFT ↓   : Move the display 5 lines down.
         PAGE UP   : Move the display one page up.
         PAGE DOWN : Move the display one page down.
-        HOME      : Go to the first column.
-        END       : Display the last column.
+        HOME      : Go to the beginning.
+        END       : Go to the end.
         ?         : This help screen.
         q         : Quit.
 

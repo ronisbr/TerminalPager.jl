@@ -147,7 +147,9 @@ function _pager_keyprocess(k::Keystroke,
         end
     elseif k.ktype == :right
         if columns_cropped > 0
-            if k.shift
+            if k.alt
+                start_col += columns_cropped
+            elseif k.shift
                 start_col += min(10, columns_cropped)
             else
                 start_col += 1
@@ -157,7 +159,9 @@ function _pager_keyprocess(k::Keystroke,
         end
     elseif k.ktype == :left
         if start_col > 1
-            if k.shift
+            if k.alt
+                start_col = 1
+            elseif k.shift
                 start_col -= 10
             else
                 start_col -= 1
@@ -168,13 +172,13 @@ function _pager_keyprocess(k::Keystroke,
             redraw = true
         end
     elseif k.ktype == :end
-        if columns_cropped > 0
-            start_col += columns_cropped
+        if lines_cropped > 0
+            start_row += lines_cropped
             redraw = true
         end
     elseif k.ktype == :home
-        if start_col > 1
-            start_col = 1
+        if start_row > 1
+            start_row = 1
             redraw = true
         end
     elseif k.ktype == :pagedown
