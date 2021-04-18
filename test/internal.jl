@@ -10,6 +10,7 @@
 @testset "Views" begin
     a   = [(i, j) for i = 1:99, j = 1:9]
     str = sprint(show, MIME"text/plain"(), a)
+    tokens = split(str, '\n')
 
     # Initial view
     # ==========================================================================
@@ -28,7 +29,7 @@
 """
 
     buf = IOBuffer()
-    lines_cropped, columns_cropped = TerminalPager._view(buf, str, (10, 9*3), 1, 1)
+    lines_cropped, columns_cropped = TerminalPager._view(buf, tokens, (10, 9*3), 1, 1)
     result = String(take!(buf))
 
     @test expected == result
@@ -52,7 +53,7 @@
 """
 
     buf = IOBuffer()
-    lines_cropped, columns_cropped = TerminalPager._view(buf, str, (10, 9*3), 3, 3)
+    lines_cropped, columns_cropped = TerminalPager._view(buf, tokens, (10, 9*3), 3, 3)
     result = String(take!(buf))
 
     @test expected == result
