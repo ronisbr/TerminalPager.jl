@@ -8,12 +8,12 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _print_cmd_line(io::IO, display_lines::Int, display_rows::Int)
+    _print_cmd_line(io::IO, display_size::NTuple{2, Int}, pos::Float64)
 
 Print the command line to the screen.
 
 """
-function _print_cmd_line(io::IO, display_size::NTuple{2, Int})
+function _print_cmd_line(io::IO, display_size::NTuple{2, Int}, pos::Float64)
     if get(io, :color, true)
         _d = string(Crayon(reset = true))
         _g = string(crayon"dark_gray")
@@ -22,7 +22,10 @@ function _print_cmd_line(io::IO, display_size::NTuple{2, Int})
         _g = ""
     end
 
-    cmd_help = "(q:quit, ?:help)"
+    # Compute the scroll position.
+    pos = @sprintf("%3d", 100pos)
+
+    cmd_help = "(q:quit, ?:help) $(pos)%"
     lcmd_help = length(cmd_help)
 
     if display_size[2] > (lcmd_help + 4)

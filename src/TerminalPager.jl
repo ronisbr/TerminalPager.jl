@@ -1,5 +1,6 @@
 module TerminalPager
 
+using Printf
 using REPL
 
 using Crayons

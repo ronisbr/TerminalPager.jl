@@ -16,6 +16,7 @@ Initialize the pager of the string `str`.
 function _pager(str::AbstractString)
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
+    num_tokens = length(tokens)
 
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
@@ -64,7 +65,7 @@ function _pager(str::AbstractString)
                                                    (dsize[1]-1, dsize[2]),
                                                    start_row,
                                                    start_col)
-            _print_cmd_line(io, dsize)
+            _print_cmd_line(io, dsize, 1 - lines_cropped / num_tokens)
             _redraw(term.out_stream, buf)
             redraw = false
         end
