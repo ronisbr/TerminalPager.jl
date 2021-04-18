@@ -269,7 +269,7 @@ function _view(io::IO,
                 Δ > 0 && write(io, _crop_str(line_str, 1, Δ))
 
                 # In this case, we must apply all remaining regexes.
-                for k = i:length(ansi)
+                for k = j:length(ansi)
                     write(io, ansi[k].match)
                 end
 
