@@ -273,7 +273,7 @@ function _view(io::IO,
                     write(io, ansi[k].match)
                 end
 
-                columns_cropped = max(lines_cropped, line_width - Δ)
+                columns_cropped = max(columns_cropped, line_width - Δ)
                 break
             else
                 write(io, line_str)
