@@ -6,7 +6,7 @@ authors = ["Ronan Arraes Jardim Chagas <ronisbr@gmail.com>"]
 version = "0.1.0"
 
 [compat]
-julia = "1"
+julia = "1.6"
 Crayons = "4.0"
 
 [deps]
