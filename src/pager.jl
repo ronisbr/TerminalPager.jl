@@ -47,11 +47,11 @@ function _pager(str::AbstractString)
     columns_cropped = 0
 
     # Store the current terminal size.
-    dsize = displaysize(term.out_stream)
+    dsize::Tuple{Int, Int} = displaysize(term.out_stream)
 
     while true
         # If the terminal size has changed, then we need to redraw the view.
-        newdsize = displaysize(term.out_stream)
+        newdsize::Tuple{Int, Int} = displaysize(term.out_stream)
 
         if newdsize != dsize
             redraw = true

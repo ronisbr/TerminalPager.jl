@@ -8,7 +8,7 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _view(io::IO, tokens::Vector{String}, screen_size::NTuple{2,Int}, start_row::Int, start_col::Int)
+    _view(io::IO, tokens::Vector{T} where T<:AbstractString, screen_size::NTuple{2,Int}, start_row::Int, start_col::Int)
 
 Show a view of `tokens` in `io` considering the screen size `screen_size` and
 the start row and column `start_row` and `start_col`.
@@ -44,7 +44,7 @@ function _view(io::IO,
 
         # Split the lines into escape sequence and text.
         ansi        = collect(eachmatch(regex_ansi, line))
-        line_tokens = split(line, regex_ansi)
+        line_tokens = String.(split(line, regex_ansi))
 
         # Number of printed columns.
         num_printed_cols = 0
