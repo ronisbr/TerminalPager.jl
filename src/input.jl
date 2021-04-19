@@ -89,6 +89,8 @@ function _jlgetch(stream::IO)
             return Keystroke(raw = c, value = string(Char(c)), ktype = :tab)
         elseif c == 10
             return Keystroke(raw = c, value = "\n", ktype = :enter)
+        elseif c == 13
+            return Keystroke(raw = c, value = "\r", ktype = :enter)
         elseif c == 127
             return Keystroke(raw = c, value = string(Char(c)), ktype = :backspace)
         elseif c == 410
