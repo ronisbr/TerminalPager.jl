@@ -25,7 +25,7 @@ function _print_cmd_line(io::IO, display_size::NTuple{2, Int}, pos::Float64)
     # Compute the scroll position.
     pos = @sprintf("%3d", 100pos)
 
-    cmd_help = "(q:quit, ?:help) $(pos)%"
+    cmd_help = "(↑ ↓ ← →:move, ?:help, q:quit) $(pos)%"
     lcmd_help = length(cmd_help)
 
     if display_size[2] > (lcmd_help + 4)
