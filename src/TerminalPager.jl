@@ -13,6 +13,7 @@ include("./misc.jl")
 include("./pager.jl")
 include("./screen.jl")
 include("./string.jl")
+include("./view.jl")
 
 export pager
 
