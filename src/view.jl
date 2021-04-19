@@ -100,7 +100,7 @@ function _view(io::IO,
         num_printed_lines += 1
 
         if num_printed_lines ≥ rows
-            lines_cropped = length(tokens) - rows - start_row
+            lines_cropped = length(tokens) - rows - (start_row - 1)
             break
         end
     end

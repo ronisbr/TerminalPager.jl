@@ -33,7 +33,7 @@
     result = String(take!(buf))
 
     @test expected == result
-    @test lines_cropped == 89
+    @test lines_cropped == 90
     @test columns_cropped == 52
 
     # Moving the view
@@ -57,7 +57,7 @@
     result = String(take!(buf))
 
     @test expected == result
-    @test lines_cropped == 87
+    @test lines_cropped == 88
     @test columns_cropped == 51
 end
 
