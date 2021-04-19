@@ -79,6 +79,9 @@ function _pager(str::AbstractString)
             _redraw(term.out_stream, buf)
             redraw = true
             _jlgetch(term.in_stream)
+        elseif k.value == "/"
+            _read_cmd(term.out_stream, term.in_stream, dsize)
+            redraw = true
         else
             start_row, start_col, redraw =
                 _pager_keyprocess(k,

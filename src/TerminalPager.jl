@@ -8,6 +8,7 @@ using Crayons
 const CSI = "\x1b["
 const PKG_VERSION = v"0.0.1"
 
+include("./command_line.jl")
 include("./input.jl")
 include("./misc.jl")
 include("./pager.jl")
