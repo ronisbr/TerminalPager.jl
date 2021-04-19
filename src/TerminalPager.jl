@@ -14,6 +14,8 @@ include("./pager.jl")
 include("./screen.jl")
 include("./string.jl")
 
+export pager
+
 function pager(obj::Any)
     str = sprint(show, MIME"text/plain"(), obj, context = :color => true)
     return pager(str)
