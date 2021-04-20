@@ -133,6 +133,9 @@ function _pager_keyprocess(k::Keystroke,
     if action == :quit
         event = :quit
 
+    elseif action == :help
+        event = :help
+
     elseif action == :down
         if lines_cropped > 0
             start_row += 1
