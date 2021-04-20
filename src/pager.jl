@@ -72,9 +72,17 @@ function _pager(str::AbstractString)
 
         k = _jlgetch(term.in_stream)
 
-        if k.value == "q"
+        start_row, start_col, redraw, event =
+            _pager_keyprocess(k,
+                              start_row,
+                              start_col,
+                              lines_cropped,
+                              columns_cropped,
+                              dsize[1]-1)
+
+        if event == :quit
             break
-        elseif k.value == "?"
+        elseif event == :help
             _print_help(io)
             _redraw(term.out_stream, buf)
             redraw = true
@@ -83,13 +91,6 @@ function _pager(str::AbstractString)
             _read_cmd(term.out_stream, term.in_stream, dsize)
             redraw = true
         else
-            start_row, start_col, redraw =
-                _pager_keyprocess(k,
-                                  start_row,
-                                  start_col,
-                                  lines_cropped,
-                                  columns_cropped,
-                                  dsize[1]-1)
         end
     end
     REPL.Terminals.raw!(term, false)
@@ -114,8 +115,8 @@ end
     _pager_keyprocess(k::Keystroke, start_row::Int, start_col::Int, lines_cropped::Int, columns_cropped::Int, display_rows::Int)
 
 Process the keystroke `k` using the information in the other parameters. It
-returns the new `start_row`, the new `start_col`, and a `Bool` indicating
-whether the display must be redraw.
+returns the new `start_row`, the new `start_col`, a `Bool` indicating whether
+the display must be redraw, and an event.
 
 """
 function _pager_keyprocess(k::Keystroke,
@@ -125,71 +126,94 @@ function _pager_keyprocess(k::Keystroke,
                            columns_cropped::Int,
                            display_rows::Int)
     redraw = false
+    event = nothing
+    key = (k.value, k.alt, k.ctrl, k.shift)
+    action = get(_default_keybindings, key, nothing)
 
-    if k.ktype == :down
+    if action == :quit
+        event = :quit
+
+    elseif action == :down
         if lines_cropped > 0
-            if k.shift
-                start_row += min(5, lines_cropped)
-            else
-                start_row += 1
-            end
-
+            start_row += 1
             redraw = true
         end
-    elseif k.ktype == :up
+
+    elseif action == :fastdown
+        if lines_cropped > 0
+            start_row += min(5, lines_cropped)
+            redraw = true
+        end
+
+    elseif action == :up
         if start_row > 1
-            if k.shift
-                start_row -= 5
-            else
-                start_row -= 1
-            end
-
-            start_row < 1 && (start_row = 1)
-
+            start_row -= 1
             redraw = true
         end
-    elseif k.ktype == :right
+
+    elseif action == :fastup
+        if start_row > 1
+            start_row -= 5
+        end
+        start_row < 1 && (start_row = 1)
+        redraw = true
+
+    elseif action == :right
         if columns_cropped > 0
-            if k.alt
-                start_col += columns_cropped
-            elseif k.shift
-                start_col += min(10, columns_cropped)
-            else
-                start_col += 1
-            end
-
+            start_col += 1
             redraw = true
         end
-    elseif k.ktype == :left
+
+    elseif action == :fastright
+        if columns_cropped > 0
+            start_col += min(10, columns_cropped)
+            redraw = true
+        end
+
+    elseif action == :eol
+        if columns_cropped > 0
+            start_col += columns_cropped
+            redraw = true
+        end
+
+    elseif action == :left
         if start_col > 1
-            if k.alt
-                start_col = 1
-            elseif k.shift
-                start_col -= 10
-            else
-                start_col -= 1
-            end
-
-            start_col < 1 && (start_col = 1)
-
+            start_col -= 1
             redraw = true
         end
-    elseif k.ktype == :end
+
+    elseif action == :fastleft
+        if start_col > 1
+            start_col -= 10
+            start_col < 1 && (start_col = 1)
+            redraw = true
+        end
+
+    elseif action == :bol
+        if start_col > 1
+            start_col = 1
+            redraw = true
+        end
+
+    elseif action == :end
         if lines_cropped > 0
             start_row += lines_cropped
             redraw = true
         end
-    elseif k.ktype == :home
+
+    elseif action == :home
         if start_row > 1
             start_row = 1
             redraw = true
         end
-    elseif k.ktype == :pagedown
+
+    elseif action == :pagedown
         if lines_cropped > 0
             start_row += min(display_rows, lines_cropped)
             redraw = true
         end
-    elseif k.ktype == :pageup
+
+    elseif action == :pageup
         if start_row > 1
             start_row -= display_rows
             start_row < 1 && (start_row = 1)
@@ -197,6 +221,6 @@ function _pager_keyprocess(k::Keystroke,
         end
     end
 
-    return start_row, start_col, redraw
+    return start_row, start_col, redraw, event
 end
 

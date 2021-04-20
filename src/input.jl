@@ -14,7 +14,7 @@
 Structure that defines a keystroke.
 
 # Fields
-#
+
 * `value`: String representing the keystroke.
 * `ktype`: Type of the key (`:char`, `:F1`, `:up`, etc.).
 * `alt`: `true` if ALT key was pressed (only valid if `ktype != :char`).
@@ -23,9 +23,7 @@ Structure that defines a keystroke.
 
 """
 Base.@kwdef struct Keystroke
-    raw::Int32 = 0
-    value::String
-    ktype::Symbol
+    value::Union{Symbol, String}
     alt::Bool   = false
     ctrl::Bool  = false
     shift::Bool = false
@@ -68,36 +66,34 @@ function _jlgetch(stream::IO)
         end
 
         if length(s) == 1
-            return Keystroke(raw = c, value = s, ktype = :esc)
-        elseif haskey( keycodes, s )
+            return Keystroke(value = :esc)
+        elseif haskey(keycodes, s)
             aux = keycodes[s]
             return Keystroke(value = aux.value,
-                             ktype = aux.ktype,
                              alt = aux.alt,
                              ctrl = aux.ctrl,
-                             shift = aux.shift,
-                             raw = c)
+                             shift = aux.shift)
         else
             # In this case, ALT was pressed.
-            return Keystroke(raw = c, value = s, alt = true, ktype = :undefined)
+            return Keystroke(value = :undefined, alt = true)
         end
     elseif c == nocharval
-        return Keystroke(raw = c, value = c, ktype = :undefined)
+        return Keystroke(value = c, ktype = :undefined)
     elseif c < 192 || c > 253
         if c == 9
-            return Keystroke(raw = c, value = string(Char(c)), ktype = :tab)
+            return Keystroke(value = :tab)
         elseif c == 10
-            return Keystroke(raw = c, value = "\n", ktype = :enter)
+            return Keystroke(value = :enter)
         elseif c == 13
-            return Keystroke(raw = c, value = "\r", ktype = :enter)
+            return Keystroke(value = :enter)
         elseif c == 127
-            return Keystroke(raw = c, value = string(Char(c)), ktype = :backspace)
+            return Keystroke(value = :backspace)
         elseif c == 410
-            return Keystroke(raw = c, value = string(Char(c)), ktype = :resize)
+            return Keystroke(value = :resize)
         else
-            return Keystroke(raw = c, value = string(Char(c)), ktype = :char)
+            return Keystroke(value = string(Char(c)))
         end
     end
 
-    return Keystroke(raw = 0, value = string(c), ktype = :undefined)
+    return Keystroke(value = :undefined)
 end
