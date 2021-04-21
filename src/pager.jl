@@ -71,9 +71,6 @@ function _pager(str::AbstractString)
                                                        start_row,
                                                        start_col)
                 _redraw(term.out_stream, viewbuf)
-            elseif mode == :help
-                _print_help(io)
-                _redraw(term.out_stream, viewbuf)
             elseif mode == :read
                 _read_cmd(term.out_stream, term.in_stream, dsize)
             end
@@ -96,7 +93,9 @@ function _pager(str::AbstractString)
         if event == :quit
             break
         elseif event == :help
-            mode = :help
+            _print_help(io)
+            _redraw(term.out_stream, viewbuf)
+            _jlgetch(term.in_stream)
             redraw = true
         elseif k.value == "/"
             mode = :read
