@@ -58,6 +58,15 @@ Clear from the cursor to the end of the line.
 """
 _clear_to_eol(io::IO) = write(io, "$(CSI)K")
 
+
+"""
+    _hide_cursor(io::IO)
+
+Hide cursor.
+
+"""
+_hide_cursor(io::IO) = write(io, "$(CSI)?25l")
+
 """
     _move_cursor(io::IO, i::Int, j::Int)
 
@@ -81,3 +90,11 @@ Save the cursor position in screen `io`.
 
 """
 _save_cursor(io::IO) = write(io, "$(CSI)s")
+
+"""
+    _show_cursor(io::IO, show = true)
+
+Show cursor.
+
+"""
+_show_cursor(io::IO) = write(io, "$(CSI)?25h")

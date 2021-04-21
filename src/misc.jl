@@ -8,43 +8,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _print_cmd_line(io::IO, display_size::NTuple{2, Int}, pos::Float64)
-
-Print the command line to the screen.
-
-"""
-function _print_cmd_line(io::IO, display_size::NTuple{2, Int}, pos::Float64)
-    if get(io, :color, true)
-        _d = string(Crayon(reset = true))
-        _g = string(crayon"dark_gray")
-    else
-        _d = ""
-        _g = ""
-    end
-
-    # Compute the scroll position.
-    pos = @sprintf("%3d", 100pos)
-
-    cmd_help = "(↑ ↓ ← →:move, ?:help, q:quit) $(pos)%"
-    lcmd_help = length(cmd_help)
-
-    if display_size[2] > (lcmd_help + 4)
-        cmd_aligned = " "^(display_size[2] - lcmd_help - 1) * _g * cmd_help * _d
-    else
-        cmd_aligned = ""
-    end
-
-    # Move the cursor to the last line and print the command line.
-    _move_cursor(io, display_size[1], 0)
-    write(io, ":")
-    _save_cursor(io)
-    write(io, cmd_aligned)
-    _restore_cursor(io)
-
-    return nothing
-end
-
-"""
     _print_help(io::IO)
 
 Print help screen to the IO `io`.

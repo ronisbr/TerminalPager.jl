@@ -33,10 +33,12 @@ function _pager(str::AbstractString)
     # passed to us instead of waiting for <return>.
     REPL.Terminals.raw!(term, true)
 
-    # To improve speed, everything is written to this buffer and then flushed to
-    # the screen.
-    buf = IOBuffer()
-    io = IOContext(buf, :color => get(stdout, :color, true))
+    # The pager is divided in two parts, the view buffer and command line. The
+    # view buffer contains the string that is shown. To improve speed,
+    # everything in the view buffer is written to this buffer and then flushed
+    # to the screen.
+    viewbuf = IOBuffer()
+    io = IOContext(viewbuf, :color => get(stdout, :color, true))
 
     # Initialize the variables.
     redraw = true
@@ -47,6 +49,9 @@ function _pager(str::AbstractString)
 
     # Store the current terminal size.
     dsize::Tuple{Int, Int} = displaysize(term.out_stream)
+
+    # Store the current mode of the pager.
+    mode = :view
 
     while true
         # If the terminal size has changed, then we need to redraw the view.
@@ -59,14 +64,23 @@ function _pager(str::AbstractString)
 
         # Check if we need to redraw the screen.
         if redraw
-            lines_cropped, columns_cropped = _view(io,
-                                                   tokens,
-                                                   (dsize[1]-1, dsize[2]),
-                                                   start_row,
-                                                   start_col)
-            _print_cmd_line(io, dsize, 1 - lines_cropped / num_tokens)
-            _redraw(term.out_stream, buf)
+            if mode == :view
+                lines_cropped, columns_cropped = _view(io,
+                                                       tokens,
+                                                       (dsize[1]-1, dsize[2]),
+                                                       start_row,
+                                                       start_col)
+                _redraw(term.out_stream, viewbuf)
+            elseif mode == :help
+                _print_help(io)
+                _redraw(term.out_stream, viewbuf)
+            elseif mode == :read
+                _read_cmd(term.out_stream, term.in_stream, dsize)
+            end
+
+            _redraw_cmd_line(term.out_stream, dsize, 1 - lines_cropped / num_tokens)
             redraw = false
+            mode = :view
         end
 
         k = _jlgetch(term.in_stream)
@@ -82,12 +96,10 @@ function _pager(str::AbstractString)
         if event == :quit
             break
         elseif event == :help
-            _print_help(io)
-            _redraw(term.out_stream, buf)
+            mode = :help
             redraw = true
-            _jlgetch(term.in_stream)
         elseif k.value == "/"
-            _read_cmd(term.out_stream, term.in_stream, dsize)
+            mode = :read
             redraw = true
         else
         end
@@ -104,8 +116,32 @@ Redraw the screen `out` with the contents in the buffer `in`.
 
 """
 function _redraw(out::IO, in::IOBuffer)
-    _clear_screen(out)
-    write(out, take!(in))
+    str = String(take!(in))
+    tokens = split(str, '\n')
+    num_tokens = length(tokens)
+
+    _move_cursor(out, 0, 0)
+
+    # Hide the cursor when drawing the buffer.
+    _hide_cursor(out)
+
+    for i = 1:num_tokens
+        if i != num_tokens
+            write(out, tokens[i])
+            _clear_to_eol(out)
+            write(out, '\n')
+        end
+    end
+
+    # Clear the rest of the screen.
+    for i = (num_tokens+1):displaysize(out)[1]
+        _move_cursor(out, i - 1, 0)
+        _clear_to_eol(out)
+    end
+
+    # Show the cursor.
+    _show_cursor(out)
+
     return nothing
 end
 
