@@ -39,10 +39,10 @@ function _read_cmd(io::IO, in::IO, display_size::NTuple{2, Int};
 
         k = _jlgetch(in)
 
-        if k.ktype == :enter
+        if k.value == :enter
             break
 
-        elseif k.ktype == :char
+        elseif k.value isa String
             cmd = first(cmd, (cursor_pos - 1)) *
                   k.value *
                   last(cmd, cmd_width - (cursor_pos - 1))
@@ -50,7 +50,7 @@ function _read_cmd(io::IO, in::IO, display_size::NTuple{2, Int};
             cursor_pos += 1
             redraw = true
 
-        elseif k.ktype == :backspace
+        elseif k.value == :backspace
             if cmd_width > 0
                 cmd = first(cmd, cmd_width - 1)
                 cmd_width -= 1
@@ -58,23 +58,23 @@ function _read_cmd(io::IO, in::IO, display_size::NTuple{2, Int};
                 redraw = true
             end
 
-        elseif k.ktype == :left
+        elseif k.value == :left
             if cursor_pos > 1
                 cursor_pos -= 1
                 _cursor_back(io)
             end
 
-        elseif k.ktype == :right
+        elseif k.value == :right
             if cursor_pos < cmd_width + 1
                 cursor_pos += 1
                 _cursor_forward(io)
             end
 
-        elseif k.ktype == :home
+        elseif k.value == :home
             cursor_pos = 1
             _move_cursor(io, display_size[1], cursor_pos + prefix_size)
 
-        elseif k.ktype == :end
+        elseif k.value == :end
             cursor_pos = cmd_width + 1
             _move_cursor(io, display_size[1], cursor_pos + prefix_size)
         end
