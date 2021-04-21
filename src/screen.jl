@@ -8,12 +8,31 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _clear_screen(io::IO)
+    _clear_screen(io::IO; newlines::Bool = false)
 
-Clear the screen `io`.
+Clear the screen `io`. If `newlines` is false, then the display lines will be
+overwritten. Otherwise, a new screen page will be printed, preserving the
+history. At the end, the cursor position is `(0, 0)`.
 
 """
-_clear_screen(io::IO) = write(io, "$(CSI)2J")
+function _clear_screen(io::IO; newlines::Bool = false)
+    # TODO: The routing to clear the screen can be inside the routine to redraw.
+    # This will save some unnecessary cleaning.
+    if newlines
+        write(io, "$(CSI)2J")
+    else
+        dsize = displaysize(io)
+
+        for i = 1:dsize[1]
+            _move_cursor(io, i-1, 0)
+            _clear_to_eol(io)
+        end
+    end
+
+    _move_cursor(io, 0, 0)
+
+    return nothing
+end
 
 """
     _cursor_back(io::IO, i::Int = 1)

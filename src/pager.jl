@@ -22,8 +22,7 @@ function _pager(str::AbstractString)
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
     # Clear the screen and position the cursor at the top.
-    _clear_screen(term.out_stream)
-    _move_cursor(term.out_stream, 0, 0)
+    _clear_screen(term.out_stream, newlines = true)
 
     # Initialize the variables.
     start_row = 1
@@ -106,7 +105,6 @@ Redraw the screen `out` with the contents in the buffer `in`.
 """
 function _redraw(out::IO, in::IOBuffer)
     _clear_screen(out)
-    _move_cursor(out, 0, 0)
     write(out, take!(in))
     return nothing
 end
