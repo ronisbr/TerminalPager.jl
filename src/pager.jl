@@ -53,6 +53,9 @@ function _pager(str::AbstractString)
     # Store the current mode of the pager.
     mode = :view
 
+    # List of the matches to be highlighted.
+    search_matches = NTuple{3, Int}[]
+
     while true
         # If the terminal size has changed, then we need to redraw the view.
         newdsize::Tuple{Int, Int} = displaysize(term.out_stream)
@@ -68,17 +71,21 @@ function _pager(str::AbstractString)
                 lines_cropped, columns_cropped = _view(io,
                                                        tokens,
                                                        (dsize[1]-1, dsize[2]),
+                                                       search_matches,
                                                        start_row,
                                                        start_col)
                 _redraw(term.out_stream, viewbuf)
+                redraw = false
             elseif mode == :read
-                _read_cmd(term.out_stream, term.in_stream, dsize)
+                match_regex = Regex(_read_cmd(term.out_stream, term.in_stream, dsize))
+                search_matches = _find_matches(tokens, match_regex)
+                mode = :view
+                redraw = true
             end
-
             _redraw_cmd_line(term.out_stream, dsize, 1 - lines_cropped / num_tokens)
-            redraw = false
-            mode = :view
         end
+
+        redraw == true && continue
 
         k = _jlgetch(term.in_stream)
 
