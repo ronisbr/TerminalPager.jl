@@ -79,6 +79,10 @@ function _jlgetch(stream::IO)
         end
     elseif c == nocharval
         return Keystroke(value = c, ktype = :undefined)
+    elseif 192 <= c <= 223 # utf8 based logic starts here
+        bs1 = UInt8(c)
+        bs2 = read(stream, UInt8)
+        return Keystroke(value = String([bs1,bs2]))
     elseif c < 192 || c > 253
         if c == 9
             return Keystroke(value = :tab)
@@ -93,6 +97,32 @@ function _jlgetch(stream::IO)
         else
             return Keystroke(value = string(Char(c)))
         end
+    elseif  224 <= c <= 239
+        bs1 = UInt8(c)
+        bs2 = read(stream, UInt8)
+        bs3 = read(stream, UInt8)
+        return Keystroke(value = String([bs1,bs2,bs3]))
+    elseif  240 <= c <= 247
+        bs1 = UInt8(c)
+        bs2 = read(stream, UInt8)
+        bs3 = read(stream, UInt8)
+        bs4 = read(stream, UInt8)
+        return Keystroke(value = String([bs1,bs2,bs3,bs4]))
+    elseif  248 <= c <= 251
+        bs1 = UInt8(c)
+        bs2 = read(stream, UInt8)
+        bs3 = read(stream, UInt8)
+        bs4 = read(stream, UInt8)
+        bs5 = read(stream, UInt8)
+        return Keystroke(value = String([bs1,bs2,bs3,bs4,bs5]))
+    elseif  252 <= c <= 253
+        bs1 = UInt8(c)
+        bs2 = read(stream, UInt8)
+        bs3 = read(stream, UInt8)
+        bs4 = read(stream, UInt8)
+        bs5 = read(stream, UInt8)
+        bs6 = read(stream, UInt8)
+        return Keystroke(value = String([bs1,bs2,bs3,bs4,bs5,bs6]))
     end
 
     return Keystroke(value = :undefined)
