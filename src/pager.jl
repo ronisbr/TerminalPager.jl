@@ -228,7 +228,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 end
 
 """
-    _pager_eventprocess!(pagerd::Pager)
+    _pager_event_process!(pagerd::Pager)
 
 Process the event in `pagerd`. If this function return `false`, then the
 application must exit.
