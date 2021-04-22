@@ -7,8 +7,6 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}()
-
 """
     delete_keybinding(key::Union{Char, Symbol}; alt::Bool = false, ctrl::Bool = false, shift::Bool = false)
 
@@ -51,6 +49,9 @@ function reset_keybindings()
     _default_keybindings[(:pagedown, false, false, false)] = :pagedown
     _default_keybindings[(:home,     false, false, false)] = :home
     _default_keybindings[(:end,      false, false, false)] = :end
+    _default_keybindings[("/",       false, false, false)] = :search
+    _default_keybindings[("n",       false, false, false)] = :next_match
+    _default_keybindings[("N",       false, false, false)] = :previous_match
 end
 
 # Call `reset_keybindings` to populate the keybindings.

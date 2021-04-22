@@ -12,15 +12,7 @@ import Base: convert, string
 #                             Types and structures
 ################################################################################
 
-# This struct describe the decoration of a string.
-@with_kw struct Decoration
-    foreground::String = ""
-    background::String = ""
-    bold::Bool         = false
-    underline::Bool    = false
-    reset::Bool        = false
-    reversed::Bool     = false
-end
+include("./types.jl")
 
 ################################################################################
 #                                  Constants
@@ -28,6 +20,7 @@ end
 
 const CSI = "\x1b["
 const PKG_VERSION = v"0.0.1"
+const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}()
 
 ################################################################################
 #                                   Includes

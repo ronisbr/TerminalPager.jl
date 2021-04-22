@@ -8,12 +8,15 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _print_help(io::IO)
+    _print_help!(pargerd::Pager)
 
-Print help screen to the IO `io`.
+Print help screen to the buffer of pager `pagerd`.
 
 """
-function _print_help(io::IO)
+function _print_help!(pargerd::Pager)
+    # Unpack values.
+    @unpack buf = pagerd
+
     if get(io, :color, true)
         _b = string(crayon"bold")
         _d = string(Crayon(reset = true))
@@ -52,7 +55,7 @@ function _print_help(io::IO)
         $(_g)Press any key to exit...$(_d)
     """
 
+    write(buf, help_str)
 
-    write(io, help_str)
     return nothing
 end
