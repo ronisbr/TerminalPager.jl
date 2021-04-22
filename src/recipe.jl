@@ -238,6 +238,10 @@ end
 function _parse_ansi_code(decoration::Decoration, code::String)
     tokens = split(code, ';')
 
+    # `reset` must not be copied to other decorations. Hence, we need to reset
+    # it here.
+    decoration = Decoration(reset = false)
+
     i = 1
     while i ≤ length(tokens)
         code_i = tryparse(Int, tokens[i], base = 10)
