@@ -213,11 +213,14 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
 
+    elseif action == :search
+        event = :search
+
     elseif action == :next_match
         event = :next_match
 
-    elseif action == :search
-        event = :search
+    elseif action == :previous_match
+        event = :previous_match
 
     end
 
@@ -251,6 +254,15 @@ function _pager_event_process!(pagerd::Pager)
         match_regex = Regex(cmd_input)
         pagerd.search_matches = _find_matches(lines, match_regex)
         _request_redraw!(pagerd)
+
+    elseif event == :next_match
+        _change_active_match!(pagerd.search_matches, true)
+        _request_redraw!(pagerd)
+
+    elseif event == :previous_match
+        _change_active_match!(pagerd.search_matches, false)
+        _request_redraw!(pagerd)
+
     end
 
     return true

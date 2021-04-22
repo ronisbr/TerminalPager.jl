@@ -7,6 +7,44 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+
+function _change_active_match!(matches::Vector{NTuple{4, Int}},
+                               forward::Bool = true)
+
+    num_matches = length(matches)
+
+    for i = 1:length(matches)
+        m = matches[i]
+
+        if m[4] == 1
+            # Deactivate the current match.
+            matches[i] = (m[1], m[2], m[3], 0)
+
+            # Activate the next match according to the user preference.
+            if forward
+                new_i = i == num_matches ? 1 : (i + 1)
+            else
+                new_i = i == 1 ? num_matches : (i - 1)
+            end
+
+
+            m = matches[new_i]
+            matches[new_i] = (m[1], m[2], m[3], 1)
+
+            return nothing
+        end
+    end
+
+    # If we arrived here, then no match is active. Thus, activate the first
+    # element.
+    if num_matches > 1
+        m = matches[i]
+        matches[i] = (m[1], m[2], m[3], 1)
+    end
+
+    return nothing
+end
+
 """
     _find_matches(lines::Vector{String}, regex::Regex)
 
@@ -42,34 +80,4 @@ function _find_matches(lines::Vector{T}, regex::Regex) where T<:AbstractString
     end
 
     return matches
-end
-
-function _activate_next_match!(matches::Vector{NTuple{4, Int}})
-    num_matches = length(matches)
-
-    for i = 1:length(matches)
-        m = matches[i]
-
-        if m[4] == 1
-            # Deactivate the current match.
-            matches[i] = (m[1], m[2], m[3], 0)
-
-            # Activate the next match.
-            new_i = i == num_matches ? 1 : (i + 1)
-
-            m = matches[new_i]
-            matches[new_i] = (m[1], m[2], m[3], 1)
-
-            return nothing
-        end
-    end
-
-    # If we arrived here, then no match is active. Thus, activate the first
-    # element.
-    if num_matches > 1
-        m = matches[i]
-        matches[i] = (m[1], m[2], m[3], 1)
-    end
-
-    return nothing
 end
