@@ -4,15 +4,40 @@ using Printf
 using REPL
 
 using Crayons
+using Parameters
+
+import Base: convert, string
+
+################################################################################
+#                             Types and structures
+################################################################################
+
+# This struct describe the decoration of a string.
+@with_kw struct Decoration
+    foreground::String = ""
+    background::String = ""
+    bold::Bool         = false
+    underline::Bool    = false
+    reversed::Bool     = false
+end
+
+################################################################################
+#                                  Constants
+################################################################################
 
 const CSI = "\x1b["
 const PKG_VERSION = v"0.0.1"
+
+################################################################################
+#                                   Includes
+################################################################################
 
 include("./command_line.jl")
 include("./keybindings.jl")
 include("./input.jl")
 include("./misc.jl")
 include("./pager.jl")
+include("./recipe.jl")
 include("./search.jl")
 include("./screen.jl")
 include("./string.jl")

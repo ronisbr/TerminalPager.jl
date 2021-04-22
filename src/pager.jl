@@ -132,11 +132,9 @@ function _redraw(out::IO, in::IOBuffer)
     _hide_cursor(out)
 
     for i = 1:num_tokens
-        if i != num_tokens
-            write(out, tokens[i])
-            _clear_to_eol(out)
-            write(out, '\n')
-        end
+        write(out, tokens[i])
+        _clear_to_eol(out)
+        i ≠ num_tokens && write(out, '\n')
     end
 
     # Clear the rest of the screen.
