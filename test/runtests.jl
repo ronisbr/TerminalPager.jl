@@ -1,3 +1,4 @@
+using REPL
 using Test
 using TerminalPager
 
