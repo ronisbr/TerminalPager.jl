@@ -18,6 +18,7 @@ import Base: convert, string
     background::String = ""
     bold::Bool         = false
     underline::Bool    = false
+    reset::Bool        = false
     reversed::Bool     = false
 end
 

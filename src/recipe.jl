@@ -11,7 +11,8 @@
 function convert(::Type{String}, d::Decoration)
 
     # Check if we have a reset.
-    _is_reset(d) && return "$(CSI)0m"
+    _is_default(d) && return ""
+    d.reset && return "$(CSI)0m"
 
     str = ""
     str *= isempty(d.foreground) ? "" : "$(CSI)" * d.foreground * "m"
@@ -73,7 +74,7 @@ function _printing_recipe(str::AbstractString,
         elseif (start_char > m_beg) && (m_end ≤ (start_char + max_chars))
             hl_i = i
             hl_state = :highlight
-            decoration = highligth_matches[i][4] == 1 ?
+            decoration = highlight_matches[i][4] == 1 ?
                 Decoration(background = "44", reversed = true) :
                 Decoration(reversed = true)
         end
@@ -173,6 +174,11 @@ function _printing_recipe(str::AbstractString,
                     push!(d, decoration)
                     str_i = ""
                     decoration = old_decoration
+
+                    # Add an empty segment to reset all formatting created by
+                    # the highlight.
+                    push!(s, "")
+                    push!(d, Decoration(reset = true))
                 end
             end
 
@@ -237,7 +243,7 @@ function _parse_ansi_code(decoration::Decoration, code::String)
         code_i = tryparse(Int, tokens[i], base = 10)
 
         if code_i == 0
-            decoration = Decoration()
+            decoration = Decoration(reset = true)
 
         elseif code_i == 1
             decoration = Decoration(decoration; bold = true)
@@ -316,5 +322,5 @@ function _parse_ansi_code(decoration::Decoration, code::String)
     return decoration
 end
 
-_is_reset(d::Decoration) = d === Decoration()
+_is_default(d::Decoration) = d === Decoration()
 
