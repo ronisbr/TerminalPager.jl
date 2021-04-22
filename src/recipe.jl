@@ -77,6 +77,7 @@ function _printing_recipe(str::AbstractString,
             decoration = highlight_matches[i][4] == 1 ?
                 Decoration(background = "44", reversed = true) :
                 Decoration(reversed = true)
+            break
         end
     end
 
@@ -85,6 +86,9 @@ function _printing_recipe(str::AbstractString,
 
     # Current string.
     str_i = ""
+
+    # Inform that we have a new decoration.
+    new_decoration = false
 
     # Number of processed characters in the string.
     num_processed_chars = 0
@@ -118,6 +122,7 @@ function _printing_recipe(str::AbstractString,
                 push!(s, str_i)
                 push!(d, decoration)
                 str_i = ""
+                new_decoration = false
             end
 
             continue
@@ -139,7 +144,7 @@ function _printing_recipe(str::AbstractString,
 
                 old_decoration = decoration
                 decoration = highlight_matches[hl_i][4] == 1 ?
-                    Decoration(background = "36", reversed = true) :
+                    Decoration(background = "44", reversed = true) :
                     Decoration(reversed = true)
             end
 
@@ -213,6 +218,7 @@ function _printing_recipe(str::AbstractString,
                 end
 
                 code = ""
+                new_decoration = true
 
             else
                 state = :string
@@ -224,7 +230,7 @@ function _printing_recipe(str::AbstractString,
     if !isempty(str_i)
         push!(s, str_i)
         push!(d, decoration)
-    elseif cropped_chars > 0
+    elseif new_decoration
         push!(d, decoration)
     end
 
@@ -240,7 +246,7 @@ function _parse_ansi_code(decoration::Decoration, code::String)
 
     # `reset` must not be copied to other decorations. Hence, we need to reset
     # it here.
-    decoration = Decoration(reset = false)
+    decoration = Decoration(reset = false, force = false)
 
     i = 1
     while i ≤ length(tokens)
@@ -259,13 +265,13 @@ function _parse_ansi_code(decoration::Decoration, code::String)
             decoration = Decoration(decoration; reversed = true)
 
         elseif code_i == 22
-            decoration = Decoration(decoration; bold = false)
+            decoration = Decoration(decoration; bold = false, force = true)
 
         elseif code_i == 24
-            decoration = Decoration(decoration; underline = false)
+            decoration = Decoration(decoration; underline = false, force = true)
 
         elseif code_i == 27
-            decoration = Decoration(decoration; reversed = false)
+            decoration = Decoration(decoration; reversed = false, force = true)
 
         elseif 30 <= code_i <= 37
             decoration = Decoration(decoration; foreground = "$code_i")
