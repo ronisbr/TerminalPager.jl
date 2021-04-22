@@ -8,16 +8,16 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _print_help!(pargerd::Pager)
+    _draw_help!(pargerd::Pager)
 
-Print help screen to the buffer of pager `pagerd`.
+Draw help screen to the buffer of pager `pagerd`.
 
 """
-function _print_help!(pargerd::Pager)
+function _draw_help!(pagerd::Pager)
     # Unpack values.
-    @unpack buf = pagerd
+    @unpack term, buf = pagerd
 
-    if get(io, :color, true)
+    if get(term.out_stream, :color, true)
         _b = string(crayon"bold")
         _d = string(Crayon(reset = true))
         _c = string(crayon"cyan bold")
@@ -56,6 +56,11 @@ function _print_help!(pargerd::Pager)
     """
 
     write(buf, help_str)
+
+    # Draw pager and wait for user input.
+    _redraw!(pagerd)
+    _jlgetch(term.in_stream)
+    _request_redraw!(pagerd)
 
     return nothing
 end

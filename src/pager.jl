@@ -244,10 +244,7 @@ function _pager_event_process!(pagerd::Pager)
         return false
 
     elseif event == :help
-        _print_help!(pagerd)
-        _redraw!(pagerd)
-        _jlgetch(term.in_stream)
-        _request_redraw!(pagerd)
+        _draw_help!(pagerd)
 
     elseif event == :search
         cmd_input = _read_cmd!(pagerd)
