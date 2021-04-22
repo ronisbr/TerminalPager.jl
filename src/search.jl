@@ -11,13 +11,15 @@
     _find_matches(tokens::Vector{String}, regex::Regex)
 
 Find all matches of `regex` in `tokens`. The return value will be a vector of
-`NT0uple{3, Int}` with the match in the format `(line, column, width)`.
+`NTuple{4, Int}` with the match in the format `(line, column, width, active)`.
 
 """
 function _find_matches(tokens::Vector{T}, regex::Regex) where T<:AbstractString
-    matches = NTuple{3, Int}[]
+    matches = NTuple{4, Int}[]
 
     regex_ansi = r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
+
+    active = 1
 
     # For each line, find matches based on regex.
     for i = 1:length(tokens)
@@ -33,7 +35,9 @@ function _find_matches(tokens::Vector{T}, regex::Regex) where T<:AbstractString
             # `m.offset` contains the byte in which the match starts. However,
             # we need to obtain the character. Hence, it is necessary to compute
             # the text width from the beginning to the offset.
-            push!(matches, (i, textwidth(line[1:m.offset]), textwidth(m.match)))
+            push!(matches,
+                  (i, textwidth(line[1:m.offset]), textwidth(m.match), active))
+            active = 0
         end
     end
 

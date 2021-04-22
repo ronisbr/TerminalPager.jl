@@ -54,7 +54,7 @@ function _pager(str::AbstractString)
     mode = :view
 
     # List of the matches to be highlighted.
-    search_matches = NTuple{3, Int}[]
+    search_matches = NTuple{4, Int}[]
 
     while true
         # If the terminal size has changed, then we need to redraw the view.

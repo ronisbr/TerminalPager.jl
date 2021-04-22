@@ -40,7 +40,7 @@ This function also return the number of cropped characters in this line.
 function _printing_recipe(str::AbstractString,
                           start_char::Int,
                           max_chars::Int,
-                          highlight_matches::Vector{NTuple{3, Int}})
+                          highlight_matches::Vector{NTuple{4, Int}})
 
     # Current state.
     decoration = Decoration()
@@ -73,7 +73,9 @@ function _printing_recipe(str::AbstractString,
         elseif (start_char > m_beg) && (m_end ≤ (start_char + max_chars))
             hl_i = i
             hl_state = :highlight
-            decoration = Decoration(reversed = true)
+            decoration = highligth_matches[i][4] == 1 ?
+                Decoration(background = "44", reversed = true) :
+                Decoration(reversed = true)
         end
     end
 
@@ -135,7 +137,9 @@ function _printing_recipe(str::AbstractString,
                 str_i = ""
 
                 old_decoration = decoration
-                decoration = Decoration(reversed = true)
+                decoration = highlight_matches[hl_i][4] == 1 ?
+                    Decoration(background = "36", reversed = true) :
+                    Decoration(reversed = true)
             end
 
             if (start_char ≤ num_processed_chars + cw ≤ Δchars)

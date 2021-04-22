@@ -17,7 +17,7 @@ the start row and column `start_row` and `start_col`.
 function _view(io::IO,
                tokens::Vector{T} where T<:AbstractString,
                screen_size::NTuple{2,Int},
-               search_matches::Vector{NTuple{3, Int}},
+               search_matches::Vector{NTuple{4, Int}},
                start_row::Int,
                start_col::Int)
 
