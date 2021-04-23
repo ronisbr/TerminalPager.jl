@@ -45,16 +45,33 @@ end
 """
     _pager(str::AbstractString)
 
-Initialize the pager of the string `str`.
+Initialize the pager with the string `str`.
 
 """
 function _pager(str::AbstractString)
+    # Initialize the terminal.
+    term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
+
+    # Switch the terminal to raw mode, meaning that all keystroke is immediatly
+    # passed to us instead of waiting for <return>.
+    REPL.Terminals.raw!(term, true)
+
+    _pager!(term, str)
+
+    REPL.Terminals.raw!(term, false)
+end
+
+"""
+    _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString)
+
+Initialize the pager with the string `str` using the terminal `term`. The user
+must ensure that `term` is in raw mode.
+
+"""
+function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString)
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
     num_tokens = length(tokens)
-
-    # Initialize the terminal.
-    term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
     # Clear the screen and position the cursor at the top.
     _clear_screen(term.out_stream, newlines = true)
@@ -79,10 +96,6 @@ function _pager(str::AbstractString)
                    lines = tokens,
                    num_lines = num_tokens)
 
-    # Switch the terminal to raw mode, meaning that all keystroke is immediatly
-    # passed to us instead of waiting for <return>.
-    REPL.Terminals.raw!(term, true)
-
     # Application main loop
     # ==========================================================================
 
@@ -102,8 +115,6 @@ function _pager(str::AbstractString)
         _pager_key_process!(pagerd, k)
         _pager_event_process!(pagerd) || break
     end
-
-    REPL.Terminals.raw!(term, false)
 
     return nothing
 end
@@ -251,6 +262,7 @@ function _pager_event_process!(pagerd::Pager)
 
     elseif event == :help
         _draw_help!(pagerd)
+        _request_redraw!(pagerd)
 
     elseif event == :search
         cmd_input = _read_cmd!(pagerd)
