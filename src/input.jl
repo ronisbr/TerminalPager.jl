@@ -38,7 +38,7 @@ function _jlgetch(stream::IO)
 
         # Read the entire sequence limited to 10 characters.
         for i = 1:10
-            stream.buffer.size == 0 && break
+            stream.buffer.size == i && break
             nc = read(stream, Char)
             s *= string(Char(nc))
             haskey(keycodes, s) && break
