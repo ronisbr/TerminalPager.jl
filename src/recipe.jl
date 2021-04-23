@@ -61,38 +61,14 @@ function _printing_recipe(str::AbstractString,
     eol = false
 
     # Variables to handle highlighting.
+    num_highlights = length(highlight_matches)
     hl_state = :normal
-    hl_i = 0
     old_decoration::Decoration = Decoration()
 
-    # Find the index of the first highlight that can be applied in this line.
-    for i = 1:length(highlight_matches)
-        m_beg = highlight_matches[i][2]
-        m_end = m_beg + highlight_matches[i][3]
-
-        if m_beg < freeze_columns
-            hl_i = i
-            break
-        elseif start_char ≤ m_beg ≤ (start_char + max_chars)
-            hl_i = i
-            break
-        elseif (start_char > m_beg) && (m_end ≤ (start_char + max_chars))
-            hl_i = i
-
-            # If we have freeze columns, then we must not begin in highlighting
-            # mode.
-            if freeze_columns == 0
-                hl_state = :highlight
-                decoration =
-                    _default_search_highlighting[highlight_matches[hl_i] == active_match]
-            end
-
-            break
-        end
-    end
-
-    hl_beg = hl_i ≠ 0 ? highlight_matches[hl_i][2] : 0
-    hl_end = hl_i ≠ 0 ? hl_beg + highlight_matches[hl_i][3] - 1 : 0
+    # Vectors with the beginning and end of the highlights.
+    hl_beg = [highlight_matches[i][2] for i = 1:num_highlights]
+    hl_end = hl_beg .+ [highlight_matches[i][3] - 1 for i = 1:num_highlights]
+    hl_active_id = findfirst(x->x === active_match, highlight_matches)
 
     # Current string.
     str_i = ""
@@ -154,16 +130,20 @@ function _printing_recipe(str::AbstractString,
 
             # If this character matches the beginning of highlight, we need to
             # flush the string until now and start a new segment.
-            if (hl_state == :normal) && (num_processed_chars + cw == hl_beg)
-                hl_state = :highlight
+            if (hl_state == :normal)
 
-                push!(s, str_i)
-                push!(d, decoration)
-                str_i = ""
+                hl_id = findfirst(x->x == num_processed_chars + cw, hl_beg)
 
-                old_decoration = decoration
-                decoration =
-                    _default_search_highlighting[highlight_matches[hl_i] == active_match]
+                if hl_id != nothing
+                    hl_state = :highlight
+
+                    push!(s, str_i)
+                    push!(d, decoration)
+                    str_i = ""
+
+                    old_decoration = decoration
+                    decoration = _default_search_highlighting[hl_id == hl_active_id]
+                end
             end
 
             num_processed_chars += cw
@@ -195,32 +175,12 @@ function _printing_recipe(str::AbstractString,
                 num_printed_chars += cw
             end
 
-            if (hl_state == :highlight) && (num_processed_chars == hl_end)
-                # Find the next applicable highlight.
-                hl_i += 1
-                hl_beg = hl_end = 0
+            if hl_state == :highlight
+                hl_id = findfirst(x->x == num_processed_chars, hl_end)
 
-                while hl_i ≤ length(highlight_matches)
-                    hl_beg = highlight_matches[hl_i][2]
-                    hl_end = hl_beg + highlight_matches[hl_i][3] - 1
-
-                    if hl_beg > num_processed_chars
-                        hl_state = :normal
-                        break
-                    elseif hl_end > num_processed_chars
-                        break
-                    end
-
-                    hl_i += 1
-                end
-
-                # Go back to normal state if there is not any more highlight.
-                hl_i > length(highlight_matches) && (hl_state = :normal)
-
-                # Only flush the string and decoration if the new state is
-                # `normal` or if there is not any other highlight. This is
-                # necessary to account for overlaping matches.
-                if (hl_state == :normal) || (hl_i > length(highlight_matches))
+                # TODO: If there is a highlight that starts inside the old one,
+                # we could save a push here.
+                if hl_id != nothing
                     push!(s, str_i)
                     push!(d, decoration)
                     str_i = ""
