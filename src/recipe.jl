@@ -93,14 +93,17 @@ function _printing_recipe(str::AbstractString,
     # Number of processed characters in the string.
     num_processed_chars = 0
 
+    # Number of printed characters in the display.
+    num_printed_chars = 0
+
+    # State of string processing.
+    string_state = :initial_cropping
+
     # Current escape sequence code.
     code = ""
 
     # Make sure the parameters have correct values.
     start_char < 1 && (start_char = 1)
-
-    # Compute the maximum number of processed chars.
-    Δchars = max_chars ≤ 0 ? typemax(Int) : max_chars + (start_char - 1)
 
     # Variable to compute the number of cropped chars.
     cropped_chars = 0
@@ -115,10 +118,7 @@ function _printing_recipe(str::AbstractString,
             # If we are not highlighting somehting, we have at least one space
             # in the screen, and the current string is not empty, then we need
             # to flush the string and decoration to start a new segment.
-            if (hl_state == :normal) &&
-                (start_char ≤ num_processed_chars + 1 ≤ Δchars) &&
-                !isempty(str_i)
-
+            if (hl_state == :normal) && (string_state == :view) && !isempty(str_i)
                 push!(s, str_i)
                 push!(d, decoration)
                 str_i = ""
@@ -147,11 +147,22 @@ function _printing_recipe(str::AbstractString,
                     _default_search_highlighting[highlight_matches[hl_i] == active_match]
             end
 
-            if (start_char ≤ num_processed_chars + cw ≤ Δchars)
-                str_i *= string(c)
+            num_processed_chars += cw
+
+            # Check if we finished the initial cropping with this character.
+            if string_state == :initial_cropping
+                num_processed_chars ≥ start_char && (string_state = :view)
+
+            # Check if we reached the final of the viewable area.
+            elseif string_state == :view
+                num_printed_chars + cw > max_chars && (string_state = :final_cropping)
+
             end
 
-            num_processed_chars += cw
+            if string_state == :view
+                str_i *= string(c)
+                num_printed_chars += cw
+            end
 
             if (hl_state == :highlight) && (num_processed_chars == hl_end)
                 # Find the next applicable highlight.
@@ -192,17 +203,15 @@ function _printing_recipe(str::AbstractString,
             end
 
             # Check if we are in the final character to be printed.
-            if num_processed_chars ≥ Δchars
+            if string_state == :final_cropping
                 if !eol
                     push!(s, str_i)
                     push!(d, decoration)
                     str_i = ""
                     eol = true
-
-                    cropped_chars += num_processed_chars - Δchars
-                else
-                    cropped_chars += cw
                 end
+
+                cropped_chars += cw
             end
 
         elseif state == :escape_seq_beg
