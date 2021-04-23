@@ -73,6 +73,7 @@ must ensure that `term` is in raw mode.
 function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString;
                  freeze_columns::Int = 0,
                  freeze_rows::Int = 0,
+                 change_freeze::Bool = true,
                  hashelp::Bool = true)
 
     # Get the tokens (lines) of the input.
@@ -94,13 +95,14 @@ function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString;
     dsize = displaysize(term.out_stream)::Tuple{Int, Int}
 
     features = Symbol[]
+    change_freeze && push!(features, :change_freeze)
     hashelp && push!(features, :help)
 
     # Initialize the pager structure.
     pagerd = Pager(term = term,
                    buf = buf,
                    display_size = dsize,
-                   start_row = max(1, freeze_rows + 1),
+                   start_row = min(max(1, freeze_rows + 1), num_tokens),
                    start_col = max(1, freeze_columns + 1),
                    lines = tokens,
                    num_lines = num_tokens,
@@ -261,6 +263,12 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     elseif action == :quit_search
         event = :quit_search
+
+    elseif action == :change_freeze
+        if :change_freeze ∈ features
+            event = :change_freeze
+        end
+
     end
 
     # Repack values.
@@ -314,6 +322,34 @@ function _pager_event_process!(pagerd::Pager)
         _quit_search!(pagerd)
         _request_redraw!(pagerd)
         pagerd.mode = :view
+
+    elseif event == :change_freeze
+        cmd_input = _read_cmd!(pagerd; prefix = "Freeze rows: ")
+        freeze_rows = tryparse(Int, cmd_input; base = 10)
+
+        if (freeze_rows == nothing) && !isempty(cmd_input)
+            _print_cmd_message!(pagerd, "Invalid data!";
+                                crayon = crayon"red bold")
+            _jlgetch(pagerd.term.in_stream)
+
+        else
+            cmd_input = _read_cmd!(pagerd; prefix = "Freeze columns: ")
+            freeze_columns = tryparse(Int, cmd_input; base = 10)
+
+            if (freeze_columns == nothing) && !isempty(cmd_input)
+                _print_cmd_message!(pagerd, "Invalid data!";
+                                    crayon = crayon"red bold")
+                _jlgetch(pagerd.term.in_stream)
+
+            else
+                pagerd.freeze_columns = max(0, freeze_columns)
+                pagerd.freeze_rows = max(0, freeze_rows)
+                pagerd.start_col = max(pagerd.start_col, freeze_columns)
+                pagerd.start_row = max(pagerd.start_row, freeze_rows)
+            end
+        end
+
+        _request_redraw!(pagerd)
     end
 
     return true

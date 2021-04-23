@@ -45,7 +45,9 @@ function _view!(pagerd::Pager)
 
     # Assemble the vector with the lines to be printed.
     if freeze_rows > 0
-        start_row ≤ freeze_rows && (start_row += freeze_rows)
+        freeze_rows > rows && (freeze_rows = rows)
+        start_row ≤ freeze_rows && (start_row = freeze_rows + 1)
+
         lines_indices = vcat(1:freeze_rows, start_row:num_lines)
     else
         lines_indices = collect(start_row:num_lines)
@@ -85,7 +87,7 @@ function _view!(pagerd::Pager)
         num_printed_lines += 1
 
         if num_printed_lines ≥ rows
-            lines_cropped = num_lines - rows - (start_row - 1)
+            lines_cropped = num_lines - (rows - freeze_rows) - (start_row - 1)
             break
         end
     end
