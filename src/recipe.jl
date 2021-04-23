@@ -42,7 +42,7 @@ function _printing_recipe(str::AbstractString,
                           start_char::Int,
                           max_chars::Int,
                           highlight_matches::SearchMatches,
-                          active_match::Union{Nothing, SearchMatch},
+                          active_match::SearchMatch,
                           freeze_columns::Int)
 
     # Current state.
@@ -66,9 +66,13 @@ function _printing_recipe(str::AbstractString,
     old_decoration::Decoration = Decoration()
 
     # Vectors with the beginning and end of the highlights.
-    hl_beg = [highlight_matches[i][2] for i = 1:num_highlights]
-    hl_end = hl_beg .+ [highlight_matches[i][3] - 1 for i = 1:num_highlights]
-    hl_active_id = findfirst(x->x === active_match, highlight_matches)
+    hl_beg = map(x->x[2], highlight_matches)
+    hl_end = hl_beg .+ map(x->x[3] - 1, highlight_matches)
+    hl_active_id = 0
+
+    for i = 1:num_highlights
+        highlight_matches[i] === active_match && (hl_active_id = i)
+    end
 
     # Current string.
     str_i = ""
@@ -132,9 +136,13 @@ function _printing_recipe(str::AbstractString,
             # flush the string until now and start a new segment.
             if (hl_state == :normal)
 
-                hl_id = findfirst(x->x == num_processed_chars + cw, hl_beg)
+                hl_id = 0
 
-                if hl_id != nothing
+                for i = 1:num_highlights
+                    hl_beg[i] == (num_processed_chars + cw) && (hl_id = i)
+                end
+
+                if hl_id > 0
                     hl_state = :highlight
 
                     push!(s, str_i)
@@ -176,11 +184,15 @@ function _printing_recipe(str::AbstractString,
             end
 
             if hl_state == :highlight
-                hl_id = findfirst(x->x == num_processed_chars, hl_end)
+                hl_id = 0
+
+                for i = 1:num_highlights
+                    hl_end[i] == num_processed_chars && (hl_id = i)
+                end
 
                 # TODO: If there is a highlight that starts inside the old one,
                 # we could save a push here.
-                if hl_id != nothing
+                if hl_id > 0
                     push!(s, str_i)
                     push!(d, decoration)
                     str_i = ""

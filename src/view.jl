@@ -40,14 +40,15 @@ function _view!(pagerd::Pager)
 
     # Get the active search match.
     active_search_match =
-        active_search_match_id == 0 ? nothing : search_matches[active_search_match_id]
+        active_search_match_id == 0 ? (0, 0, 0) :
+                                      search_matches[active_search_match_id]
 
     # Assemble the vector with the lines to be printed.
     if freeze_rows > 0
         start_row ≤ freeze_rows && (start_row += freeze_rows)
         lines_indices = vcat(1:freeze_rows, start_row:num_lines)
     else
-        lines_indices = start_row:num_lines
+        lines_indices = collect(start_row:num_lines)
     end
 
     for i ∈ lines_indices
