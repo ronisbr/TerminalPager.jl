@@ -115,6 +115,8 @@ function _read_cmd!(pagerd::Pager)
                 cmd_width -= 1
                 cursor_pos -= 1
                 redraw = true
+            else
+                break
             end
 
         elseif k.value == :left
