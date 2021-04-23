@@ -59,6 +59,8 @@ function _pager(str::AbstractString; kwargs...)
     _pager!(term, str; kwargs...)
 
     REPL.Terminals.raw!(term, false)
+
+    return nothing
 end
 
 """
