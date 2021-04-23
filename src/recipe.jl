@@ -45,7 +45,7 @@ function _printing_recipe(str::AbstractString,
                           active_match::Union{Nothing, SearchMatch})
 
     # Current state.
-    decoration = Decoration()
+    decoration::Decoration = Decoration()
 
     # Vector containing the decorations.
     d = Vector{Decoration}(undef, 0)
@@ -62,7 +62,7 @@ function _printing_recipe(str::AbstractString,
     # Variables to handle highlighting.
     hl_state = :normal
     hl_i = 0
-    old_decoration = Decoration()
+    old_decoration::Decoration = Decoration()
 
     # Find the index of the first highlight that can be applied in this line.
     for i = 1:length(highlight_matches)
@@ -75,9 +75,8 @@ function _printing_recipe(str::AbstractString,
         elseif (start_char > m_beg) && (m_end ≤ (start_char + max_chars))
             hl_i = i
             hl_state = :highlight
-            decoration = get(_default_search_highlighting,
-                             highlight_matches[hl_i] == active_match,
-                             Decoration())
+            decoration =
+                _default_search_highlighting[highlight_matches[hl_i] == active_match]
             break
         end
     end
@@ -144,9 +143,8 @@ function _printing_recipe(str::AbstractString,
                 str_i = ""
 
                 old_decoration = decoration
-                decoration = get(_default_search_highlighting,
-                                 highlight_matches[hl_i] == active_match,
-                                 Decoration())
+                decoration =
+                    _default_search_highlighting[highlight_matches[hl_i] == active_match]
             end
 
             if (start_char ≤ num_processed_chars + cw ≤ Δchars)
@@ -245,37 +243,45 @@ end
 function _parse_ansi_code(decoration::Decoration, code::String)
     tokens = split(code, ';')
 
+    # Unpack fields.
+    @unpack foreground, background, bold, underline, reset, reversed, force =
+            decoration
+
     # `reset` must not be copied to other decorations. Hence, we need to reset
     # it here.
-    decoration = Decoration(reset = false, force = false)
+    reset = false
+    force = false
 
     i = 1
     while i ≤ length(tokens)
         code_i = tryparse(Int, tokens[i], base = 10)
 
         if code_i == 0
-            decoration = Decoration(reset = true)
+            reset = true
 
         elseif code_i == 1
-            decoration = Decoration(decoration; bold = true)
+            bold = true
 
         elseif code_i == 4
-            decoration = Decoration(decoration; underline  = true)
+            underline  = true
 
         elseif code_i == 7
-            decoration = Decoration(decoration; reversed = true)
+            reversed = true
 
         elseif code_i == 22
-            decoration = Decoration(decoration; bold = false, force = true)
+            bold = false
+            force = true
 
         elseif code_i == 24
-            decoration = Decoration(decoration; underline = false, force = true)
+            underline = false
+            force = true
 
         elseif code_i == 27
-            decoration = Decoration(decoration; reversed = false, force = true)
+            reversed = false
+            force = true
 
         elseif 30 <= code_i <= 37
-            decoration = Decoration(decoration; foreground = "$code_i")
+            foreground = "$code_i"
 
         # 256-color support for foreground.
         elseif code_i == 38
@@ -286,18 +292,17 @@ function _parse_ansi_code(decoration::Decoration, code::String)
                 code_i_2 = tryparse(Int, tokens[i+2], base = 10)
 
                 if code_i_1 == 5
-                    decoration = Decoration(decoration;
-                                            foreground = "38;5;$code_i_2")
+                    foreground = "38;5;$code_i_2"
                 end
 
                 i += 2
             end
 
         elseif code_i == 39
-            decoration = Decoration(decoration; foreground = "39")
+            foreground = "39"
 
         elseif 40 <= code_i <= 47
-            decoration = Decoration(decoration; background = "$code_i")
+            background = "$code_i"
 
         # 256-color support for background.
         elseif code_i == 48
@@ -308,29 +313,34 @@ function _parse_ansi_code(decoration::Decoration, code::String)
                 code_i_2 = tryparse(Int, tokens[i+2], base = 10)
 
                 if code_i_1 == 5
-                    decoration = Decoration(decoration;
-                                            background = "48;5;$code_i_2")
+                    background = "48;5;$code_i_2"
                 end
 
                 i += 2
             end
 
         elseif code_i == 49
-            decoration = Decoration(decoration; background = "49")
+            background = "49"
 
         # Bright foreground colors defined by Aixterm.
         elseif 90 <= code_i <= 97
-            decoration = Decoration(decoration; foreground = "$code_i")
+            foreground = "$code_i"
 
         # Bright background colors defined by Aixterm.
         elseif 100 <= code_i <= 107
-            decoration = Decoration(decoration; background = "$code_i")
+            background = "$code_i"
         end
 
         i += 1
     end
 
-    return decoration
+    return Decoration(foreground,
+                      background,
+                      bold,
+                      underline,
+                      reset,
+                      reversed,
+                      force)
 end
 
 _is_default(d::Decoration) = d === Decoration()

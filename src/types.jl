@@ -13,7 +13,7 @@ const SearchMatches = Vector{SearchMatch}
 # Structure that holds all the information about the pager.
 @with_kw mutable struct Pager
     term::REPL.Terminals.TTYTerminal
-    buf::IOContext
+    buf::IOContext{IOBuffer}
     display_size::NTuple{2, Int} = (0, 0)
     start_row::Int = 1
     start_col::Int = 1

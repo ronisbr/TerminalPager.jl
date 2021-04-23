@@ -64,12 +64,16 @@ function _pager(str::AbstractString)
     # everything in the view buffer is written to this buffer and then flushed
     # to the screen.
     iobuf = IOBuffer()
-    buf = IOContext(iobuf, :color => get(stdout, :color, true))
+    hascolor = get(stdout, :color, true)::Bool
+    buf = IOContext(iobuf, :color => hascolor)
+
+    # Get the display size and make sure it is type stable.
+    dsize = displaysize(term.out_stream)::Tuple{Int, Int}
 
     # Initialize the pager structure.
     pagerd = Pager(term = term,
                    buf = buf,
-                   display_size = displaysize(term.out_stream),
+                   display_size = dsize,
                    start_row = 1,
                    start_col = 1,
                    lines = tokens,
