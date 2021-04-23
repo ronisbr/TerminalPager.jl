@@ -78,9 +78,15 @@ function _printing_recipe(str::AbstractString,
             break
         elseif (start_char > m_beg) && (m_end ≤ (start_char + max_chars))
             hl_i = i
-            hl_state = :highlight
-            decoration =
-                _default_search_highlighting[highlight_matches[hl_i] == active_match]
+
+            # If we have freeze columns, then we must not begin in highlighting
+            # mode.
+            if freeze_columns == 0
+                hl_state = :highlight
+                decoration =
+                    _default_search_highlighting[highlight_matches[hl_i] == active_match]
+            end
+
             break
         end
     end
