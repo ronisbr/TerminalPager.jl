@@ -168,7 +168,12 @@ function _printing_recipe(str::AbstractString,
                     elseif hl_end > num_processed_chars
                         break
                     end
+
+                    hl_i += 1
                 end
+
+                # Go back to normal state if there is not any more highlight.
+                hl_i > length(highlight_matches) && (hl_state = :normal)
 
                 # Only flush the string and decoration if the new state is
                 # `normal` or if there is not any other highlight. This is
