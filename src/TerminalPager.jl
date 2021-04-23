@@ -28,8 +28,6 @@ const _default_search_highlighting = Dict{Bool, Decoration}()
 ################################################################################
 
 include("./command_line.jl")
-include("./keybindings.jl")
-include("./input.jl")
 include("./help.jl")
 include("./pager.jl")
 include("./recipe.jl")
@@ -37,6 +35,9 @@ include("./search.jl")
 include("./screen.jl")
 include("./string.jl")
 include("./view.jl")
+
+include("./input/keybindings.jl")
+include("./input/input.jl")
 
 export pager
 
