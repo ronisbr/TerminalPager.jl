@@ -202,6 +202,8 @@ function _printing_recipe(str::AbstractString,
                     # the highlight.
                     push!(s, "")
                     push!(d, Decoration(reset = true))
+
+                    hl_state = :normal
                 end
             end
 
@@ -274,7 +276,8 @@ function _parse_ansi_code(decoration::Decoration, code::String)
         code_i = tryparse(Int, tokens[i], base = 10)
 
         if code_i == 0
-            reset = true
+            # If we have a reset, neglect all the other configurations.
+            return Decoration(reset = true)
 
         elseif code_i == 1
             bold = true
