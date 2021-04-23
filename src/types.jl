@@ -28,6 +28,7 @@ const SearchMatches = Vector{SearchMatch}
     event::Union{Nothing, Symbol} = nothing
     features::Vector{Symbol} = Symbol[]
     freeze_columns::Int = 0
+    freeze_rows::Int = 0
 end
 
 # This struct describe the decoration of a string.

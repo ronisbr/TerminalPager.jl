@@ -20,7 +20,7 @@ function _view!(pagerd::Pager)
 
     # Get the necessary variables.
     @unpack start_row, start_col, lines, num_lines, active_search_match_id,
-            search_matches, buf, freeze_columns = pagerd
+            search_matches, buf, freeze_columns, freeze_rows = pagerd
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
@@ -42,7 +42,15 @@ function _view!(pagerd::Pager)
     active_search_match =
         active_search_match_id == 0 ? nothing : search_matches[active_search_match_id]
 
-    for i = start_row:num_lines
+    # Assemble the vector with the lines to be printed.
+    if freeze_rows > 0
+        start_row ≤ freeze_rows && (start_row += freeze_rows)
+        lines_indices = vcat(1:freeze_rows, start_row:num_lines)
+    else
+        lines_indices = start_row:num_lines
+    end
+
+    for i ∈ lines_indices
         line = lines[i]
 
         # Get all search matches in this line.

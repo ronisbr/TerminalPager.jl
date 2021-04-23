@@ -72,6 +72,7 @@ must ensure that `term` is in raw mode.
 """
 function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString;
                  freeze_columns::Int = 0,
+                 freeze_rows::Int = 0,
                  hashelp::Bool = true)
 
     # Get the tokens (lines) of the input.
@@ -99,11 +100,12 @@ function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString;
     pagerd = Pager(term = term,
                    buf = buf,
                    display_size = dsize,
-                   start_row = 1,
+                   start_row = max(1, freeze_rows + 1),
                    start_col = max(1, freeze_columns + 1),
                    lines = tokens,
                    num_lines = num_tokens,
                    freeze_columns = freeze_columns,
+                   freeze_rows = freeze_rows,
                    features = features)
 
     # Application main loop
@@ -138,7 +140,7 @@ Process the keystroke `k` in pager `pagerd`.
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
     @unpack display_size, start_col, start_row, lines_cropped, columns_cropped,
-            freeze_columns, features = pagerd
+            freeze_columns, freeze_rows, features = pagerd
 
     redraw = false
     event = nothing
@@ -166,16 +168,20 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         end
 
     elseif action == :up
-        if start_row > 1
+        min_row = max(1, freeze_rows + 1)
+
+        if start_row > min_row
             start_row -= 1
             _request_redraw!(pagerd)
         end
 
     elseif action == :fastup
-        if start_row > 1
+        min_row = max(1, freeze_rows + 1)
+
+        if start_row > min_row
             start_row -= 5
         end
-        start_row < 1 && (start_row = 1)
+        start_row < min_row && (start_row = min_row)
         _request_redraw!(pagerd)
 
     elseif action == :right
