@@ -74,9 +74,9 @@ function _printing_recipe(str::AbstractString,
         elseif (start_char > m_beg) && (m_end ≤ (start_char + max_chars))
             hl_i = i
             hl_state = :highlight
-            decoration = highlight_matches[i][4] == 1 ?
-                Decoration(background = "44", reversed = true) :
-                Decoration(reversed = true)
+            decoration = get(_default_search_highlighting,
+                             highlight_matches[i][4],
+                             Decoration())
             break
         end
     end
@@ -143,9 +143,9 @@ function _printing_recipe(str::AbstractString,
                 str_i = ""
 
                 old_decoration = decoration
-                decoration = highlight_matches[hl_i][4] == 1 ?
-                    Decoration(background = "44", reversed = true) :
-                    Decoration(reversed = true)
+                decoration = get(_default_search_highlighting,
+                                 highlight_matches[hl_i][4],
+                                 Decoration())
             end
 
             if (start_char ≤ num_processed_chars + cw ≤ Δchars)

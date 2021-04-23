@@ -248,16 +248,21 @@ function _pager_event_process!(pagerd::Pager)
 
     elseif event == :search
         cmd_input = _read_cmd!(pagerd)
-        match_regex = Regex(cmd_input)
-        pagerd.search_matches = _find_matches(lines, match_regex)
+
+        # Do not search if the regex is empty.
+        if !isempty(cmd_input)
+            match_regex = Regex(cmd_input)
+            _find_matches!(pagerd, match_regex)
+        end
+
         _request_redraw!(pagerd)
 
     elseif event == :next_match
-        _change_active_match!(pagerd.search_matches, true)
+        _change_active_match!(pagerd, true)
         _request_redraw!(pagerd)
 
     elseif event == :previous_match
-        _change_active_match!(pagerd.search_matches, false)
+        _change_active_match!(pagerd, false)
         _request_redraw!(pagerd)
 
     end
