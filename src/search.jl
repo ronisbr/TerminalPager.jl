@@ -132,3 +132,15 @@ function _move_view_to_match!(pagerd::Pager)
 
     return nothing
 end
+
+"""
+    _quit_search!(pagerd::Pager)
+
+Quit search mode of pager `pagerd`.
+
+"""
+function _quit_search!(pagerd::Pager)
+    empty!(pagerd.search_matches)
+    pagerd.active_search_match_id = 0
+    return nothing
+end

@@ -222,6 +222,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     elseif action == :previous_match
         event = :previous_match
 
+    elseif action == :quit_search
+        event = :quit_search
     end
 
     # Repack values.
@@ -255,6 +257,7 @@ function _pager_event_process!(pagerd::Pager)
             _find_matches!(pagerd, match_regex)
             _change_active_match!(pagerd, true)
             _move_view_to_match!(pagerd)
+            pagerd.mode = :searching
         end
 
         _request_redraw!(pagerd)
@@ -269,6 +272,10 @@ function _pager_event_process!(pagerd::Pager)
         _move_view_to_match!(pagerd)
         _request_redraw!(pagerd)
 
+    elseif event == :quit_search
+        _quit_search!(pagerd)
+        _request_redraw!(pagerd)
+        pagerd.mode = :view
     end
 
     return true

@@ -15,7 +15,7 @@ Print the command line of pager `pagerd` to the display.
 """
 function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
-    @unpack term, display_size, num_lines, lines_cropped = pagerd
+    @unpack term, display_size, num_lines, lines_cropped, mode = pagerd
 
     if get(term.out_stream, :color, true)
         _d = string(Crayon(reset = true))
@@ -25,10 +25,25 @@ function _redraw_cmd_line!(pagerd::Pager)
         _g = ""
     end
 
+    # Compute the information considering the current mode.
+    if mode == :view
+        cmd_help = "(↑ ↓ ← →:move, ?:help, q:quit)"
+
+    elseif mode == :searching
+        @unpack active_search_match_id, search_matches = pagerd
+        num_matches = length(search_matches)
+
+        cmd_help = "(match $(active_search_match_id) of $(num_matches))"
+
+    else
+        cmd_help = "ERROR"
+
+    end
+
     # Compute the scroll position
     pos = @sprintf("%3d", 100*(1 - lines_cropped/num_lines))
+    cmd_help *= " $(pos)%"
 
-    cmd_help = "(↑ ↓ ← →:move, ?:help, q:quit) $(pos)%"
     lcmd_help = length(cmd_help)
 
     if display_size[2] > (lcmd_help + 4)

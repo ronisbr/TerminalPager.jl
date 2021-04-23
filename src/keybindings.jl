@@ -52,6 +52,7 @@ function reset_keybindings()
     _default_keybindings[("/",       false, false, false)] = :search
     _default_keybindings[("n",       false, false, false)] = :next_match
     _default_keybindings[("N",       false, false, false)] = :previous_match
+    _default_keybindings[(:esc,      false, false, false)] = :quit_search
 end
 
 # Call `reset_keybindings` to populate the keybindings.
