@@ -20,7 +20,7 @@ function _view!(pagerd::Pager)
 
     # Get the necessary variables.
     @unpack start_row, start_col, lines, num_lines, active_search_match_id,
-            search_matches, buf = pagerd
+            search_matches, buf, freeze_columns = pagerd
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
@@ -54,7 +54,8 @@ function _view!(pagerd::Pager)
                              start_col,
                              cols,
                              matches_i,
-                             active_search_match)
+                             active_search_match,
+                             freeze_columns)
 
         columns_cropped = max(columns_cropped, cropped_chars_i)
 

@@ -42,7 +42,8 @@ function _printing_recipe(str::AbstractString,
                           start_char::Int,
                           max_chars::Int,
                           highlight_matches::SearchMatches,
-                          active_match::Union{Nothing, SearchMatch})
+                          active_match::Union{Nothing, SearchMatch},
+                          freeze_columns::Int)
 
     # Current state.
     decoration::Decoration = Decoration()
@@ -69,7 +70,10 @@ function _printing_recipe(str::AbstractString,
         m_beg = highlight_matches[i][2]
         m_end = m_beg + highlight_matches[i][3]
 
-        if start_char ≤ m_beg ≤ (start_char + max_chars)
+        if m_beg < freeze_columns
+            hl_i = i
+            break
+        elseif start_char ≤ m_beg ≤ (start_char + max_chars)
             hl_i = i
             break
         elseif (start_char > m_beg) && (m_end ≤ (start_char + max_chars))
@@ -108,6 +112,13 @@ function _printing_recipe(str::AbstractString,
     # Variable to compute the number of cropped chars.
     cropped_chars = 0
 
+    # Process the freeze columns.
+    if freeze_columns > 0
+        freeze_columns > max_chars && (freeze_columns = max_chars)
+        start_char < freeze_columns && (start_char = freeze_columns)
+        string_state = :freeze
+    end
+
     for c in str
         # Check if we have a escape charater. In this case, change the state to
         # `:escape_seq`. We also need to add the string assembled so far to the
@@ -118,7 +129,9 @@ function _printing_recipe(str::AbstractString,
             # If we are not highlighting somehting, we have at least one space
             # in the screen, and the current string is not empty, then we need
             # to flush the string and decoration to start a new segment.
-            if (hl_state == :normal) && (string_state == :view) && !isempty(str_i)
+            if (hl_state == :normal) &&
+               ((string_state == :view) || (string_state == :freeze))&&
+               !isempty(str_i)
                 push!(s, str_i)
                 push!(d, decoration)
                 str_i = ""
@@ -149,17 +162,29 @@ function _printing_recipe(str::AbstractString,
 
             num_processed_chars += cw
 
+            # Check if we are in the freeze columns.
+            if string_state == :freeze
+                if num_printed_chars + cw > freeze_columns
+                    string_state = :initial_cropping
+
+                    push!(s, str_i)
+                    push!(d, decoration)
+                    str_i = ""
+                    new_decoration = false
+                end
+            end
+
             # Check if we finished the initial cropping with this character.
             if string_state == :initial_cropping
                 num_processed_chars ≥ start_char && (string_state = :view)
-
-            # Check if we reached the final of the viewable area.
-            elseif string_state == :view
-                num_printed_chars + cw > max_chars && (string_state = :final_cropping)
-
             end
 
+            # Check if we reached the final of the viewable area.
             if string_state == :view
+                num_printed_chars + cw > max_chars && (string_state = :final_cropping)
+            end
+
+            if (string_state == :view) || (string_state == :freeze)
                 str_i *= string(c)
                 num_printed_chars += cw
             end

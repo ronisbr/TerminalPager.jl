@@ -27,6 +27,7 @@ const SearchMatches = Vector{SearchMatch}
     mode::Symbol = :view
     event::Union{Nothing, Symbol} = nothing
     features::Vector{Symbol} = Symbol[]
+    freeze_columns::Int = 0
 end
 
 # This struct describe the decoration of a string.
