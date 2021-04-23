@@ -84,6 +84,11 @@ $(_g)    This action requires the feature :help.
 $(_y)  :quit$(_d)
     Quit the pager.
 $(_c)    Keybindings: $(kb_quit)$(_d)
+$(_y)  :quit_eot$(_d)
+    This is an special quit action design for the $(_c)END OF TRANSMISSION (^D)$(_d)
+    keycode. If we are in a search operation, then it quits the search. If not,
+    then it quits the pager.
+$(_c)    Keybindings: $(kb_quit)$(_d)
 
 $(_b)                                    Movement$(_d)
 $(_y)  :up$(_d)

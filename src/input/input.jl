@@ -63,7 +63,9 @@ function _jlgetch((@nospecialize stream::IO))
         bs2 = read(stream, UInt8)::UInt8
         return Keystroke(value = String([bs1,bs2]))
     elseif c < 192 || c > 253
-        if c == 9
+        if c == 4
+            return Keystroke(value = :eot)
+        elseif c == 9
             return Keystroke(value = :tab)
         elseif c == 10
             return Keystroke(value = :enter)

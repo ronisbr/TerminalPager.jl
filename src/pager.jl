@@ -269,6 +269,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             event = :change_freeze
         end
 
+    elseif action == :quit_eot
+        event = :quit_eot
     end
 
     # Repack values.
@@ -286,6 +288,12 @@ application must exit.
 """
 function _pager_event_process!(pagerd::Pager)
     @unpack event, lines = pagerd
+
+    # For EOT (^D), we will implement two types of "quit" action. If we are in
+    # searching mode, then exit it. If not, quit the pager.
+    if event == :quit_eot
+        event = pagerd.mode == :searching ? :quit_search : :quit
+    end
 
     if event == :quit
         return false

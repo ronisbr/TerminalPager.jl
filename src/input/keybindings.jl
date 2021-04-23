@@ -54,6 +54,7 @@ function reset_keybindings()
     _default_keybindings[("N",       false, false, false)] = :previous_match
     _default_keybindings[(:esc,      false, false, false)] = :quit_search
     _default_keybindings[("f",       false, false, false)] = :change_freeze
+    _default_keybindings[(:eot,      false, false, false)] = :quit_eot
 end
 
 # Call `reset_keybindings` to populate the keybindings.
