@@ -8,6 +8,34 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
+    _print_cmd_message!(pagerd::Pager, msg::String)
+
+Print the message `msg` in the command line of pager `pagerd`. The string
+formatting can be selected using the keyword `crayon`.
+
+"""
+function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = crayon())
+    @unpack term, display_size = pagerd
+
+    if get(term.out_stream, :color, true)
+        _d = string(Crayon(reset = true))
+        _h = string(crayon)
+    else
+        _d = ""
+        _h = ""
+    end
+
+    # Move the cursor to the last line and print the message.
+    _move_cursor(term.out_stream, display_size[1], 0)
+    write(term.out_stream, _h)
+    write(term.out_stream, msg)
+    write(term.out_stream, _d)
+    _clear_to_eol(term.out_stream)
+
+    return nothing
+end
+
+"""
     _redraw_cmd_line!(pagerd::Pager)
 
 Print the command line of pager `pagerd` to the display.
@@ -64,14 +92,14 @@ function _redraw_cmd_line!(pagerd::Pager)
 end
 
 """
-    _read_cmd!(pagerd::Pager)
+    _read_cmd!(pagerd::Pager; prefix::String = "/")
 
 Read a command in the pager `pagerd`.
 
 This function returns a string with the command.
 
 """
-function _read_cmd!(pagerd::Pager)
+function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
     @unpack term, display_size = pagerd
 
@@ -79,8 +107,7 @@ function _read_cmd!(pagerd::Pager)
     cmd = ""
     cmd_width = 0
     cursor_pos = 1
-    prefix = "/"
-    prefix_size = 1
+    prefix_size = textwidth(prefix)
     redraw = true
 
     while true
