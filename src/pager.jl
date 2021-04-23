@@ -48,7 +48,7 @@ end
 Initialize the pager with the string `str`.
 
 """
-function _pager(str::AbstractString)
+function _pager(str::AbstractString; kwargs...)
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
@@ -56,7 +56,7 @@ function _pager(str::AbstractString)
     # passed to us instead of waiting for <return>.
     REPL.Terminals.raw!(term, true)
 
-    _pager!(term, str)
+    _pager!(term, str; kwargs...)
 
     REPL.Terminals.raw!(term, false)
 end
@@ -68,7 +68,9 @@ Initialize the pager with the string `str` using the terminal `term`. The user
 must ensure that `term` is in raw mode.
 
 """
-function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString)
+function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString;
+                 hashelp::Bool = true)
+
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
     num_tokens = length(tokens)
@@ -87,6 +89,9 @@ function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString)
     # Get the display size and make sure it is type stable.
     dsize = displaysize(term.out_stream)::Tuple{Int, Int}
 
+    features = Symbol[]
+    hashelp && push!(features, :help)
+
     # Initialize the pager structure.
     pagerd = Pager(term = term,
                    buf = buf,
@@ -94,7 +99,8 @@ function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString)
                    start_row = 1,
                    start_col = 1,
                    lines = tokens,
-                   num_lines = num_tokens)
+                   num_lines = num_tokens,
+                   features = features)
 
     # Application main loop
     # ==========================================================================
@@ -127,8 +133,8 @@ Process the keystroke `k` in pager `pagerd`.
 """
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
-    @unpack display_size, start_col, start_row, lines_cropped, columns_cropped =
-            pagerd
+    @unpack display_size, start_col, start_row, lines_cropped, columns_cropped,
+            features = pagerd
 
     redraw = false
     event = nothing
@@ -139,7 +145,9 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         event = :quit
 
     elseif action == :help
-        event = :help
+        if :help ∈ features
+            event = :help
+        end
 
     elseif action == :down
         if lines_cropped > 0
@@ -261,7 +269,7 @@ function _pager_event_process!(pagerd::Pager)
         return false
 
     elseif event == :help
-        _draw_help!(pagerd)
+        _help!(pagerd)
         _request_redraw!(pagerd)
 
     elseif event == :search

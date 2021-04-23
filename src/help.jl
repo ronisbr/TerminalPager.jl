@@ -3,17 +3,17 @@
 # Description
 # ==============================================================================
 #
-#   Miscellaneous functions.
+#   Functions related to help screen.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _draw_help!(pargerd::Pager)
+    _help!(pargerd::Pager)
 
-Draw help screen to the buffer of pager `pagerd`.
+Open a new pager with the help.
 
 """
-function _draw_help!(pagerd::Pager)
+function _help!(pagerd::Pager)
     # Unpack values.
     @unpack term, buf = pagerd
 
@@ -55,12 +55,7 @@ function _draw_help!(pagerd::Pager)
         $(_g)Press any key to exit...$(_d)
     """
 
-    write(buf, help_str)
-
-    # Draw pager and wait for user input.
-    _redraw!(pagerd)
-    _jlgetch(term.in_stream)
-    _request_redraw!(pagerd)
+    _pager!(pagerd.term, help_str; hashelp = false)
 
     return nothing
 end

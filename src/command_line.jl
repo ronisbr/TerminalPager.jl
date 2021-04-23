@@ -15,7 +15,7 @@ Print the command line of pager `pagerd` to the display.
 """
 function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
-    @unpack term, display_size, num_lines, lines_cropped, mode = pagerd
+    @unpack term, display_size, num_lines, lines_cropped, mode, features = pagerd
 
     if get(term.out_stream, :color, true)
         _d = string(Crayon(reset = true))
@@ -27,7 +27,9 @@ function _redraw_cmd_line!(pagerd::Pager)
 
     # Compute the information considering the current mode.
     if mode == :view
-        cmd_help = "(↑ ↓ ← →:move, ?:help, q:quit)"
+        cmd_help = "(↑ ↓ ← →:move, "
+        :help ∈ features && (cmd_help *= "?:help, ")
+        cmd_help *= "q:quit)"
 
     elseif mode == :searching
         @unpack active_search_match_id, search_matches = pagerd

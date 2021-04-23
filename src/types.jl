@@ -26,6 +26,7 @@ const SearchMatches = Vector{SearchMatch}
     redraw::Bool = true
     mode::Symbol = :view
     event::Union{Nothing, Symbol} = nothing
+    features::Vector{Symbol} = Symbol[]
 end
 
 # This struct describe the decoration of a string.

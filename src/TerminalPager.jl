@@ -30,7 +30,7 @@ const _default_search_highlighting = Dict{Bool, Decoration}()
 include("./command_line.jl")
 include("./keybindings.jl")
 include("./input.jl")
-include("./misc.jl")
+include("./help.jl")
 include("./pager.jl")
 include("./recipe.jl")
 include("./search.jl")
@@ -40,12 +40,12 @@ include("./view.jl")
 
 export pager
 
-function pager(obj::Any)
+function pager(obj::Any; kwargs...)
     str = sprint(show, MIME"text/plain"(), obj, context = :color => true)
-    return pager(str)
+    return pager(str; kwargs...)
 end
 
-pager(obj::AbstractString) = return _pager(obj)
+pager(obj::AbstractString; kwargs...) = return _pager(obj; kwargs...)
 
 const less = pager
 
