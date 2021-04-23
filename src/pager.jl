@@ -253,16 +253,19 @@ function _pager_event_process!(pagerd::Pager)
         if !isempty(cmd_input)
             match_regex = Regex(cmd_input)
             _find_matches!(pagerd, match_regex)
+            _move_view_to_match!(pagerd)
         end
 
         _request_redraw!(pagerd)
 
     elseif event == :next_match
         _change_active_match!(pagerd, true)
+        _move_view_to_match!(pagerd)
         _request_redraw!(pagerd)
 
     elseif event == :previous_match
         _change_active_match!(pagerd, false)
+        _move_view_to_match!(pagerd)
         _request_redraw!(pagerd)
 
     end
