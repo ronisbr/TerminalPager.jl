@@ -27,7 +27,7 @@ end
 string(d::Decoration) = convert(String, d)
 
 """
-    _print_recipe(str::AbstractString, start_char::Int, max_chars::Int, highlight_matches::Vector{NTuple{3, Int}})
+    _printing_recipe(str::AbstractString, start_char::Int, max_chars::Int, highlight_matches::SearchMatches, active_match::SearchMatch)
 
 Create a printing recipe of the line `str`. The recipe is composed of:
 
@@ -41,7 +41,8 @@ This function also return the number of cropped characters in this line.
 function _printing_recipe(str::AbstractString,
                           start_char::Int,
                           max_chars::Int,
-                          highlight_matches::Vector{NTuple{4, Int}})
+                          highlight_matches::SearchMatches,
+                          active_match::Union{Nothing, SearchMatch})
 
     # Current state.
     decoration = Decoration()
@@ -75,7 +76,7 @@ function _printing_recipe(str::AbstractString,
             hl_i = i
             hl_state = :highlight
             decoration = get(_default_search_highlighting,
-                             highlight_matches[i][4],
+                             highlight_matches[hl_i] == active_match,
                              Decoration())
             break
         end
@@ -144,7 +145,7 @@ function _printing_recipe(str::AbstractString,
 
                 old_decoration = decoration
                 decoration = get(_default_search_highlighting,
-                                 highlight_matches[hl_i][4],
+                                 highlight_matches[hl_i] == active_match,
                                  Decoration())
             end
 

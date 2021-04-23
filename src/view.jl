@@ -19,7 +19,8 @@ function _view!(pagerd::Pager)
     cols = pagerd.display_size[2]
 
     # Get the necessary variables.
-    @unpack start_row, start_col, lines, num_lines, search_matches, buf = pagerd
+    @unpack start_row, start_col, lines, num_lines, active_search_match_id,
+            search_matches, buf = pagerd
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
@@ -37,6 +38,10 @@ function _view!(pagerd::Pager)
     # Indicate if all columns were displayed.
     columns_cropped = 0
 
+    # Get the active search match.
+    active_search_match =
+        active_search_match_id == 0 ? nothing : search_matches[active_search_match_id]
+
     for i = start_row:num_lines
         line = lines[i]
 
@@ -45,7 +50,11 @@ function _view!(pagerd::Pager)
 
         # Split the lines into escape sequence and text.
         line_tokens, decoration, cropped_chars_i =
-            _printing_recipe(line, start_col, cols, matches_i)
+            _printing_recipe(line,
+                             start_col,
+                             cols,
+                             matches_i,
+                             active_search_match)
 
         columns_cropped = max(columns_cropped, cropped_chars_i)
 

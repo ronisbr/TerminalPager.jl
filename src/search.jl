@@ -8,10 +8,10 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function reset_highlighting()
-    _default_search_highlighting[0] = Decoration(foreground = "30",
-                                                 background = "47")
-    _default_search_highlighting[1] = Decoration(foreground = "30",
-                                                 background = "43")
+    _default_search_highlighting[false] = Decoration(foreground = "30",
+                                                     background = "47")
+    _default_search_highlighting[true] = Decoration(foreground = "30",
+                                                    background = "43")
 end
 reset_highlighting()
 
@@ -23,37 +23,28 @@ is performed forward. Otherwise, it is performed backwards.
 
 """
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
-    @unpack search_matches = pagerd
+    @unpack search_matches, active_search_match_id = pagerd
 
     num_matches = length(search_matches)
 
-    for i = 1:num_matches
-        m = search_matches[i]
+    if num_matches == 0
+        active_number_match = 0
+    else
+        # Activate the next match according to the user preference.
+        if forward
+            active_search_match_id += 1
+        else
+            active_search_match_id -= 1
+        end
 
-        if m[4] == 1
-            # Deactivate the current match.
-            search_matches[i] = (m[1], m[2], m[3], 0)
-
-            # Activate the next match according to the user preference.
-            if forward
-                new_i = i == num_matches ? 1 : (i + 1)
-            else
-                new_i = i == 1 ? num_matches : (i - 1)
-            end
-
-            m = search_matches[new_i]
-            search_matches[new_i] = (m[1], m[2], m[3], 1)
-
-            return nothing
+        if active_search_match_id > num_matches
+            active_search_match_id = 1
+        elseif active_search_match_id < 1
+            active_search_match_id = num_matches
         end
     end
 
-    # If we arrived here, then no match is active. Thus, activate the first
-    # element.
-    if num_matches > 1
-        m = search_matches[i]
-        search_matches[i] = (m[1], m[2], m[3], 1)
-    end
+    @pack! pagerd = active_search_match_id
 
     return nothing
 end
@@ -73,8 +64,6 @@ function _find_matches!(pagerd::Pager, regex::Regex)
     # Regex to remove the ANSI escape sequence.
     regex_ansi = r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
 
-    active = 1
-
     # For each line, find matches based on regex.
     for i = 1:num_lines
         # We need to filter the escape sequences from the line before searching.
@@ -90,8 +79,7 @@ function _find_matches!(pagerd::Pager, regex::Regex)
             # we need to obtain the character. Hence, it is necessary to compute
             # the text width from the beginning to the offset.
             push!(search_matches,
-                  (i, textwidth(line[1:m.offset]), textwidth(m.match), active))
-            active = 0
+                  (i, textwidth(line[1:m.offset]), textwidth(m.match)))
         end
     end
 
@@ -106,21 +94,15 @@ is inside it.
 
 """
 function _move_view_to_match!(pagerd::Pager)
-    @unpack display_size, num_lines, start_row, start_col, search_matches = pagerd
+    @unpack display_size, num_lines, start_row, start_col, search_matches,
+            active_search_match_id = pagerd
 
     # Compute the last row and columns that is displayed.
     end_row = (start_row - 1) + (display_size[1] - 1)
     end_col = start_col + display_size[2]
 
     # Get the active match.
-    hl_i = 0
-    for i = 1:length(search_matches)
-        if search_matches[i][4] == 1
-            hl_i = i
-            break
-        end
-    end
-
+    hl_i = active_search_match_id
     hl_i == 0 && return nothing
 
     # Get the position of the highlight.

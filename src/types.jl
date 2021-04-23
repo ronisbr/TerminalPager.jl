@@ -7,7 +7,7 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-const SearchMatch = NTuple{4, Int}
+const SearchMatch = NTuple{3, Int}
 const SearchMatches = Vector{SearchMatch}
 
 # Structure that holds all the information about the pager.
@@ -22,6 +22,7 @@ const SearchMatches = Vector{SearchMatch}
     lines_cropped::Int = 0
     columns_cropped::Int = 0
     search_matches::SearchMatches = SearchMatch[]
+    active_search_match_id::Int = 0
     redraw::Bool = true
     mode::Symbol = :view
     event::Union{Nothing, Symbol} = nothing

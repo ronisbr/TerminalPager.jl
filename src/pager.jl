@@ -253,6 +253,7 @@ function _pager_event_process!(pagerd::Pager)
         if !isempty(cmd_input)
             match_regex = Regex(cmd_input)
             _find_matches!(pagerd, match_regex)
+            _change_active_match!(pagerd, true)
             _move_view_to_match!(pagerd)
         end
 
