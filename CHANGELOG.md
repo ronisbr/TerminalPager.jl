@@ -17,14 +17,14 @@ Version 0.1.0
   actions that can be disable when calling it. For example, the pager is used to
   show the help screen. However, in this case, we remove the `help` feature to
   avoid showing another help screen.
-- ![Enhancement][badge-enhacement] A new rendering algorithm for better
+- ![Enhancement][badge-enhancement] A new rendering algorithm for better
   performance.
-- ![Enhancement][badge-enhacement] The new rendering algorithm does not add new
+- ![Enhancement][badge-enhancement] The new rendering algorithm does not add new
   lines when clearing the screen, but overwrite the current ones. (Issue
   [#4][gh-issue-4])
-- ![Enhancement][badge-enhacement] The help screen now shows all the important
+- ![Enhancement][badge-enhancement] The help screen now shows all the important
   information.
-- ![Enhancement][badge-enhacement] A lot of type instabilities were fixed,
+- ![Enhancement][badge-enhancement] A lot of type instabilities were fixed,
   leading to a much better initialization time.
 
 Version 0.0.1
