@@ -52,6 +52,8 @@ function _help!(pagerd::Pager)
     kb_fastright = _getkb(:fastright)
     kb_pageup    = _getkb(:pageup)
     kb_pagedown  = _getkb(:pagedown)
+    kb_hpageup   = _getkb(:halfpageup)
+    kb_hpagedown = _getkb(:halfpagedown)
     kb_bol       = _getkb(:bol)
     kb_eol       = _getkb(:eol)
     kb_home      = _getkb(:home)
@@ -122,6 +124,12 @@ $(_c)    Keybindings: $(kb_pageup)$(_d)
 $(_y)  :pagedown$(_d)
     Move the display one page down (a page has the same size of the view).
 $(_c)    Keybindings: $(kb_pagedown)$(_d)
+$(_y)  :halfpageup$(_d)
+    Move the display half page up (a page has the same size of the view).
+$(_c)    Keybindings: $(kb_hpageup)$(_d)
+$(_y)  :halfpagedown$(_d)
+    Move the display half page down (a page has the same size of the view).
+$(_c)    Keybindings: $(kb_hpagedown)$(_d)
 $(_y)  :bol$(_d)
     Move the display to the first column.
 $(_c)    Keybindings: $(kb_bol)$(_d)
@@ -167,7 +175,7 @@ end
 ################################################################################
 
 function _getkb(action::Symbol)
-    kb = [_kbtostr(k) for (k, v) in _default_keybindings if v == action]
+    kb = [_kbtostr(k) for (k, v) in _keybindings if v == action]
     num_kb = length(kb)
 
     str = ""

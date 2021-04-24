@@ -7,13 +7,18 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+"""
+    reset_highlighting()
+
+Reset the search highlighting to the default one.
+
+"""
 function reset_highlighting()
-    _default_search_highlighting[false] = Decoration(foreground = "30",
-                                                     background = "47")
-    _default_search_highlighting[true] = Decoration(foreground = "30",
-                                                    background = "43")
+    _search_highlighting[false] = Decoration(foreground = "30",
+                                             background = "47")
+    _search_highlighting[true] = Decoration(foreground = "30",
+                                            background = "43")
 end
-reset_highlighting()
 
 """
     _change_active_match!(pagerd::Pager, forward::Bool = true)

@@ -71,6 +71,8 @@ function _jlgetch((@nospecialize stream::IO))
             return Keystroke(value = :enter)
         elseif c == 13
             return Keystroke(value = :enter)
+        elseif c == 21
+            return Keystroke(value = :shiftin)
         elseif c == 127
             return Keystroke(value = :backspace)
         elseif c == 410

@@ -150,7 +150,7 @@ function _printing_recipe(str::AbstractString,
                     str_i = ""
 
                     old_decoration = decoration
-                    decoration = _default_search_highlighting[hl_id == hl_active_id]
+                    decoration = _search_highlighting[hl_id == hl_active_id]
                 end
             end
 

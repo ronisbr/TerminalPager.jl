@@ -147,7 +147,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     redraw = false
     event = nothing
     key = (k.value, k.alt, k.ctrl, k.shift)
-    action = get(_default_keybindings, key, nothing)
+    action = get(_keybindings, key, nothing)
 
     if action == :quit
         event = :quit
@@ -248,6 +248,19 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     elseif action == :pageup
         if start_row > 1
             start_row -= (display_size[1] - 1)
+            start_row < 1 && (start_row = 1)
+            _request_redraw!(pagerd)
+        end
+
+    elseif action == :halfpagedown
+        if lines_cropped > 0
+            start_row += min(div(display_size[1] - 1, 2), lines_cropped)
+            _request_redraw!(pagerd)
+        end
+
+    elseif action == :halfpageup
+        if start_row > 1
+            start_row -= div(display_size[1] - 1, 2)
             start_row < 1 && (start_row = 1)
             _request_redraw!(pagerd)
         end

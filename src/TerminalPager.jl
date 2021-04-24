@@ -20,8 +20,8 @@ include("./types.jl")
 
 const CSI = "\x1b["
 const PKG_VERSION = v"0.1.0"
-const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}()
-const _default_search_highlighting = Dict{Bool, Decoration}()
+const _keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}()
+const _search_highlighting = Dict{Bool, Decoration}()
 
 ################################################################################
 #                                   Includes
@@ -50,5 +50,15 @@ end
 pager(obj::AbstractString; kwargs...) = return _pager(obj; kwargs...)
 
 const less = pager
+
+function __init__()
+    # Call `reset_keybindings` to populate the keybindings.
+    reset_keybindings()
+
+    # Call `reset_highlighting` to populate the search highlighting.
+    reset_highlighting()
+
+    return nothing
+end
 
 end # module

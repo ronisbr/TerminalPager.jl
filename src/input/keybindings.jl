@@ -21,7 +21,7 @@ function delete_keybinding(key::Union{Char, Symbol};
                            ctrl::Bool = false,
                            shift::Bool = false)
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
-    delete!(_default_keybindings, dict_key)
+    delete!(_keybindings, dict_key)
     return nothing
 end
 
@@ -32,33 +32,45 @@ Reset key bindings to the original ones.
 
 """
 function reset_keybindings()
-    empty!(_default_keybindings)
-    _default_keybindings[("q",       false, false, false)] = :quit
-    _default_keybindings[("?",       false, false, false)] = :help
-    _default_keybindings[(:up,       false, false, false)] = :up
-    _default_keybindings[(:down,     false, false, false)] = :down
-    _default_keybindings[(:left,     false, false, false)] = :left
-    _default_keybindings[(:right,    false, false, false)] = :right
-    _default_keybindings[(:up,       false, false, true )] = :fastup
-    _default_keybindings[(:down,     false, false, true )] = :fastdown
-    _default_keybindings[(:left,     false, false, true )] = :fastleft
-    _default_keybindings[(:right,    false, false, true )] = :fastright
-    _default_keybindings[(:left,     true,  false, false)] = :bol
-    _default_keybindings[(:right,    true,  false, false)] = :eol
-    _default_keybindings[(:pageup,   false, false, false)] = :pageup
-    _default_keybindings[(:pagedown, false, false, false)] = :pagedown
-    _default_keybindings[(:home,     false, false, false)] = :home
-    _default_keybindings[(:end,      false, false, false)] = :end
-    _default_keybindings[("/",       false, false, false)] = :search
-    _default_keybindings[("n",       false, false, false)] = :next_match
-    _default_keybindings[("N",       false, false, false)] = :previous_match
-    _default_keybindings[(:esc,      false, false, false)] = :quit_search
-    _default_keybindings[("f",       false, false, false)] = :change_freeze
-    _default_keybindings[(:eot,      false, false, false)] = :quit_eot
-end
+    empty!(_keybindings)
+    _keybindings[("q",       false, false, false)] = :quit
+    _keybindings[("?",       false, false, false)] = :help
+    _keybindings[(:up,       false, false, false)] = :up
+    _keybindings[("k",       false, false, false)] = :up
+    _keybindings[(:down,     false, false, false)] = :down
+    _keybindings[("j",       false, false, false)] = :down
+    _keybindings[(:left,     false, false, false)] = :left
+    _keybindings[("h",       false, false, false)] = :left
+    _keybindings[(:right,    false, false, false)] = :right
+    _keybindings[("l",       false, false, false)] = :right
+    _keybindings[(:up,       false, false, true )] = :fastup
+    _keybindings[(:down,     false, false, true )] = :fastdown
+    _keybindings[(:left,     false, false, true )] = :fastleft
+    _keybindings[(:right,    false, false, true )] = :fastright
+    _keybindings[(:left,     true,  false, false)] = :bol
+    _keybindings[("0",       false, false, false)] = :bol
+    _keybindings[(:right,    true,  false, false)] = :eol
+    _keybindings[("\$",      false, false, false)] = :eol
+    _keybindings[(:pageup,   false, false, false)] = :pageup
+    _keybindings[(:pagedown, false, false, false)] = :pagedown
+    _keybindings[(:home,     false, false, false)] = :home
+    _keybindings[("g",       false, false, false)] = :home
+    _keybindings[(:end,      false, false, false)] = :end
+    _keybindings[("G",       false, false, false)] = :end
+    _keybindings[("/",       false, false, false)] = :search
+    _keybindings[("n",       false, false, false)] = :next_match
+    _keybindings[("N",       false, false, false)] = :previous_match
+    _keybindings[(:esc,      false, false, false)] = :quit_search
+    _keybindings[("f",       false, false, false)] = :change_freeze
 
-# Call `reset_keybindings` to populate the keybindings.
-reset_keybindings()
+    # Key bindings that depends on the mode.
+    if get(ENV, "PAGER_MODE", "default") == "vi"
+        _keybindings[(:eot,     false, false, false)] = :halfpagedown
+        _keybindings[(:shiftin, false, false, false)] = :halfpageup
+    else
+        _keybindings[(:eot, false, false, false)] = :quit_eot
+    end
+end
 
 """
     set_keybinding(key::Union{Char, Symbol}, action::Symbol; alt::Bool = false, ctrl::Bool = false, shift::Bool = false)
@@ -86,7 +98,7 @@ function set_keybinding(key::Union{Char, Symbol}, action::Symbol;
                         ctrl::Bool = false,
                         shift::Bool = false)
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
-    _default_keybindings[dict_key] = action
+    _keybindings[dict_key] = action
     return nothing
 end
 
