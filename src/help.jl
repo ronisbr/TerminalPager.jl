@@ -37,8 +37,9 @@ function _help!(pagerd::Pager)
     # Get the current key bindings.
 
     # General
-    kb_help = _getkb(:help)
-    kb_quit = _getkb(:quit)
+    kb_help     = _getkb(:help)
+    kb_quit     = _getkb(:quit)
+    kb_quit_eot = _getkb(:quit_eot)
 
     # Movement
     kb_up        = _getkb(:up)
@@ -88,7 +89,7 @@ $(_y)  :quit_eot$(_d)
     This is an special quit action design for the $(_c)END OF TRANSMISSION (^D)$(_d)
     keycode. If we are in a search operation, then it quits the search. If not,
     then it quits the pager.
-$(_c)    Keybindings: $(kb_quit)$(_d)
+$(_c)    Keybindings: $(kb_quit_eot)$(_d)
 
 $(_b)                                    Movement$(_d)
 $(_y)  :up$(_d)
