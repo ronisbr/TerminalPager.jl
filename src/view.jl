@@ -54,6 +54,10 @@ function _view!(pagerd::Pager)
     end
 
     for i ∈ lines_indices
+        # If `i` is larger than `num_lines`, then it means that the user
+        # requested to freeze more lines than we currently have.
+        i > num_lines && break
+
         line = lines[i]
 
         # Get all search matches in this line.

@@ -332,7 +332,7 @@ function _pager_event_process!(pagerd::Pager)
         pagerd.mode = :view
 
     elseif event == :change_freeze
-        cmd_input = _read_cmd!(pagerd; prefix = "Freeze rows: ")
+        cmd_input = _read_cmd!(pagerd; prefix = "Freeze rows ($(pagerd.freeze_rows)): ")
         freeze_rows = tryparse(Int, cmd_input; base = 10)
 
         if (freeze_rows == nothing) && !isempty(cmd_input)
@@ -341,7 +341,12 @@ function _pager_event_process!(pagerd::Pager)
             _jlgetch(pagerd.term.in_stream)
 
         else
-            cmd_input = _read_cmd!(pagerd; prefix = "Freeze columns: ")
+            if freeze_rows != nothing
+                pagerd.freeze_rows = max(0, freeze_rows)
+                pagerd.start_row = max(pagerd.start_row, freeze_rows)
+            end
+
+            cmd_input = _read_cmd!(pagerd; prefix = "Freeze columns ($(pagerd.freeze_columns)): ")
             freeze_columns = tryparse(Int, cmd_input; base = 10)
 
             if (freeze_columns == nothing) && !isempty(cmd_input)
@@ -349,11 +354,9 @@ function _pager_event_process!(pagerd::Pager)
                                     crayon = crayon"red bold")
                 _jlgetch(pagerd.term.in_stream)
 
-            else
+            elseif freeze_columns != nothing
                 pagerd.freeze_columns = max(0, freeze_columns)
-                pagerd.freeze_rows = max(0, freeze_rows)
                 pagerd.start_col = max(pagerd.start_col, freeze_columns)
-                pagerd.start_row = max(pagerd.start_row, freeze_rows)
             end
         end
 
