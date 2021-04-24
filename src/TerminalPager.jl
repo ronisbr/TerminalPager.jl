@@ -28,6 +28,7 @@ const _default_search_highlighting = Dict{Bool, Decoration}()
 ################################################################################
 
 include("./command_line.jl")
+include("./debug.jl")
 include("./help.jl")
 include("./pager.jl")
 include("./recipe.jl")
