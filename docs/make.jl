@@ -17,5 +17,6 @@ makedocs(
 
 deploydocs(
     repo = "github.com/ronisbr/TerminalPager.jl.git",
+    devbranch = "main",
     target = "build",
 )
