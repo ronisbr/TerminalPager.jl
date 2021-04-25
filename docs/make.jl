@@ -6,6 +6,7 @@ makedocs(
     format = Documenter.HTML(
         prettyurls = !("local" in ARGS),
         canonical = "https://ronisbr.github.io/TerminalPager.jl/stable/",
+        edit_link = "main"
     ),
     sitename = "Terminal Pager",
     authors = "Ronan Arraes Jardim Chagas",
