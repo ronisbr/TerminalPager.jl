@@ -11,7 +11,7 @@ Linux command `less`.
 
 ## Quick installation
 
-```julia
+```julia-repl
 julia> using Pkg
 
 julia> Pkg.add("TerminalPager")
@@ -22,7 +22,7 @@ julia> Pkg.add("TerminalPager")
 You can call the pager using the function `pager` with any object. If it is not
 a string, then it will be rendered to one using `show` with `MIME"text/plain"`.
 
-```julia
+```julia-repl
 julia> rand(100, 100) |> pager
 
 julia> pager(rand(100, 100))

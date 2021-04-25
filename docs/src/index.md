@@ -15,13 +15,16 @@ Linux command `less`.
 ## Requirements
 
 Julia >= 1.0
+
 Crayons >= 4.0
+
 Parameters >= 0.12
 
 ## Installation
 
 ```julia-repl
 julia> using Pkg
+
 julia> Pkg.add("TerminalPager")
 ```
 

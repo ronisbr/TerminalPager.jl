@@ -10,8 +10,8 @@ makedocs(
     sitename = "Terminal Pager",
     authors = "Ronan Arraes Jardim Chagas",
     pages = [
-        "Home"               => "index.md",
-        "Usage"              => "man/usage.md",
+        "Introduction" => "index.md",
+        "Usage"        => "man/usage.md",
     ]
 )
 
