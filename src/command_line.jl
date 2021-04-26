@@ -63,7 +63,12 @@ function _redraw_cmd_line!(pagerd::Pager)
         @unpack active_search_match_id, search_matches = pagerd
         num_matches = length(search_matches)
 
-        cmd_help = "(match $(active_search_match_id) of $(num_matches))"
+        # Check if there are matches.
+        if num_matches > 0
+            cmd_help = "(match $(active_search_match_id) of $(num_matches))"
+        else
+            cmd_help = "(no match found)"
+        end
 
     else
         cmd_help = "ERROR"
