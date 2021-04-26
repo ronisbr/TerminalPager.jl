@@ -1,6 +1,29 @@
 TerminalPager.jl
 ================
 
+Version 0.1.1
+-------------
+
+- ![Bugfix][badge-bugfix] When selecting the new number of columns and rows that
+  will be frozen, hitting just enter uses the old value instead of crashing.
+  (Issue [#9][gh-issue-9])
+- ![Bugfix][badge-bugfix] Avoid a crash when searching something without matches
+  after a search with matches. (Issue [#12][gh-issue-12])
+- ![Feature][badge-feature] The function `TerminalPager.debug_keycode()` was
+  added to help debugging key codes.
+- ![Feature][badge-feature] The navigation can now be performed using a set of
+  Vi key bindings. However, due to some conflicts, the entire navigation set
+  based on Vi key bindings requires the environment key `PAGER_MODE=vi`. (Issue
+  [#7][gh-issue-7])
+- ![Enhancement][badge-enhancement] `ALT` is now treated like `Meta`, trying to
+  equalize the experience among different operation systems. (Issue
+  [#8][gh-issue-8])
+- ![Enhancement][badge-enhancement] If there is no match, the command line now
+  shows `(no match found)` instead of `(0 of 0 matches)`.
+- ![Enhancement][badge-enhancement] `ALT up` and `ALT down` now goes to the
+  beginning and end of the text to keep consistency of `ALT` modifier. (Issue
+  [#8][gh-issue-8])
+
 Version 0.1.0
 -------------
 
@@ -43,3 +66,7 @@ Version 0.0.1
 [gh-issue-2]: https://github.com/ronisbr/PrettyTables.jl/issues/2
 [gh-issue-3]: https://github.com/ronisbr/PrettyTables.jl/issues/3
 [gh-issue-4]: https://github.com/ronisbr/PrettyTables.jl/issues/4
+[gh-issue-7]: https://github.com/ronisbr/PrettyTables.jl/issues/7
+[gh-issue-8]: https://github.com/ronisbr/PrettyTables.jl/issues/8
+[gh-issue-9]: https://github.com/ronisbr/PrettyTables.jl/issues/9
+[gh-issue-12]: https://github.com/ronisbr/PrettyTables.jl/issues/12
