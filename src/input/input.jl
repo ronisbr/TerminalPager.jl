@@ -27,7 +27,6 @@ Wait for an keystroke in the stream `stream` and return it (see
 """
 function _jlgetch((@nospecialize stream::IO))
     c_raw = read(stream, UInt8)::UInt8
-    c_raw < 0 && return Keystroke(raw = c_raw, value = "ERR", ktype = :undefined)
 
     c::UInt32 = UInt32(c_raw)
     nc::Int32 = 0
