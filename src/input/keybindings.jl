@@ -54,8 +54,10 @@ function reset_keybindings()
     _keybindings[(:pageup,   false, false, false)] = :pageup
     _keybindings[(:pagedown, false, false, false)] = :pagedown
     _keybindings[(:home,     false, false, false)] = :home
+    _keybindings[(:up,       true,  false, false)] = :home
     _keybindings[("g",       false, false, false)] = :home
     _keybindings[(:end,      false, false, false)] = :end
+    _keybindings[(:down,     true,  false, false)] = :end
     _keybindings[("G",       false, false, false)] = :end
     _keybindings[("/",       false, false, false)] = :search
     _keybindings[("n",       false, false, false)] = :next_match
