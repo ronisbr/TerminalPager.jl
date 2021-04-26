@@ -64,7 +64,9 @@ the matches will be written to `pagerd`.
 function _find_matches!(pagerd::Pager, regex::Regex)
     @unpack lines, num_lines, search_matches = pagerd
 
+    # Reset the previous search.
     empty!(search_matches)
+    pagerd.active_search_match_id = 0
 
     # Regex to remove the ANSI escape sequence.
     regex_ansi = r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
