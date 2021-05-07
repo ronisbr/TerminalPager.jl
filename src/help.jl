@@ -189,7 +189,11 @@ function _getkb(action::Symbol)
 end
 
 function _kbtostr(kb::Tuple{Union{Symbol, String}, Bool, Bool, Bool})
-    str = string(kb[1])
+    if kb[1] == " "
+        str = "space"
+    else
+        str = string(kb[1])
+    end
 
     kb[2] && (str = "ALT " * str)
     kb[3] && (str = "CTRL " * str)

@@ -53,6 +53,7 @@ function reset_keybindings()
     _keybindings[("\$",      false, false, false)] = :eol
     _keybindings[(:pageup,   false, false, false)] = :pageup
     _keybindings[(:pagedown, false, false, false)] = :pagedown
+    _keybindings[(" ",       false, false, false)] = :pagedown
     _keybindings[(:home,     false, false, false)] = :home
     _keybindings[(:up,       true,  false, false)] = :home
     _keybindings[("g",       false, false, false)] = :home
