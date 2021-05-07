@@ -7,7 +7,21 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-export @stdout_to_pager
+export @dpr, @stdout_to_pager
+
+"""
+    @dpr(f)
+
+Open the documentation of the function `f` in pager.
+
+"""
+macro dpr(f)
+    ex_out = quote
+        @doc($(esc(f))) |> pager
+    end
+
+    return ex_out
+end
 
 """
     @stdout_to_pager(ex_in)
