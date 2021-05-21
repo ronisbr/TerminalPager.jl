@@ -21,16 +21,15 @@ function debug_keycode()
     # passed to us instead of waiting for <return>.
     REPL.Terminals.raw!(term, true)
 
-    write(term.out_stream,
-          "Type any key to echo the processed keycode. Hit q to exit.\n\n")
+    write(
+        term.out_stream,
+        "Type any key to echo the processed keycode. Hit q to exit.\n\n"
+    )
 
     try
         while true
-
             k = _jlgetch(term.in_stream)
-
             println(k)
-
             k.value == "q" && break
         end
     finally
