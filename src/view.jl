@@ -39,9 +39,11 @@ function _view!(pagerd::Pager)
     columns_cropped = 0
 
     # Get the active search match.
-    active_search_match =
-        active_search_match_id == 0 ? (0, 0, 0) :
-                                      search_matches[active_search_match_id]
+    active_search_match = if active_search_match_id == 0
+        (0, 0, 0)
+    else
+        search_matches[active_search_match_id]
+    end
 
     # Assemble the vector with the lines to be printed.
     if freeze_rows > 0
@@ -64,13 +66,14 @@ function _view!(pagerd::Pager)
         matches_i = filter(x -> x[1] == i, search_matches)
 
         # Split the lines into escape sequence and text.
-        line_tokens, decoration, cropped_chars_i =
-            _printing_recipe(line,
-                             start_col,
-                             cols,
-                             matches_i,
-                             active_search_match,
-                             freeze_columns)
+        line_tokens, decoration, cropped_chars_i = _printing_recipe(
+            line,
+            start_col,
+            cols,
+            matches_i,
+            active_search_match,
+            freeze_columns
+        )
 
         columns_cropped = max(columns_cropped, cropped_chars_i)
 
