@@ -14,10 +14,17 @@ Reset the search highlighting to the default one.
 
 """
 function reset_highlighting()
-    _search_highlighting[false] = Decoration(foreground = "30",
-                                             background = "47")
-    _search_highlighting[true] = Decoration(foreground = "30",
-                                            background = "43")
+    _search_highlighting[false] = Decoration(
+        foreground = "30",
+        background = "47"
+    )
+
+    _search_highlighting[true] = Decoration(
+        foreground = "30",
+        background = "43"
+    )
+
+    return nothing
 end
 
 """
@@ -86,7 +93,8 @@ function _find_matches!(pagerd::Pager, regex::Regex)
             # we need to obtain the character. Hence, it is necessary to compute
             # the text width from the beginning to the offset.
             push!(search_matches,
-                  (i, textwidth(line[1:m.offset]), textwidth(m.match)))
+                  (i, textwidth(line[1:m.offset]), textwidth(m.match))
+            )
         end
     end
 
