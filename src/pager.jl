@@ -70,12 +70,13 @@ Initialize the pager with the string `str` using the terminal `term`. The user
 must ensure that `term` is in raw mode.
 
 """
-function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString;
-                 freeze_columns::Int = 0,
-                 freeze_rows::Int = 0,
-                 change_freeze::Bool = true,
-                 hashelp::Bool = true)
-
+function _pager!(
+    term::REPL.Terminals.TTYTerminal, str::AbstractString;
+    freeze_columns::Int = 0,
+    freeze_rows::Int = 0,
+    change_freeze::Bool = true,
+    hashelp::Bool = true
+)
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
     num_tokens = length(tokens)
@@ -99,16 +100,18 @@ function _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString;
     hashelp && push!(features, :help)
 
     # Initialize the pager structure.
-    pagerd = Pager(term = term,
-                   buf = buf,
-                   display_size = dsize,
-                   start_row = min(max(1, freeze_rows + 1), num_tokens),
-                   start_col = max(1, freeze_columns + 1),
-                   lines = tokens,
-                   num_lines = num_tokens,
-                   freeze_columns = freeze_columns,
-                   freeze_rows = freeze_rows,
-                   features = features)
+    pagerd = Pager(
+        term = term,
+        buf = buf,
+        display_size = dsize,
+        start_row = min(max(1, freeze_rows + 1), num_tokens),
+        start_col = max(1, freeze_columns + 1),
+        lines = tokens,
+        num_lines = num_tokens,
+        freeze_columns = freeze_columns,
+        freeze_rows = freeze_rows,
+        features = features
+    )
 
     # Application main loop
     # ==========================================================================
@@ -151,24 +154,20 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     if action == :quit
         event = :quit
-
     elseif action == :help
         if :help ∈ features
             event = :help
         end
-
     elseif action == :down
         if lines_cropped > 0
             start_row += 1
             _request_redraw!(pagerd)
         end
-
     elseif action == :fastdown
         if lines_cropped > 0
             start_row += min(5, lines_cropped)
             _request_redraw!(pagerd)
         end
-
     elseif action == :up
         min_row = max(1, freeze_rows + 1)
 
@@ -176,7 +175,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             start_row -= 1
             _request_redraw!(pagerd)
         end
-
     elseif action == :fastup
         min_row = max(1, freeze_rows + 1)
 
@@ -185,25 +183,21 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         end
         start_row < min_row && (start_row = min_row)
         _request_redraw!(pagerd)
-
     elseif action == :right
         if columns_cropped > 0
             start_col += 1
             _request_redraw!(pagerd)
         end
-
     elseif action == :fastright
         if columns_cropped > 0
             start_col += min(10, columns_cropped)
             _request_redraw!(pagerd)
         end
-
     elseif action == :eol
         if columns_cropped > 0
             start_col += columns_cropped
             _request_redraw!(pagerd)
         end
-
     elseif action == :left
         min_col = max(1, freeze_columns + 1)
 
@@ -211,7 +205,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             start_col -= 1
             _request_redraw!(pagerd)
         end
-
     elseif action == :fastleft
         min_col = max(1, freeze_columns + 1)
 
@@ -220,68 +213,55 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             start_col < min_col && (start_col = min_col)
             _request_redraw!(pagerd)
         end
-
     elseif action == :bol
         if start_col > 1
             start_col = 1
             _request_redraw!(pagerd)
         end
-
     elseif action == :end
         if lines_cropped > 0
             start_row += lines_cropped
             _request_redraw!(pagerd)
         end
-
     elseif action == :home
         if start_row > 1
             start_row = 1
             _request_redraw!(pagerd)
         end
-
     elseif action == :pagedown
         if lines_cropped > 0
             start_row += min(display_size[1] - 1, lines_cropped)
             _request_redraw!(pagerd)
         end
-
     elseif action == :pageup
         if start_row > 1
             start_row -= (display_size[1] - 1)
             start_row < 1 && (start_row = 1)
             _request_redraw!(pagerd)
         end
-
     elseif action == :halfpagedown
         if lines_cropped > 0
             start_row += min(div(display_size[1] - 1, 2), lines_cropped)
             _request_redraw!(pagerd)
         end
-
     elseif action == :halfpageup
         if start_row > 1
             start_row -= div(display_size[1] - 1, 2)
             start_row < 1 && (start_row = 1)
             _request_redraw!(pagerd)
         end
-
     elseif action == :search
         event = :search
-
     elseif action == :next_match
         event = :next_match
-
     elseif action == :previous_match
         event = :previous_match
-
     elseif action == :quit_search
         event = :quit_search
-
     elseif action == :change_freeze
         if :change_freeze ∈ features
             event = :change_freeze
         end
-
     elseif action == :quit_eot
         event = :quit_eot
     end
@@ -310,11 +290,9 @@ function _pager_event_process!(pagerd::Pager)
 
     if event == :quit
         return false
-
     elseif event == :help
         _help!(pagerd)
         _request_redraw!(pagerd)
-
     elseif event == :search
         cmd_input = _read_cmd!(pagerd)
 
@@ -328,43 +306,49 @@ function _pager_event_process!(pagerd::Pager)
         end
 
         _request_redraw!(pagerd)
-
     elseif event == :next_match
         _change_active_match!(pagerd, true)
         _move_view_to_match!(pagerd)
         _request_redraw!(pagerd)
-
     elseif event == :previous_match
         _change_active_match!(pagerd, false)
         _move_view_to_match!(pagerd)
         _request_redraw!(pagerd)
-
     elseif event == :quit_search
         _quit_search!(pagerd)
         _request_redraw!(pagerd)
         pagerd.mode = :view
-
     elseif event == :change_freeze
-        cmd_input = _read_cmd!(pagerd; prefix = "Freeze rows ($(pagerd.freeze_rows)): ")
+        cmd_input = _read_cmd!(
+            pagerd;
+            prefix = "Freeze rows ($(pagerd.freeze_rows)): "
+        )
         freeze_rows = tryparse(Int, cmd_input; base = 10)
 
         if (freeze_rows == nothing) && !isempty(cmd_input)
-            _print_cmd_message!(pagerd, "Invalid data!";
-                                crayon = crayon"red bold")
+            _print_cmd_message!(
+                pagerd,
+                "Invalid data!";
+                crayon = crayon"red bold"
+            )
             _jlgetch(pagerd.term.in_stream)
-
         else
             if freeze_rows != nothing
                 pagerd.freeze_rows = max(0, freeze_rows)
                 pagerd.start_row = max(pagerd.start_row, freeze_rows)
             end
 
-            cmd_input = _read_cmd!(pagerd; prefix = "Freeze columns ($(pagerd.freeze_columns)): ")
+            cmd_input = _read_cmd!(
+                pagerd;
+                prefix = "Freeze columns ($(pagerd.freeze_columns)): "
+            )
             freeze_columns = tryparse(Int, cmd_input; base = 10)
 
             if (freeze_columns == nothing) && !isempty(cmd_input)
-                _print_cmd_message!(pagerd, "Invalid data!";
-                                    crayon = crayon"red bold")
+                _print_cmd_message!(
+                    pagerd, "Invalid data!";
+                    crayon = crayon"red bold"
+                )
                 _jlgetch(pagerd.term.in_stream)
 
             elseif freeze_columns != nothing
