@@ -16,10 +16,12 @@ keywords `alt`, `ctrl`, and `shift`.
 For more information about how specify `key` see [`set_keybinding`](@ref).
 
 """
-function delete_keybinding(key::Union{Char, Symbol};
-                           alt::Bool = false,
-                           ctrl::Bool = false,
-                           shift::Bool = false)
+function delete_keybinding(
+    key::Union{Char, Symbol};
+    alt::Bool = false,
+    ctrl::Bool = false,
+    shift::Bool = false
+)
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
     delete!(_keybindings, dict_key)
     return nothing
@@ -96,10 +98,12 @@ keys:
     :fastright :bol, :eol, :pageup, :pagedown, :home, :end
 
 """
-function set_keybinding(key::Union{Char, Symbol}, action::Symbol;
-                        alt::Bool = false,
-                        ctrl::Bool = false,
-                        shift::Bool = false)
+function set_keybinding(
+    key::Union{Char, Symbol}, action::Symbol;
+    alt::Bool = false,
+    ctrl::Bool = false,
+    shift::Bool = false
+)
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
     _keybindings[dict_key] = action
     return nothing
