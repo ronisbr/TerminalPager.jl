@@ -38,13 +38,14 @@ Create a printing recipe of the line `str`. The recipe is composed of:
 This function also return the number of cropped characters in this line.
 
 """
-function _printing_recipe(str::AbstractString,
-                          start_char::Int,
-                          max_chars::Int,
-                          highlight_matches::SearchMatches,
-                          active_match::SearchMatch,
-                          freeze_columns::Int)
-
+function _printing_recipe(
+    str::AbstractString,
+    start_char::Int,
+    max_chars::Int,
+    highlight_matches::SearchMatches,
+    active_match::SearchMatch,
+    freeze_columns::Int
+)
     # Current state.
     decoration::Decoration = Decoration()
 
@@ -278,31 +279,23 @@ function _parse_ansi_code(decoration::Decoration, code::String)
         if code_i == 0
             # If we have a reset, neglect all the other configurations.
             return Decoration(reset = true)
-
         elseif code_i == 1
             bold = true
-
         elseif code_i == 4
             underline  = true
-
         elseif code_i == 7
             reversed = true
-
         elseif code_i == 22
             bold = false
             force = true
-
         elseif code_i == 24
             underline = false
             force = true
-
         elseif code_i == 27
             reversed = false
             force = true
-
         elseif 30 <= code_i <= 37
             foreground = "$code_i"
-
         # 256-color support for foreground.
         elseif code_i == 38
             # In this case, we can have an extended color code. To check this,
@@ -317,13 +310,10 @@ function _parse_ansi_code(decoration::Decoration, code::String)
 
                 i += 2
             end
-
         elseif code_i == 39
             foreground = "39"
-
         elseif 40 <= code_i <= 47
             background = "$code_i"
-
         # 256-color support for background.
         elseif code_i == 48
             # In this case, we can have an extended color code. To check this,
@@ -338,14 +328,11 @@ function _parse_ansi_code(decoration::Decoration, code::String)
 
                 i += 2
             end
-
         elseif code_i == 49
             background = "49"
-
         # Bright foreground colors defined by Aixterm.
         elseif 90 <= code_i <= 97
             foreground = "$code_i"
-
         # Bright background colors defined by Aixterm.
         elseif 100 <= code_i <= 107
             background = "$code_i"
@@ -354,14 +341,15 @@ function _parse_ansi_code(decoration::Decoration, code::String)
         i += 1
     end
 
-    return Decoration(foreground,
-                      background,
-                      bold,
-                      underline,
-                      reset,
-                      reversed,
-                      force)
+    return Decoration(
+        foreground,
+        background,
+        bold,
+        underline,
+        reset,
+        reversed,
+        force
+    )
 end
 
 _is_default(d::Decoration) = d === Decoration()
-
