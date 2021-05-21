@@ -15,12 +15,11 @@ Write the view of pager `pagerd` to the view buffer.
 """
 function _view!(pagerd::Pager)
     # Get the available display size.
-    rows = pagerd.display_size[1] - 1
-    cols = pagerd.display_size[2]
+    rows, cols = _get_pager_display_size(pagerd)
 
     # Get the necessary variables.
     @unpack start_row, start_col, lines, num_lines, active_search_match_id,
-            search_matches, buf, freeze_columns, freeze_rows = pagerd
+            search_matches, buf, freeze_columns, freeze_rows, draw_ruler = pagerd
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
@@ -55,12 +54,23 @@ function _view!(pagerd::Pager)
         lines_indices = collect(start_row:num_lines)
     end
 
+    # Store the last decoration applied to a line. It is required to draw the
+    # ruler without interfering with the line decoration.
+    last_decoration = ""
+
     for i ∈ lines_indices
         # If `i` is larger than `num_lines`, then it means that the user
         # requested to freeze more lines than we currently have.
         i > num_lines && break
 
         line = lines[i]
+
+        # Check if we need to draw the ruler.
+        if draw_ruler
+            write(buf, string(Crayon(reset = true)))
+            _draw_vertical_ruler!(buf, i, num_lines)
+            write(buf, last_decoration)
+        end
 
         # Get all search matches in this line.
         matches_i = filter(x -> x[1] == i, search_matches)
@@ -81,13 +91,15 @@ function _view!(pagerd::Pager)
 
         # Print the line.
         for j = 1:length(line_tokens)
-            write(buf, string(decoration[j]))
+            last_decoration = string(decoration[j])
+            write(buf, last_decoration)
             write(buf, line_tokens[j])
         end
 
         # Check if we have a last decoration to apply.
         if length(line_tokens) < length(decoration)
-            write(buf, string(decoration[end]))
+            last_decoration = string(decoration[end])
+            write(buf, last_decoration)
         end
 
         write(buf, '\n')

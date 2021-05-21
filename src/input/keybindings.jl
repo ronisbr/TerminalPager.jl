@@ -67,6 +67,7 @@ function reset_keybindings()
     _keybindings[("N",       false, false, false)] = :previous_match
     _keybindings[(:esc,      false, false, false)] = :quit_search
     _keybindings[("f",       false, false, false)] = :change_freeze
+    _keybindings[("r",       false, false, false)] = :toggle_ruler
 
     # Key bindings that depends on the mode.
     if get(ENV, "PAGER_MODE", "default") == "vi"

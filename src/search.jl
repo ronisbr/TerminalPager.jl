@@ -109,12 +109,14 @@ is inside it.
 
 """
 function _move_view_to_match!(pagerd::Pager)
-    @unpack display_size, num_lines, start_row, start_col, search_matches,
-            active_search_match_id, freeze_rows, freeze_columns = pagerd
+    @unpack start_row, start_col, search_matches, active_search_match_id,
+            freeze_rows, freeze_columns = pagerd
+
+    rows, cols = _get_pager_display_size(pagerd)
 
     # Compute the last row and columns that is displayed.
-    end_row = (start_row - 1) + (display_size[1] - 1 - freeze_rows)
-    end_col = start_col + (display_size[2] - freeze_columns)
+    end_row = (start_row - 1) + (rows - freeze_rows)
+    end_col = start_col + (cols - freeze_columns)
 
     # Get the active match.
     hl_i = active_search_match_id
@@ -130,14 +132,14 @@ function _move_view_to_match!(pagerd::Pager)
     if (freeze_rows < hl_line) && (hl_line < start_row)
         start_row = max(hl_line, freeze_rows + 1)
     elseif hl_line > end_row
-        start_row = (hl_line + 1) - (display_size[1] - 1 - freeze_rows)
+        start_row = (hl_line + 1) - (rows - freeze_rows)
     end
 
     # Check if the highlight column is visible
     if hl_col_beg < start_col
         start_col = hl_col_beg
     elseif hl_col_end > end_col
-        start_col = (hl_col_end + 1) - (display_size[2] - freeze_columns)
+        start_col = (hl_col_end + 1) - (cols - freeze_columns)
     end
 
     @pack! pagerd = start_row, start_col

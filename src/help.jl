@@ -37,9 +37,10 @@ function _help!(pagerd::Pager)
     # Get the current key bindings.
 
     # General
-    kb_help     = _getkb(:help)
-    kb_quit     = _getkb(:quit)
-    kb_quit_eot = _getkb(:quit_eot)
+    kb_help         = _getkb(:help)
+    kb_quit         = _getkb(:quit)
+    kb_quit_eot     = _getkb(:quit_eot)
+    kb_toggle_ruler = _getkb(:toggle_ruler)
 
     # Movement
     kb_up        = _getkb(:up)
@@ -92,6 +93,9 @@ $(_y)  :quit_eot$(_d)
     keycode. If we are in a search operation, then it quits the search. If not,
     then it quits the pager.
 $(_c)    Keybindings: $(kb_quit_eot)$(_d)
+$(_y)  :toggle_ruler$(_d)
+    Toggle the vertical ruler.
+$(_c)    Keybindings: $(kb_toggle_ruler)$(_d)
 
 $(_b)                                    Movement$(_d)
 $(_y)  :up$(_d)

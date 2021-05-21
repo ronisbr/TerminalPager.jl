@@ -13,6 +13,26 @@
 ################################################################################
 
 """
+    _get_pager_display_size(p::Pager)
+
+Get the display size of the pager `p`.
+
+"""
+function _get_pager_display_size(p::Pager)
+    @unpack display_size, draw_ruler, num_lines = p
+
+    rows, cols = display_size
+
+    # If the ruler is not hidden, then we need to shrink the view.
+    draw_ruler && (cols -= _get_vertical_ruler_spacing(num_lines))
+
+    # We need to remove one row due to the command line.
+    rows -= 1
+
+    return rows, cols
+end
+
+"""
     _request_redraw!(p::Pager)
 
 Request a redraw of pager `p`.
@@ -75,7 +95,8 @@ function _pager!(
     freeze_columns::Int = 0,
     freeze_rows::Int = 0,
     change_freeze::Bool = true,
-    hashelp::Bool = true
+    hashelp::Bool = true,
+    draw_ruler::Bool = false
 )
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
@@ -110,7 +131,8 @@ function _pager!(
         num_lines = num_tokens,
         freeze_columns = freeze_columns,
         freeze_rows = freeze_rows,
-        features = features
+        features = features,
+        draw_ruler = draw_ruler
     )
 
     # Application main loop
@@ -262,6 +284,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         if :change_freeze ∈ features
             event = :change_freeze
         end
+    elseif action == :toggle_ruler
+        event = :toggle_ruler
     elseif action == :quit_eot
         event = :quit_eot
     end
@@ -354,6 +378,20 @@ function _pager_event_process!(pagerd::Pager)
             elseif freeze_columns != nothing
                 pagerd.freeze_columns = max(0, freeze_columns)
                 pagerd.start_col = max(pagerd.start_col, freeze_columns)
+            end
+        end
+
+        _request_redraw!(pagerd)
+    elseif event == :toggle_ruler
+        pagerd.draw_ruler = !pagerd.draw_ruler
+
+        # If the ruler is hidden, we must verify if the screen is on the right
+        # edge to fix the `start_col`.
+        if !pagerd.draw_ruler
+            ruler_spacing = _get_vertical_ruler_spacing(pagerd.num_lines)
+            if pagerd.columns_cropped ≤ ruler_spacing
+                pagerd.start_col -= ruler_spacing
+                pagerd.start_col < 1 && (pagerd.start_col = 1)
             end
         end
 

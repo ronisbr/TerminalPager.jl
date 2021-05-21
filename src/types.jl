@@ -29,6 +29,7 @@ const SearchMatches = Vector{SearchMatch}
     features::Vector{Symbol} = Symbol[]
     freeze_columns::Int = 0
     freeze_rows::Int = 0
+    draw_ruler::Bool = false
 end
 
 # This struct describe the decoration of a string.
