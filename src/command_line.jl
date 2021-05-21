@@ -58,7 +58,6 @@ function _redraw_cmd_line!(pagerd::Pager)
         cmd_help = "(↑ ↓ ← →:move, "
         :help ∈ features && (cmd_help *= "?:help, ")
         cmd_help *= "q:quit)"
-
     elseif mode == :searching
         @unpack active_search_match_id, search_matches = pagerd
         num_matches = length(search_matches)
@@ -69,14 +68,12 @@ function _redraw_cmd_line!(pagerd::Pager)
         else
             cmd_help = "(no match found)"
         end
-
     else
         cmd_help = "ERROR"
-
     end
 
     # Compute the scroll position
-    pos = @sprintf("%3d", 100*(1 - lines_cropped/num_lines))
+    pos = @sprintf("%3d", 100 * (1 - lines_cropped / num_lines))
     cmd_help *= " $(pos)%"
 
     lcmd_help = length(cmd_help)
@@ -123,9 +120,11 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             write(term.out_stream, prefix * cmd)
 
             # Restore the cursor position
-            _move_cursor(term.out_stream,
-                         display_size[1],
-                         cursor_pos + prefix_size)
+            _move_cursor(
+                term.out_stream,
+                display_size[1],
+                cursor_pos + prefix_size
+            )
 
             redraw = false
         end
@@ -137,12 +136,11 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
 
         elseif k.value isa String
             cmd = first(cmd, (cursor_pos - 1)) *
-                  k.value *
-                  last(cmd, cmd_width - (cursor_pos - 1))
+                k.value *
+                last(cmd, cmd_width - (cursor_pos - 1))
             cmd_width += 1
             cursor_pos += 1
             redraw = true
-
         elseif k.value == :backspace
             if cmd_width > 0
                 cmd = first(cmd, cmd_width - 1)
@@ -152,30 +150,30 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             else
                 break
             end
-
         elseif k.value == :left
             if cursor_pos > 1
                 cursor_pos -= 1
                 _cursor_back(term.out_stream)
             end
-
         elseif k.value == :right
             if cursor_pos < cmd_width + 1
                 cursor_pos += 1
                 _cursor_forward(term.out_stream)
             end
-
         elseif k.value == :home
             cursor_pos = 1
-            _move_cursor(term.out_stream,
-                         display_size[1],
-                         cursor_pos + prefix_size)
-
+            _move_cursor(
+                term.out_stream,
+                display_size[1],
+                cursor_pos + prefix_size
+            )
         elseif k.value == :end
             cursor_pos = cmd_width + 1
-            _move_cursor(term.out_stream,
-                         display_size[1],
-                         cursor_pos + prefix_size)
+            _move_cursor(
+                term.out_stream,
+                display_size[1],
+                cursor_pos + prefix_size
+            )
         end
     end
 
