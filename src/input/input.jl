@@ -47,11 +47,13 @@ function _jlgetch((@nospecialize stream::IO))
             return Keystroke(raw = s, value = :esc)
         elseif haskey(keycodes, s)
             aux = keycodes[s]
-            return Keystroke(raw = s,
-                             value = aux.value,
-                             alt = aux.alt,
-                             ctrl = aux.ctrl,
-                             shift = aux.shift)
+            return Keystroke(
+                raw = s,
+                value = aux.value,
+                alt = aux.alt,
+                ctrl = aux.ctrl,
+                shift = aux.shift
+            )
         else
             return Keystroke(raw = s, value = :undefined)
         end
@@ -60,8 +62,10 @@ function _jlgetch((@nospecialize stream::IO))
     elseif 192 <= c <= 223 # utf8 based logic starts here
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
-        return Keystroke(raw = string(bs1) * ", " * string(bs2),
-                         value = String([bs1, bs2]))
+        return Keystroke(
+            raw = string(bs1) * ", " * string(bs2),
+            value = String([bs1, bs2])
+        )
     elseif c < 192 || c > 253
         if c == 4
             return Keystroke(raw = string(c), value = :eot)
@@ -84,32 +88,38 @@ function _jlgetch((@nospecialize stream::IO))
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
         bs3 = read(stream, UInt8)::UInt8
-        return Keystroke(raw = string(bs1) * ", " *
-                               string(bs2) * ", " *
-                               string(bs3),
-                         value = String([bs1, bs2, bs3]))
+        return Keystroke(
+            raw = string(bs1) * ", " *
+                  string(bs2) * ", " *
+                  string(bs3),
+            value = String([bs1, bs2, bs3])
+        )
     elseif  240 <= c <= 247
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
         bs3 = read(stream, UInt8)::UInt8
         bs4 = read(stream, UInt8)::UInt8
-        return Keystroke(raw = string(bs1) * ", " *
-                               string(bs2) * ", " *
-                               string(bs3) * ", " *
-                               string(bs4),
-                         value = String([bs1, bs2, bs3, bs4]))
+        return Keystroke(
+            raw = string(bs1) * ", " *
+                  string(bs2) * ", " *
+                  string(bs3) * ", " *
+                  string(bs4),
+            value = String([bs1, bs2, bs3, bs4])
+        )
     elseif  248 <= c <= 251
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
         bs3 = read(stream, UInt8)::UInt8
         bs4 = read(stream, UInt8)::UInt8
         bs5 = read(stream, UInt8)::UInt8
-        return Keystroke(raw = string(bs1) * ", " *
-                               string(bs2) * ", " *
-                               string(bs3) * ", " *
-                               string(bs4) * ", " *
-                               string(bs5),
-                         value = String([bs1, bs2, bs3, bs4, bs5]))
+        return Keystroke(
+            raw = string(bs1) * ", " *
+                  string(bs2) * ", " *
+                  string(bs3) * ", " *
+                  string(bs4) * ", " *
+                  string(bs5),
+            value = String([bs1, bs2, bs3, bs4, bs5])
+        )
     elseif  252 <= c <= 253
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
@@ -117,13 +127,15 @@ function _jlgetch((@nospecialize stream::IO))
         bs4 = read(stream, UInt8)::UInt8
         bs5 = read(stream, UInt8)::UInt8
         bs6 = read(stream, UInt8)::UInt8
-        return Keystroke(raw = string(bs1) * ", " *
-                               string(bs2) * ", " *
-                               string(bs3) * ", " *
-                               string(bs4) * ", " *
-                               string(bs5) * ", " *
-                               string(bs6),
-                         value = String([bs1, bs2, bs3, bs4, bs5, bs6]))
+        return Keystroke(
+            raw = string(bs1) * ", " *
+                  string(bs2) * ", " *
+                  string(bs3) * ", " *
+                  string(bs4) * ", " *
+                  string(bs5) * ", " *
+                  string(bs6),
+            value = String([bs1, bs2, bs3, bs4, bs5, bs6])
+        )
     end
 
     return Keystroke(value = :undefined)
