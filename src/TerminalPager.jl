@@ -25,6 +25,7 @@ const _search_highlighting = Dict{Bool, Decoration}()
 
 # Crayons
 const _reset_crayon = string(Crayon(reset = true))
+const _ruler_crayon = string(crayon"dark_gray")
 
 ################################################################################
 #                                   Includes

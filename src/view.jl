@@ -67,9 +67,9 @@ function _view!(pagerd::Pager)
 
         # Check if we need to draw the ruler.
         if draw_ruler
-            write(buf, _reset_crayon)
+            write(buf, _reset_crayon, _ruler_crayon)
             _draw_vertical_ruler!(buf, i, num_lines)
-            write(buf, last_decoration)
+            write(buf, _reset_crayon, last_decoration)
         end
 
         # Get all search matches in this line.
