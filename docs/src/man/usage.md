@@ -18,3 +18,40 @@ function:
 julia> @doc(write) |> pager
 ```
 
+All the functionalities can be seen in the built-in help system, accessible by
+typing `?` inside the `pager`.
+
+## Helpers
+
+The following macros are available to help calling the pager.
+
+### `@dpr`
+
+This macro calls the help of any function and redirects it to the `pager`:
+
+```julia-repl
+julia> @dpr write
+```
+
+![](../assets/dpr_01.png)
+
+### `@stdout_to_pager`
+
+This macro redirects all the `stdout` to the pager after the command is
+completed:
+
+```julia-repl
+julia> @stdout_to_pager show(stdout, MIME"text/plain"(), rand(100,100))
+```
+
+![](../assets/stdout_to_pager_01.png)
+
+This macro also works with blocks such as `for` loops:
+
+```julia-repl
+julia> @stdout_to_pager for i = 1:100
+       println("$(mod(i,9))"^i)
+       end
+```
+
+![](../assets/stdout_to_pager_02.png)
