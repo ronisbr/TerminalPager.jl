@@ -23,6 +23,9 @@ const PKG_VERSION = v"0.1.1"
 const _keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}()
 const _search_highlighting = Dict{Bool, Decoration}()
 
+# Crayons
+const _reset_crayon = string(Crayon(reset = true))
+
 ################################################################################
 #                                   Includes
 ################################################################################

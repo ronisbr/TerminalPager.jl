@@ -67,7 +67,7 @@ function _view!(pagerd::Pager)
 
         # Check if we need to draw the ruler.
         if draw_ruler
-            write(buf, string(Crayon(reset = true)))
+            write(buf, _reset_crayon)
             _draw_vertical_ruler!(buf, i, num_lines)
             write(buf, last_decoration)
         end
