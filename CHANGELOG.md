@@ -1,6 +1,18 @@
 TerminalPager.jl
 ================
 
+Version 0.2.0
+-------------
+
+- ![Feature][badge-feature] The macro `@stdout_to_pager` can be used to redirect
+  the `stdout` output to the `pager`. (Issue [#13][gh-issue-13])
+- ![Feature][badge-feature] The macro `@dpr` can be to easily access the
+  documentation of a function using `pager`. (Issue [#14][gh-issue-14])
+- ![Feature][badge-feature] A vertical ruler can now be drawn using the
+  keybinding `r`.
+- ![Enhancement][badge-enhancement] `space` is now bind to `:pagedown` as in
+  `less`.
+
 Version 0.1.1
 -------------
 
@@ -70,3 +82,5 @@ Version 0.0.1
 [gh-issue-8]: https://github.com/ronisbr/PrettyTables.jl/issues/8
 [gh-issue-9]: https://github.com/ronisbr/PrettyTables.jl/issues/9
 [gh-issue-12]: https://github.com/ronisbr/PrettyTables.jl/issues/12
+[gh-issue-13]: https://github.com/ronisbr/PrettyTables.jl/issues/13
+[gh-issue-14]: https://github.com/ronisbr/PrettyTables.jl/issues/14
