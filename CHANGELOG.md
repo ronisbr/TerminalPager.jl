@@ -1,6 +1,14 @@
 TerminalPager.jl
 ================
 
+Version 0.2.1
+-------------
+
+- ![Deprecation][badge-deprecation] The macro `@dpr` is now deprecated. It was
+  replaced by `@help`.
+- ![Enhancement][badge-enhancement] The macro `@stdout_to_pager` can now be
+  called using the shorter name `@out2pr`.
+
 Version 0.2.0
 -------------
 
