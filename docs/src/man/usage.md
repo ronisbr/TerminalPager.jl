@@ -25,12 +25,12 @@ typing `?` inside the `pager`.
 
 The following macros are available to help calling the pager.
 
-### `@dpr`
+### `@help`
 
 This macro calls the help of any function and redirects it to the `pager`:
 
 ```julia-repl
-julia> @dpr write
+julia> @help write
 ```
 
 ![](../assets/dpr_01.png)

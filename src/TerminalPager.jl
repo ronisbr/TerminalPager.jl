@@ -33,6 +33,7 @@ const _ruler_crayon = string(crayon"dark_gray")
 
 include("./command_line.jl")
 include("./debug.jl")
+include("./deprecations.jl")
 include("./help.jl")
 include("./helpers.jl")
 include("./pager.jl")
