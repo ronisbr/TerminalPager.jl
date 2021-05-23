@@ -55,3 +55,6 @@ julia> @stdout_to_pager for i = 1:100
 ```
 
 ![](../assets/stdout_to_pager_02.png)
+
+!!! note
+    This macro can also be called using the shorter name `@out2pr`.
