@@ -126,7 +126,7 @@ function _pager!(
         end
 
         if !use_pager
-            println(str)
+            print(str)
             return nothing
         end
     end
