@@ -91,16 +91,45 @@ must ensure that `term` is in raw mode.
 
 """
 function _pager!(
-    term::REPL.Terminals.TTYTerminal, str::AbstractString;
+    term::REPL.Terminals.TTYTerminal,
+    str::AbstractString;
+    auto::Bool = false,
+    change_freeze::Bool = true,
+    draw_ruler::Bool = false,
     freeze_columns::Int = 0,
     freeze_rows::Int = 0,
-    change_freeze::Bool = true,
     hashelp::Bool = true,
-    draw_ruler::Bool = false
 )
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
     num_tokens = length(tokens)
+
+    # Get the display size and make sure it is type stable.
+    dsize = displaysize(term.out_stream)::Tuple{Int, Int}
+
+    # If `auto` is true, then only show the pager if the text is larger than the
+    # screen.
+    if auto
+        use_pager = false
+
+        # Check if we can display everything vertically. Notice that here we
+        # must account two lines at the end.
+        if dsize[1] - 2 ≥ num_tokens
+            for t in tokens
+                if textwidth(t) > dsize[2]
+                    use_pager = true
+                    break
+                end
+            end
+        else
+            use_pager = true
+        end
+
+        if !use_pager
+            println(str)
+            return nothing
+        end
+    end
 
     # Clear the screen and position the cursor at the top.
     _clear_screen(term.out_stream, newlines = true)
@@ -112,9 +141,6 @@ function _pager!(
     iobuf = IOBuffer()
     hascolor = get(stdout, :color, true)::Bool
     buf = IOContext(iobuf, :color => hascolor)
-
-    # Get the display size and make sure it is type stable.
-    dsize = displaysize(term.out_stream)::Tuple{Int, Int}
 
     features = Symbol[]
     change_freeze && push!(features, :change_freeze)
