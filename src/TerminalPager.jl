@@ -2,6 +2,7 @@ module TerminalPager
 
 using Printf
 using REPL
+using REPL.LineEdit
 
 using Crayons
 using Parameters
@@ -38,6 +39,7 @@ include("./help.jl")
 include("./helpers.jl")
 include("./pager.jl")
 include("./recipe.jl")
+include("./repl.jl")
 include("./rulers.jl")
 include("./search.jl")
 include("./screen.jl")
@@ -84,6 +86,20 @@ function __init__()
 
     # Call `reset_highlighting` to populate the search highlighting.
     reset_highlighting()
+
+    if isdefined(Base, :active_repl)
+        _init_pager_repl_mode(Base.active_repl)
+    else
+        atreplinit() do repl
+            if isinteractive() && repl isa REPL.LineEditREPL
+                if !isdefined(repl, :interface)
+                    repl.interface = REPL.setup_interface(repl)
+                end
+
+                _init_pager_repl_mode(repl)
+            end
+        end
+    end
 
     return nothing
 end
