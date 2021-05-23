@@ -19,7 +19,7 @@ include("./types.jl")
 ################################################################################
 
 const CSI = "\x1b["
-const PKG_VERSION = v"0.2.0"
+const PKG_VERSION = v"0.2.1"
 const _keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}()
 const _search_highlighting = Dict{Bool, Decoration}()
 
