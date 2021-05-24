@@ -45,7 +45,7 @@ function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
     @unpack term, display_size, num_lines, lines_cropped, mode, features = pagerd
 
-    if get(term.out_stream, :color, true)
+    if get(term.out_stream, :color, true)::Bool
         _d = string(Crayon(reset = true))
         _g = string(crayon"dark_gray")
     else
@@ -64,7 +64,8 @@ function _redraw_cmd_line!(pagerd::Pager)
 
         # Check if there are matches.
         if num_matches > 0
-            cmd_help = "(match $(active_search_match_id) of $(num_matches))"
+            cmd_help = "(match " * string(active_search_match_id) *
+                " of " * string(num_matches) * ")"
         else
             cmd_help = "(no match found)"
         end
@@ -73,8 +74,8 @@ function _redraw_cmd_line!(pagerd::Pager)
     end
 
     # Compute the scroll position
-    pos = @sprintf("%3d", 100 * (1 - lines_cropped / num_lines))
-    cmd_help *= " $(pos)%"
+    pos = lpad(string(round(Int, 100 * (1 - lines_cropped / num_lines))), 3)
+    cmd_help *= " " * pos * "%"
 
     lcmd_help = length(cmd_help)
 
@@ -86,8 +87,7 @@ function _redraw_cmd_line!(pagerd::Pager)
 
     # Move the cursor to the last line and print the command line.
     _move_cursor(term.out_stream, display_size[1], 0)
-    write(term.out_stream, ":")
-    write(term.out_stream, cmd_aligned)
+    write(term.out_stream, ":" * cmd_aligned)
     _move_cursor(term.out_stream, display_size[1], 2)
 
     return nothing
