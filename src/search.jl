@@ -41,7 +41,7 @@ is performed forward. Otherwise, it is performed backwards.
 """
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     search_matches         = pagerd.search_matches
-    active_search_match_id = pagerd.active_number_match_id
+    active_search_match_id = pagerd.active_search_match_id
 
     num_matches = length(search_matches)
 
