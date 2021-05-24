@@ -18,8 +18,16 @@ function _view!(pagerd::Pager)
     rows, cols = _get_pager_display_size(pagerd)
 
     # Get the necessary variables.
-    @unpack start_row, start_col, lines, num_lines, active_search_match_id,
-            search_matches, buf, freeze_columns, freeze_rows, draw_ruler = pagerd
+    start_row              = pagerd.start_row
+    start_col              = pagerd.start_col
+    lines                  = pagerd.lines
+    num_lines              = pagerd.num_lines
+    active_search_match_id = pagerd.active_search_match_id
+    search_matches         = pagerd.search_matches
+    buf                    = pagerd.buf
+    freeze_columns         = pagerd.freeze_columns
+    freeze_rows            = pagerd.freeze_rows
+    draw_ruler             = pagerd.draw_ruler
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
@@ -112,7 +120,8 @@ function _view!(pagerd::Pager)
     end
 
     # Write the information to the sturcture.
-    @pack! pagerd = lines_cropped, columns_cropped
+    pagerd.lines_cropped   = lines_cropped
+    pagerd.columns_cropped = columns_cropped
 
     # Since we modified the `buf`, we need to request redraw.
     _request_redraw!(pagerd)

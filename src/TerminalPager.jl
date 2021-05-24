@@ -1,11 +1,9 @@
 module TerminalPager
 
-using Printf
 using REPL
 using REPL.LineEdit
 
 using Crayons
-using Parameters
 
 import Base: convert, string
 

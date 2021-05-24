@@ -15,7 +15,8 @@ Open a new pager with the help.
 """
 function _help!(pagerd::Pager)
     # Unpack values.
-    @unpack term, buf = pagerd
+    term = pagerd.term
+    buf  = pagerd.buf
 
     if get(term.out_stream, :color, true)::Bool
         _b  = string(crayon"bold")

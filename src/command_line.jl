@@ -15,7 +15,8 @@ formatting can be selected using the keyword `crayon`.
 
 """
 function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = crayon())
-    @unpack term, display_size = pagerd
+    term = pagerd.term
+    display_size = pagerd.display_size
 
     if get(term.out_stream, :color, true)
         _d = string(Crayon(reset = true))
@@ -43,7 +44,12 @@ Print the command line of pager `pagerd` to the display.
 """
 function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
-    @unpack term, display_size, num_lines, lines_cropped, mode, features = pagerd
+    term          = pagerd.term
+    display_size  = pagerd.display_size
+    num_lines     = pagerd.num_lines
+    lines_cropped = pagerd.lines_cropped
+    mode          = pagerd.mode
+    features      = pagerd.features
 
     if get(term.out_stream, :color, true)::Bool
         _d = string(Crayon(reset = true))
@@ -59,7 +65,9 @@ function _redraw_cmd_line!(pagerd::Pager)
         :help ∈ features && (cmd_help *= "?:help, ")
         cmd_help *= "q:quit)"
     elseif mode == :searching
-        @unpack active_search_match_id, search_matches = pagerd
+        active_search_match_id = pagerd.active_search_match_id
+        search_matches         = pagerd.search_matches
+
         num_matches = length(search_matches)
 
         # Check if there are matches.
@@ -103,7 +111,8 @@ This function returns a string with the command.
 """
 function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
-    @unpack term, display_size = pagerd
+    term         = pagerd.term
+    display_size = pagerd.display_size
 
     # Initialize variables.
     cmd = ""

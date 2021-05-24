@@ -19,12 +19,10 @@ Get the display size of the pager `p`.
 
 """
 function _get_pager_display_size(p::Pager)
-    @unpack display_size, draw_ruler, num_lines = p
-
-    rows, cols = display_size
+    rows, cols = p.display_size
 
     # If the ruler is not hidden, then we need to shrink the view.
-    draw_ruler && (cols -= _get_vertical_ruler_spacing(num_lines))
+    p.draw_ruler && (cols -= _get_vertical_ruler_spacing(p.num_lines))
 
     # We need to remove one row due to the command line.
     rows -= 1
@@ -192,8 +190,14 @@ Process the keystroke `k` in pager `pagerd`.
 """
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
-    @unpack display_size, start_col, start_row, lines_cropped, columns_cropped,
-            freeze_columns, freeze_rows, features = pagerd
+    display_size    = pagerd.display_size
+    start_col       = pagerd.start_col
+    start_row       = pagerd.start_row
+    lines_cropped   = pagerd.lines_cropped
+    columns_cropped = pagerd.columns_cropped
+    freeze_columns  = pagerd.freeze_columns
+    freeze_rows     = pagerd.freeze_rows
+    features        = pagerd.features
 
     redraw = false
     event = nothing
@@ -317,7 +321,11 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     end
 
     # Repack values.
-    @pack! pagerd = start_col, start_row, lines_cropped, columns_cropped, event
+    pagerd.start_col       = start_col
+    pagerd.start_row       = start_row
+    pagerd.lines_cropped   = lines_cropped
+    pagerd.columns_cropped = columns_cropped
+    pagerd.event           = event
 
     return nothing
 end
@@ -330,7 +338,8 @@ application must exit.
 
 """
 function _pager_event_process!(pagerd::Pager)
-    @unpack event, lines = pagerd
+    event = pagerd.event
+    lines = pagerd.lines
 
     # For EOT (^D), we will implement two types of "quit" action. If we are in
     # searching mode, then exit it. If not, quit the pager.
@@ -434,7 +443,9 @@ Redraw the screen of pager `pagerd`.
 
 """
 function _redraw!(pagerd::Pager)
-    @unpack buf, term, display_size = pagerd
+    buf          = pagerd.buf
+    term         = pagerd.term
+    display_size = pagerd.display_size
 
     str = String(take!(buf.io))
     lines = split(str, '\n')

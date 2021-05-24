@@ -11,7 +11,7 @@ const SearchMatch = NTuple{3, Int}
 const SearchMatches = Vector{SearchMatch}
 
 # Structure that holds all the information about the pager.
-@with_kw mutable struct Pager
+Base.@kwdef mutable struct Pager
     term::REPL.Terminals.TTYTerminal
     buf::IOContext{IOBuffer}
     display_size::NTuple{2, Int} = (0, 0)
@@ -33,7 +33,7 @@ const SearchMatches = Vector{SearchMatch}
 end
 
 # This struct describe the decoration of a string.
-@with_kw struct Decoration
+Base.@kwdef struct Decoration
     foreground::String = ""
     background::String = ""
     bold::Bool         = false
@@ -62,7 +62,7 @@ Structure that defines a keystroke.
 * `shift`: `true` if SHIFT key was pressed (only valid if `value != :char`).
 
 """
-@with_kw struct Keystroke
+Base.@kwdef struct Keystroke
     raw::String = ""
     value::Union{Symbol, String}
     alt::Bool   = false

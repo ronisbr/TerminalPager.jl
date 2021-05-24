@@ -264,8 +264,13 @@ function _parse_ansi_code(decoration::Decoration, code::String)
     tokens = split(code, ';')
 
     # Unpack fields.
-    @unpack foreground, background, bold, underline, reset, reversed, force =
-            decoration
+    foreground = decoration.foreground
+    background = decoration.background
+    bold       = decoration.bold
+    underline  = decoration.underline
+    reset      = decoration.reset
+    reversed   = decoration.reversed
+    force      = decoration.force
 
     # `reset` must not be copied to other decorations. Hence, we need to reset
     # it here.

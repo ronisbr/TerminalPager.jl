@@ -35,7 +35,8 @@ is performed forward. Otherwise, it is performed backwards.
 
 """
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
-    @unpack search_matches, active_search_match_id = pagerd
+    search_matches         = pagerd.search_matches
+    active_search_match_id = pagerd.active_number_match_id
 
     num_matches = length(search_matches)
 
@@ -56,7 +57,7 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
         end
     end
 
-    @pack! pagerd = active_search_match_id
+    pagerd.active_search_match_id = active_search_match_id
 
     return nothing
 end
@@ -69,7 +70,9 @@ the matches will be written to `pagerd`.
 
 """
 function _find_matches!(pagerd::Pager, regex::Regex)
-    @unpack lines, num_lines, search_matches = pagerd
+    lines          = pagerd.lines
+    num_lines      = pagerd.num_lines
+    search_matches = pagerd.search_matches
 
     # Reset the previous search.
     empty!(search_matches)
@@ -109,8 +112,13 @@ is inside it.
 
 """
 function _move_view_to_match!(pagerd::Pager)
-    @unpack start_row, start_col, search_matches, active_search_match_id,
-            freeze_rows, freeze_columns = pagerd
+    # Unpack.
+    start_row              = pagerd.start_row
+    start_col              = pagerd.start_col
+    active_search_match_id = pagerd.active_search_match_id
+    search_matches         = pagerd.search_matches
+    freeze_columns         = pagerd.freeze_columns
+    freeze_rows            = pagerd.freeze_rows
 
     rows, cols = _get_pager_display_size(pagerd)
 
@@ -142,7 +150,8 @@ function _move_view_to_match!(pagerd::Pager)
         start_col = (hl_col_end + 1) - (cols - freeze_columns)
     end
 
-    @pack! pagerd = start_row, start_col
+    pagerd.start_row = start_row
+    pagerd.start_col = start_col
 
     return nothing
 end

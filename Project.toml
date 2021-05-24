@@ -7,14 +7,11 @@ version = "0.2.1"
 
 [deps]
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [compat]
 julia = "1"
 Crayons = "4.0"
-Parameters = "0.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
