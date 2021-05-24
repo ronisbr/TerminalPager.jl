@@ -111,4 +111,19 @@ function __init__()
     return nothing
 end
 
+################################################################################
+#                                Precompilation
+################################################################################
+
+if Base.VERSION >= v"1.4.2"
+    # This try/catch is necessary in case the precompilation statements do not
+    # exists. In this case, TerminalPager.jl will work correctly but without the
+    # optimizations.
+    try
+        include("precompile/precompile_TerminalPager.jl")
+        _precompile_()
+    catch
+    end
+end
+
 end # module
