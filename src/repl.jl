@@ -22,9 +22,9 @@ the main REPL mode (julia prompt).
 
 """
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
-    # Prompt of the pager mode 
+    # Prompt of the pager mode
     # ==========================================================================
-    
+
     # In this case, we will use the same completion provider as the julia
     # prompt.
     tp_mode = LineEdit.Prompt(
@@ -121,7 +121,7 @@ function _create_pager_help_repl_mode(
     main::LineEdit.Prompt,
     tp_mode::LineEdit.Prompt
 )
-    # Prompt of the pager help mode 
+    # Prompt of the pager help mode
     # ==========================================================================
 
     tp_help_mode = LineEdit.Prompt(
@@ -238,15 +238,8 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
 
     try
         # Create a buffer that will replace `stdout`.
-        hascolor = repl.options.hascolor
-        compact = get(repl.options.iocontext, :compact, true)
         buf = IOBuffer()
-        io = IOContext(
-            buf,
-            :compact => compact,
-            :color => hascolor,
-            :limit => false
-        )
+        io = IOContext(buf, stdout)
 
         # Redirect `stdout` to the new buffer.
         Base.eval(:(stdout = $io))
@@ -318,15 +311,8 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     # this mode is only accessible throught pager mode, which already checks it.
     try
         # Create a buffer that will replace `stdout`.
-        hascolor = repl.options.hascolor
-        compact = get(repl.options.iocontext, :compact, true)
         buf = IOBuffer()
-        io = IOContext(
-            buf,
-            :compact => compact,
-            :color => hascolor,
-            :limit => false
-        )
+        io = IOContext(buf, stdout)
 
         # Get the AST that generates the help.
         ast = Base.invokelatest(REPL.helpmode, io, input)
