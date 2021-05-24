@@ -3,9 +3,48 @@
 # Description
 # ==============================================================================
 #
-#   This file contains functions related to keybindings.
+#   This file contains functions related to key bindings.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# Dictionary with the key bindings. It is initialized here with the default
+# values to improve startup time.
+const _keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}(
+    ("q",       false, false, false) => :quit,
+    ("?",       false, false, false) => :help,
+    (:up,       false, false, false) => :up,
+    ("k",       false, false, false) => :up,
+    (:down,     false, false, false) => :down,
+    ("j",       false, false, false) => :down,
+    (:left,     false, false, false) => :left,
+    ("h",       false, false, false) => :left,
+    (:right,    false, false, false) => :right,
+    ("l",       false, false, false) => :right,
+    (:up,       false, false, true ) => :fastup,
+    (:down,     false, false, true ) => :fastdown,
+    (:left,     false, false, true ) => :fastleft,
+    (:right,    false, false, true ) => :fastright,
+    (:left,     true,  false, false) => :bol,
+    ("0",       false, false, false) => :bol,
+    (:right,    true,  false, false) => :eol,
+    ("\$",      false, false, false) => :eol,
+    (:pageup,   false, false, false) => :pageup,
+    (:pagedown, false, false, false) => :pagedown,
+    (" ",       false, false, false) => :pagedown,
+    (:home,     false, false, false) => :home,
+    (:up,       true,  false, false) => :home,
+    ("g",       false, false, false) => :home,
+    (:end,      false, false, false) => :end,
+    (:down,     true,  false, false) => :end,
+    ("G",       false, false, false) => :end,
+    ("/",       false, false, false) => :search,
+    ("n",       false, false, false) => :next_match,
+    ("N",       false, false, false) => :previous_match,
+    (:esc,      false, false, false) => :quit_search,
+    ("f",       false, false, false) => :change_freeze,
+    (:eot,      false, false, false) => :quit_eot,
+    ("r",       false, false, false) => :toggle_ruler,
+)
 
 """
     delete_keybinding(key::Union{Char, Symbol}; alt::Bool = false, ctrl::Bool = false, shift::Bool = false)
@@ -76,6 +115,8 @@ function reset_keybindings()
     else
         _keybindings[(:eot, false, false, false)] = :quit_eot
     end
+
+    return nothing
 end
 
 """
@@ -100,11 +141,10 @@ keys:
 
 """
 function set_keybinding(
-    key::Union{Char, Symbol}, action::Symbol;
-    alt::Bool = false,
-    ctrl::Bool = false,
-    shift::Bool = false
-)
+        key::Union{Char, Symbol}, action::Symbol;
+        alt::Bool = false,
+        ctrl::Bool = false,
+        shift::Bool = false)
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
     _keybindings[dict_key] = action
     return nothing

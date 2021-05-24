@@ -7,6 +7,11 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+const _search_highlighting = Dict{Bool, Decoration}(
+    false => Decoration(foreground = "30", background = "47"),
+    true  => Decoration(foreground = "30", background = "43")
+)
+
 """
     reset_highlighting()
 

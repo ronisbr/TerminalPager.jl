@@ -26,8 +26,6 @@ include("./types.jl")
 
 const CSI = "\x1b["
 const PKG_VERSION = v"0.2.1"
-const _keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}()
-const _search_highlighting = Dict{Bool, Decoration}()
 
 # Crayons
 const _reset_crayon = string(Crayon(reset = true))
@@ -86,11 +84,15 @@ pager(obj::AbstractString; kwargs...) = return _pager(obj; kwargs...)
 const less = pager
 
 function __init__()
-    # Call `reset_keybindings` to populate the keybindings.
-    reset_keybindings()
+    # TODO: Fix initialization time with PAGER_MODE=vi
+    #   The code that adds a key into `_keybindings` takes a lot of time. The
+    #   startup time is increased by almost 0.1s with `PAGER_MODE=vi`.
 
-    # Call `reset_highlighting` to populate the search highlighting.
-    reset_highlighting()
+    # Modify the key bindings if the used wants `vi` mode.
+    if get(ENV, "PAGER_MODE", "default") == "vi"
+        _keybindings[(:eot,     false, false, false)] = :halfpagedown
+        _keybindings[(:shiftin, false, false, false)] = :halfpageup
+    end
 
     if isdefined(Base, :active_repl)
         _init_pager_repl_mode(Base.active_repl)
