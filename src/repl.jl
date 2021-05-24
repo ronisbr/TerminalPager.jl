@@ -239,7 +239,10 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     try
         # Create a buffer that will replace `stdout`.
         buf = IOBuffer()
-        io = IOContext(buf, stdout)
+        io = IOContext(
+            IOContext(buf, stdout),
+            :limit => false
+        )
 
         # Redirect `stdout` to the new buffer.
         Base.eval(:(stdout = $io))
@@ -312,7 +315,10 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     try
         # Create a buffer that will replace `stdout`.
         buf = IOBuffer()
-        io = IOContext(buf, stdout)
+        io = IOContext(
+            IOContext(buf, stdout),
+            :limit => false
+        )
 
         # Get the AST that generates the help.
         ast = Base.invokelatest(REPL.helpmode, io, input)
