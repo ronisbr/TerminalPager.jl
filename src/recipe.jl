@@ -39,7 +39,7 @@ This function also return the number of cropped characters in this line.
 
 """
 function _printing_recipe(
-    str::AbstractString,
+    str::String,
     start_char::Int,
     max_chars::Int,
     highlight_matches::SearchMatches,

@@ -68,7 +68,7 @@ end
 Initialize the pager with the string `str`.
 
 """
-function _pager(str::AbstractString; kwargs...)
+function _pager(str::String; kwargs...)
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
@@ -92,7 +92,7 @@ must ensure that `term` is in raw mode.
 """
 function _pager!(
     term::REPL.Terminals.TTYTerminal,
-    str::AbstractString;
+    str::String;
     auto::Bool = false,
     change_freeze::Bool = true,
     draw_ruler::Bool = false,
