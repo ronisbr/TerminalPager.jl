@@ -46,6 +46,7 @@ const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
     ("f",       false, false, false) => :change_freeze,
     (:eot,      false, false, false) => :quit_eot,
     ("r",       false, false, false) => :toggle_ruler,
+    ("t",       false, false, false) => :change_title_rows,
 )
 
 # Dictionary with the current keybindings, it is initialized here with the

@@ -27,6 +27,7 @@ function _view!(pagerd::Pager)
     buf                    = pagerd.buf
     freeze_columns         = pagerd.freeze_columns
     freeze_rows            = pagerd.freeze_rows
+    title_rows             = pagerd.title_rows
     draw_ruler             = pagerd.draw_ruler
 
     # Make sure that the argument values are correct.
@@ -62,6 +63,10 @@ function _view!(pagerd::Pager)
         lines_indices = collect(start_row:num_lines)
     end
 
+    # Clamp title rows to the allowed interval. The title rows are select within
+    # the frozen rows.
+    title_rows = clamp(title_rows, 0, freeze_rows)
+
     # Store the last decoration applied to a line. It is required to draw the
     # ruler without interfering with the line decoration.
     last_decoration = ""
@@ -86,7 +91,7 @@ function _view!(pagerd::Pager)
         # Split the lines into escape sequence and text.
         line_tokens, decoration, cropped_chars_i = _printing_recipe(
             line,
-            start_col,
+            i ≤ title_rows ? 1 : start_col,
             cols,
             matches_i,
             active_search_match,

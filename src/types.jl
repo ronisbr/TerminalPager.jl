@@ -29,6 +29,7 @@ Base.@kwdef mutable struct Pager
     features::Vector{Symbol} = Symbol[]
     freeze_columns::Int = 0
     freeze_rows::Int = 0
+    title_rows::Int = 0
     draw_ruler::Bool = false
 end
 

@@ -96,6 +96,7 @@ function _pager!(
     draw_ruler::Bool = false,
     freeze_columns::Int = 0,
     freeze_rows::Int = 0,
+    title_rows::Int = 0,
     hashelp::Bool = true,
 )
     # Get the tokens (lines) of the input.
@@ -155,6 +156,7 @@ function _pager!(
         num_lines = num_tokens,
         freeze_columns = freeze_columns,
         freeze_rows = freeze_rows,
+        title_rows = title_rows,
         features = features,
         draw_ruler = draw_ruler
     )
@@ -314,6 +316,10 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         if :change_freeze ∈ features
             event = :change_freeze
         end
+    elseif action == :change_title_rows
+        if :change_freeze ∈ features
+            event = :change_title_rows
+        end
     elseif action == :toggle_ruler
         event = :toggle_ruler
     elseif action == :quit_eot
@@ -414,6 +420,25 @@ function _pager_event_process!(pagerd::Pager)
                 pagerd.freeze_columns = max(0, freeze_columns)
                 pagerd.start_col = max(pagerd.start_col, freeze_columns)
             end
+        end
+
+        _request_redraw!(pagerd)
+    elseif event == :change_title_rows
+        cmd_input = _read_cmd!(
+            pagerd;
+            prefix = "Title rows ($(pagerd.title_rows)): "
+        )
+        title_rows = tryparse(Int, cmd_input; base = 10)
+
+        if (title_rows == nothing) && !isempty(cmd_input)
+            _print_cmd_message!(
+                pagerd,
+                "Invalid data!";
+                crayon = crayon"red bold"
+            )
+            _jlgetch(pagerd.term.in_stream)
+        else
+            title_rows != nothing && (pagerd.title_rows = max(0, title_rows))
         end
 
         _request_redraw!(pagerd)

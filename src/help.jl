@@ -68,7 +68,8 @@ function _help!(pagerd::Pager)
     kb_quit_search    = _getkb(:quit_search)
 
     # Freezing data
-    kb_change_freeze = _getkb(:change_freeze)
+    kb_change_freeze     = _getkb(:change_freeze)
+    kb_change_title_rows = _getkb(:change_title_rows)
 
     help_str =
 """
@@ -163,11 +164,16 @@ $(_y)  :quit_search$(_d)
 $(_c)    Keybindings: $(kb_quit_search)$(_d)
 
 $(_b)                                 Freezing data$(_d)
+$(_g)  These action requires the feature :change_freeze.
 $(_y)  :change_freeze$(_d)
     Two values will be requested in the command line. The first is the number of
     columns and the second is the number of rows that will be frozen. If the
     value is equal or lower than 0, then no row or column will be frozen.
 $(_c)    Keybindings: $(kb_change_freeze)$(_d)
+$(_y)  :change_title_rows$(_d)
+    Define the number of rows within the frozen rows that will be considered as
+    titles. In this case, these rows will not scroll horizontally.
+$(_c)    Keybindings: $(kb_change_title_rows)$(_d)
 """
 
     _pager!(pagerd.term, help_str; hashelp = false)
