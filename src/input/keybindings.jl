@@ -28,6 +28,7 @@ const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
     (:right,    true,  false, false) => :eol,
     ("\$",      false, false, false) => :eol,
     (:pageup,   false, false, false) => :pageup,
+    ("b",       false, false, false) => :pageup,
     (:pagedown, false, false, false) => :pagedown,
     (" ",       false, false, false) => :pagedown,
     (:home,     false, false, false) => :home,
