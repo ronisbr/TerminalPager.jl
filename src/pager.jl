@@ -206,6 +206,10 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     key = (k.value, k.alt, k.ctrl, k.shift)
     action = get(_keybindings, key, nothing)
 
+    # Compute the minimum values for start row and start column.
+    min_row = max(1, freeze_rows + 1)
+    min_col = max(1, freeze_columns + 1)
+
     if action == :quit
         event = :quit
     elseif action == :help
@@ -223,15 +227,11 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :up
-        min_row = max(1, freeze_rows + 1)
-
         if start_row > min_row
             start_row -= 1
             _request_redraw!(pagerd)
         end
     elseif action == :fastup
-        min_row = max(1, freeze_rows + 1)
-
         if start_row > min_row
             start_row -= 5
         end
@@ -253,23 +253,19 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :left
-        min_col = max(1, freeze_columns + 1)
-
         if start_col > min_col
             start_col -= 1
             _request_redraw!(pagerd)
         end
     elseif action == :fastleft
-        min_col = max(1, freeze_columns + 1)
-
         if start_col > min_col
             start_col -= 10
             start_col < min_col && (start_col = min_col)
             _request_redraw!(pagerd)
         end
     elseif action == :bol
-        if start_col > 1
-            start_col = 1
+        if start_col ≠ min_col
+            start_col = min_col
             _request_redraw!(pagerd)
         end
     elseif action == :end
@@ -278,8 +274,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :home
-        if start_row > 1
-            start_row = 1
+        if start_row ≠ min_row
+            start_row = min_row
             _request_redraw!(pagerd)
         end
     elseif action == :pagedown
@@ -288,9 +284,9 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :pageup
-        if start_row > 1
+        if start_row ≠ min_row
             start_row -= (display_size[1] - 1)
-            start_row < 1 && (start_row = 1)
+            start_row < min_row && (start_row = min_row)
             _request_redraw!(pagerd)
         end
     elseif action == :halfpagedown
@@ -299,9 +295,9 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :halfpageup
-        if start_row > 1
+        if start_row ≠ min_row
             start_row -= div(display_size[1] - 1, 2)
-            start_row < 1 && (start_row = 1)
+            start_row < min_row && (start_row = min_row)
             _request_redraw!(pagerd)
         end
     elseif action == :search
