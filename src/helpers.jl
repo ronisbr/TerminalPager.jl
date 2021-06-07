@@ -22,10 +22,10 @@ julia> @help write
 """
 macro help(f)
     ex_out = quote
-        @doc($(esc(f))) |> pager
+        @doc($f) |> pager
     end
 
-    return ex_out
+    return esc(ex_out)
 end
 
 """
