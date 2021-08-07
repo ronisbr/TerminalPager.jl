@@ -109,13 +109,17 @@ function _pager!(
     # If `auto` is true, then only show the pager if the text is larger than the
     # screen.
     if auto
+        # Regex to remove the ANSI escape sequence so that we can obtain the
+        # printable size of the text.
+        regex_ansi = r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
         use_pager = false
 
         # Check if we can display everything vertically. Notice that here we
         # must account two lines at the end.
         if dsize[1] - 2 ≥ num_tokens
             for t in tokens
-                if textwidth(t) > dsize[2]
+                t_undecorated = String(*(split(t, regex_ansi)...))
+                if textwidth(t_undecorated) > dsize[2]
                     use_pager = true
                     break
                 end
