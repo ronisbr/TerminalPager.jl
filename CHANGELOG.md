@@ -1,6 +1,24 @@
 TerminalPager.jl
 ================
 
+Version 0.2.2
+-------------
+
+- ![Bugfix][badge-bugfix] The escaping was corrected in `@help`. (Issue
+  [#17][gh-issue-17])
+- ![Bugfix][badge-bugfix] The text width was being computing without ignoring
+  the decoration, leading to problems when accounting for the printable size of
+  the text. (Issue [#16][gh-issue-16])
+- ![Feature][badge-feature] The keyword `auto` can be used to show the pager
+  only if the output does not fit the screen.
+- ![Feature][badge-feature] TerminalPager.jl now has REPL modes.
+- ![Feature][badge-feature] New keybindings were defined: `<`, `>`, and `b`.
+  (Issue [#15][gh-issue-15])
+- ![Feature][badge-feature] We can now define title rows, which will not move
+  with the pager. (Issue [#6][gh-issue-6])
+- ![Enhancement][badge-enhancement] Many performance issues were fixed,
+  improving the initialization time among other things.
+
 Version 0.2.1
 -------------
 
@@ -86,9 +104,13 @@ Version 0.0.1
 [gh-issue-2]: https://github.com/ronisbr/PrettyTables.jl/issues/2
 [gh-issue-3]: https://github.com/ronisbr/PrettyTables.jl/issues/3
 [gh-issue-4]: https://github.com/ronisbr/PrettyTables.jl/issues/4
+[gh-issue-6]: https://github.com/ronisbr/PrettyTables.jl/issues/6
 [gh-issue-7]: https://github.com/ronisbr/PrettyTables.jl/issues/7
 [gh-issue-8]: https://github.com/ronisbr/PrettyTables.jl/issues/8
 [gh-issue-9]: https://github.com/ronisbr/PrettyTables.jl/issues/9
 [gh-issue-12]: https://github.com/ronisbr/PrettyTables.jl/issues/12
 [gh-issue-13]: https://github.com/ronisbr/PrettyTables.jl/issues/13
 [gh-issue-14]: https://github.com/ronisbr/PrettyTables.jl/issues/14
+[gh-issue-15]: https://github.com/ronisbr/PrettyTables.jl/issues/15
+[gh-issue-16]: https://github.com/ronisbr/PrettyTables.jl/issues/16
+[gh-issue-17]: https://github.com/ronisbr/PrettyTables.jl/issues/17
