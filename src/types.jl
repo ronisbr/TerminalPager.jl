@@ -7,8 +7,7 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-const SearchMatch = NTuple{3, Int}
-const SearchMatches = Vector{SearchMatch}
+const SearchMatches = Dict{Int, Vector{Tuple{Int, Int}}}
 
 # Structure that holds all the information about the pager.
 Base.@kwdef mutable struct Pager
@@ -21,7 +20,7 @@ Base.@kwdef mutable struct Pager
     num_lines::Int = 0
     lines_cropped::Int = 0
     columns_cropped::Int = 0
-    search_matches::SearchMatches = SearchMatch[]
+    search_matches::SearchMatches = SearchMatches()
     active_search_match_id::Int = 0
     redraw::Bool = true
     mode::Symbol = :view

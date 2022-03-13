@@ -21,9 +21,6 @@ Get the display size of the pager `p`.
 function _get_pager_display_size(p::Pager)
     rows, cols = p.display_size
 
-    # If the ruler is not hidden, then we need to shrink the view.
-    p.draw_ruler && (cols -= _get_vertical_ruler_spacing(p.num_lines))
-
     # We need to remove one row due to the command line.
     rows -= 1
 
@@ -400,7 +397,7 @@ function _pager_event_process!(pagerd::Pager)
         else
             if freeze_rows != nothing
                 pagerd.freeze_rows = max(0, freeze_rows)
-                pagerd.start_row = max(pagerd.start_row, freeze_rows)
+                pagerd.start_row = max(pagerd.start_row, freeze_rows + 1)
             end
 
             cmd_input = _read_cmd!(
@@ -418,7 +415,7 @@ function _pager_event_process!(pagerd::Pager)
 
             elseif freeze_columns != nothing
                 pagerd.freeze_columns = max(0, freeze_columns)
-                pagerd.start_col = max(pagerd.start_col, freeze_columns)
+                pagerd.start_col = max(pagerd.start_col, freeze_columns + 1)
             end
         end
 
@@ -470,7 +467,7 @@ Redraw the screen of pager `pagerd`.
 function _redraw!(pagerd::Pager)
     buf          = pagerd.buf
     term         = pagerd.term
-    display_size = pagerd.display_size
+    display_size = _get_pager_display_size(pagerd)
 
     str = String(take!(buf.io))
     lines = split(str, '\n')
@@ -482,9 +479,9 @@ function _redraw!(pagerd::Pager)
     _hide_cursor(term.out_stream)
 
     for i = 1:num_lines
-        write(term.out_stream, lines[i])
         _clear_to_eol(term.out_stream)
-        i ≠ num_lines && write(term.out_stream, '\n')
+        write(term.out_stream, lines[i])
+        write(term.out_stream, '\n')
     end
 
     # Clear the rest of the screen.

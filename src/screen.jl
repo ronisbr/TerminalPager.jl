@@ -56,8 +56,7 @@ _cursor_forward((@nospecialize io::IO), i::Int = 1) = write(io, "$(CSI)$(i)C")
 Clear from the cursor to the end of the line.
 
 """
-_clear_to_eol((@nospecialize io::IO)) = write(io, "$(CSI)K")
-
+_clear_to_eol((@nospecialize io::IO)) = write(io, "$(CSI)0K")
 
 """
     _hide_cursor(io::IO)

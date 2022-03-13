@@ -4,6 +4,7 @@ using REPL
 using REPL.LineEdit
 
 using Crayons
+using StringManipulation
 
 import Base: convert, string
 
@@ -41,9 +42,7 @@ include("./deprecations.jl")
 include("./help.jl")
 include("./helpers.jl")
 include("./pager.jl")
-include("./recipe.jl")
 include("./repl.jl")
-include("./rulers.jl")
 include("./search.jl")
 include("./screen.jl")
 include("./string.jl")
@@ -115,12 +114,15 @@ end
 #                                Precompilation
 ################################################################################
 
-if Base.VERSION >= v"1.4.2"
+# The environment variable `TERMINAL_PAGER_NO_PRECOMPILATION` is used to disable
+# the precompilation directives. This option must only be used inside Github
+# Actions to improve the coverage results.
+if Base.VERSION >= v"1.4.2" && !haskey(ENV, "TERMINAL_PAGER_NO_PRECOMPILATION")
     # This try/catch is necessary in case the precompilation statements do not
     # exists. In this case, TerminalPager.jl will work correctly but without the
     # optimizations.
     try
-        include("precompile/precompile_TerminalPager.jl")
+        include("../precompilation/precompile_TerminalPager.jl")
         _precompile_()
     catch
     end

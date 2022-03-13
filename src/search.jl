@@ -75,37 +75,7 @@ the matches will be written to `pagerd`.
 
 """
 function _find_matches!(pagerd::Pager, regex::Regex)
-    lines          = pagerd.lines
-    num_lines      = pagerd.num_lines
-    search_matches = pagerd.search_matches
-
-    # Reset the previous search.
-    empty!(search_matches)
-    pagerd.active_search_match_id = 0
-
-    # Regex to remove the ANSI escape sequence.
-    regex_ansi = r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
-
-    # For each line, find matches based on regex.
-    for i = 1:num_lines
-        # We need to filter the escape sequences from the line before searching.
-        # TODO: Should we maintain a version of the input without the escape to
-        # improve performance?
-
-        line = String(*(split(lines[i], regex_ansi)...))
-
-        matches_i = eachmatch(regex, line)
-
-        for m in matches_i
-            # `m.offset` contains the byte in which the match starts. However,
-            # we need to obtain the character. Hence, it is necessary to compute
-            # the text width from the beginning to the offset.
-            push!(search_matches,
-                  (i, textwidth(line[1:m.offset]), textwidth(m.match))
-            )
-        end
-    end
-
+    pagerd.search_matches = string_search_per_line(pagerd.lines, regex)
     return nothing
 end
 
@@ -136,11 +106,35 @@ function _move_view_to_match!(pagerd::Pager)
     hl_i = active_search_match_id
     hl_i == 0 && return nothing
 
-    # Get the position of the highlight.
-    m = search_matches[hl_i]
-    hl_line = m[1]
-    hl_col_beg = m[2]
-    hl_col_end = hl_col_beg + m[3] - 1
+    # The search matches are a dictionary in which the key is the line with a
+    # match. Hence, we need to order the keys to count the matches and find the
+    # information about the active match.
+    #
+    # TODO: Can it be improved?
+    lines = search_matches |> keys |> collect |> sort
+
+    # Information about the active match.
+    hl_line    = 0
+    hl_col_beg = 0
+    hl_col_end = 0
+
+    # Search what is the current active match.
+    i = 0
+    for l in lines
+        Δ = length(search_matches[l])
+
+        if i + Δ ≥ hl_i
+            j = hl_i - i
+
+            match = search_matches[l][j]
+            hl_line = l
+            hl_col_beg = match[1]
+            hl_col_end = hl_col_beg + match[2] - 1
+            break
+        end
+
+        i += Δ
+    end
 
     # Check if the highlight row is visible.
     if (hl_line < start_row)
