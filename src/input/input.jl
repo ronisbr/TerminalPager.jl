@@ -25,7 +25,7 @@ Wait for an keystroke in the stream `stream` and return it (see
 [`Keystroke`](@ref)).
 
 """
-function _jlgetch((@nospecialize stream::IO))
+function _jlgetch(stream::IO)
     c_raw = read(stream, UInt8)::UInt8
 
     c::UInt32 = UInt32(c_raw)
