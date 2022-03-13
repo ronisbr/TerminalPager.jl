@@ -445,7 +445,8 @@ function _pager_event_process!(pagerd::Pager)
         # If the ruler is hidden, we must verify if the screen is on the right
         # edge to fix the `start_col`.
         if !pagerd.draw_ruler
-            ruler_spacing = _get_vertical_ruler_spacing(pagerd.num_lines)
+            ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
+
             if pagerd.columns_cropped ≤ ruler_spacing
                 pagerd.start_col -= ruler_spacing
                 pagerd.start_col < 1 && (pagerd.start_col = 1)
