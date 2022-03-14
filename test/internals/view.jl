@@ -29,13 +29,13 @@
  (9, 1)   (9, 2)   (9, 3)  """
 
     buf = IOBuffer()
-    pagerd.display_size = (11, 9*3)
+    pagerd.display_size = (11, 9 * 3)
     TerminalPager._view!(pagerd)
     result = String(take!(pagerd.buf.io))
 
     @test expected == result
-    @test pagerd.lines_cropped == 90
-    @test pagerd.columns_cropped == 52
+    @test pagerd.cropped_lines == 90
+    @test pagerd.cropped_columns == 52
 
     # Moving the view
     # ==========================================================================
@@ -53,14 +53,14 @@
 11, 1)  (11, 2)  (11, 3)  ("""
 
     buf = IOBuffer()
-    pagerd.display_size = (11, 9*3)
+    pagerd.display_size = (11, 9 * 3)
     pagerd.start_row = 3
-    pagerd.start_col = 3
+    pagerd.start_column = 3
     TerminalPager._view!(pagerd)
     result = String(take!(pagerd.buf.io))
 
     @test expected == result
-    @test pagerd.lines_cropped == 88
-    @test pagerd.columns_cropped == 51
+    @test pagerd.cropped_lines == 88
+    @test pagerd.cropped_columns == 51
 end
 
