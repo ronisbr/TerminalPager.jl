@@ -14,13 +14,9 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-"""
-    _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
 
-Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must be
-the main REPL mode (julia prompt).
-
-"""
+# Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must
+# be the main REPL mode (julia prompt).
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # Prompt of the pager mode
     # ==========================================================================
@@ -29,10 +25,10 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # prompt.
     tp_mode = LineEdit.Prompt(
         _tp_mode_prompt;
+        complete      = REPL.REPLCompletionProvider(),
         prompt_prefix = repl.options.hascolor ? Base.text_colors[:magenta] : "",
         prompt_suffix = "",
-        complete = REPL.REPLCompletionProvider(),
-        sticky = true
+        sticky        = true
     )
 
     # This function is called when the user hits return after typing a command.
@@ -108,14 +104,9 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     return tp_mode
 end
 
-"""
-    _create_pager_help_repl_mode( repl::REPL.AbstractREPL, main::LineEdit.Prompt, tp_mode::LineEdit.Prompt )
-
-Create the REPL mode `pager help`. `repl` must be the active REPL, `main` must
-be the main REPL mode (julia prompt), and `tp_mode` must be the REPL mode
-`pager`.
-
-"""
+# Create the REPL mode `pager help`. `repl` must be the active REPL, `main` must
+# be the main REPL mode (julia prompt), and `tp_mode` must be the REPL mode
+# `pager`.
 function _create_pager_help_repl_mode(
     repl::REPL.AbstractREPL,
     main::LineEdit.Prompt,
@@ -126,10 +117,10 @@ function _create_pager_help_repl_mode(
 
     tp_help_mode = LineEdit.Prompt(
         _tp_help_mode_prompt;
+        complete      = REPL.REPLCompletionProvider(),
         prompt_prefix = repl.options.hascolor ? Base.text_colors[:yellow] : "",
         prompt_suffix = "",
-        complete = REPL.REPLCompletionProvider(),
-        sticky = false
+        sticky        = false
     )
 
     tp_help_mode.on_done = (s, buf, ok) -> begin
@@ -220,12 +211,8 @@ end
 #                     Command treatment for the REPL modes
 ################################################################################
 
-"""
-    _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
-
-Execute the actions when a command has been received in the REPL mode `pager`.
-`repl` must be the active REPL, and `input` is a string with the command.
-"""
+# Execute the actions when a command has been received in the REPL mode `pager`.
+# `repl` must be the active REPL, and `input` is a string with the command.
 function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     if !isinteractive() && !PRINTED_REPL_WARNING[]
         @warn "The parger mode is intended for interaction use only, and should not be used from scripts."
@@ -254,7 +241,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         cmd = ""
 
         # Loop throught the lines.
-        for i ∈ 1:length(lines)
+        @inbounds for i ∈ 1:length(lines)
             cmd *= lines[i] * "\n"
             ast = Base.parse_input_line(cmd)
 
@@ -294,8 +281,10 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         pager(String(take!(buf)); auto = true)
 
         close(io)
+
     catch err
         Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())
+
     finally
         Base.eval(:(stdout = $old_stdout))
     end
@@ -303,12 +292,8 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     return nothing
 end
 
-"""
-    _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
-
-Execute the actions when a command has been received in the REPL mode `pager
-help`. `repl` must be the active REPL, and `input` is a string with the command.
-"""
+# Execute the actions when a command has been received in the REPL mode `pager
+# help`. `repl` must be the active REPL, and `input` is a string with the command.
 function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     # We do not need to verify if we are in a interactive environment because
     # this mode is only accessible throught pager mode, which already checks it.
@@ -336,6 +321,7 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         pager(String(take!(buf)); auto = true)
 
         close(io)
+
     catch err
         Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())
     end

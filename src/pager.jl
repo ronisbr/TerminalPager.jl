@@ -12,12 +12,7 @@
 #                    Functions related to `Pager` structure
 ################################################################################
 
-"""
-    _get_pager_display_size(p::Pager)
-
-Get the display size of the pager `p`.
-
-"""
+# Get the display size of the pager `p`.
 function _get_pager_display_size(p::Pager)
     rows, cols = p.display_size
 
@@ -27,20 +22,10 @@ function _get_pager_display_size(p::Pager)
     return rows, cols
 end
 
-"""
-    _request_redraw!(p::Pager)
-
-Request a redraw of pager `p`.
-
-"""
+# Request a redraw of pager `p`.
 _request_redraw!(p::Pager) = (p.redraw = true)
 
-"""
-    _update_display_size!(p::Pager)
-
-Update the display size information in the pager `p`.
-
-"""
+# Update the display size information in the pager `p`.
 function _update_display_size!(p::Pager)
     # If the terminal size has changed, then we need to redraw the view.
     newdsize::Tuple{Int, Int} = displaysize(p.term.out_stream)
@@ -57,12 +42,7 @@ end
 #                        Functions related to the pager
 ################################################################################
 
-"""
-    _pager(str::AbstractString)
-
-Initialize the pager with the string `str`.
-
-"""
+# Initialize the pager with the string `str`.
 function _pager(str::String; kwargs...)
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
@@ -78,13 +58,8 @@ function _pager(str::String; kwargs...)
     return nothing
 end
 
-"""
-    _pager!(term::REPL.Terminals.TTYTerminal, str::AbstractString)
-
-Initialize the pager with the string `str` using the terminal `term`. The user
-must ensure that `term` is in raw mode.
-
-"""
+# Initialize the pager with the string `str` using the terminal `term`. The user
+# must ensure that `term` is in raw mode.
 function _pager!(
     term::REPL.Terminals.TTYTerminal,
     str::String;
@@ -121,6 +96,7 @@ function _pager!(
                     break
                 end
             end
+
         else
             use_pager = true
         end
@@ -138,9 +114,9 @@ function _pager!(
     # view buffer contains the string that is shown. To improve speed,
     # everything in the view buffer is written to this buffer and then flushed
     # to the screen.
-    iobuf = IOBuffer()
+    iobuf    = IOBuffer()
     hascolor = get(stdout, :color, true)::Bool
-    buf = IOContext(iobuf, :color => hascolor)
+    buf      = IOContext(iobuf, :color => hascolor)
 
     features = Symbol[]
     change_freeze && push!(features, :change_freeze)
@@ -148,18 +124,18 @@ function _pager!(
 
     # Initialize the pager structure.
     pagerd = Pager(
-        term = term,
-        buf = buf,
-        display_size = dsize,
-        start_row = min(max(1, frozen_rows + 1), num_tokens),
-        start_column = max(1, frozen_columns + 1),
-        lines = tokens,
-        num_lines = num_tokens,
+        buf            = buf,
+        display_size   = dsize,
+        features       = features,
         frozen_columns = frozen_columns,
-        frozen_rows = frozen_rows,
-        title_rows = title_rows,
-        features = features,
-        show_ruler = show_ruler
+        frozen_rows    = frozen_rows,
+        lines          = tokens,
+        num_lines      = num_tokens,
+        show_ruler     = show_ruler,
+        start_column   = max(1, frozen_columns + 1),
+        start_row      = min(max(1, frozen_rows + 1), num_tokens),
+        term           = term,
+        title_rows     = title_rows
     )
 
     # Application main loop
@@ -213,114 +189,156 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     if action == :quit
         event = :quit
+
     elseif action == :help
         if :help ∈ features
             event = :help
         end
+
     elseif action == :down
         if cropped_lines > 0
             start_row += 1
             _request_redraw!(pagerd)
         end
+
     elseif action == :fastdown
         if cropped_lines > 0
             start_row += min(5, cropped_lines)
             _request_redraw!(pagerd)
         end
+
     elseif action == :up
         if start_row > min_row
             start_row -= 1
             _request_redraw!(pagerd)
         end
+
     elseif action == :fastup
         if start_row > min_row
             start_row -= 5
         end
-        start_row < min_row && (start_row = min_row)
+
+        if start_row < min_row
+            start_row = min_row
+        end
+
         _request_redraw!(pagerd)
+
     elseif action == :right
         if cropped_columns > 0
             start_column += 1
             _request_redraw!(pagerd)
         end
+
     elseif action == :fastright
         if cropped_columns > 0
             start_column += min(10, cropped_columns)
             _request_redraw!(pagerd)
         end
+
     elseif action == :eol
         if cropped_columns > 0
             start_column += cropped_columns
             _request_redraw!(pagerd)
         end
+
     elseif action == :left
         if start_column > min_col
             start_column -= 1
             _request_redraw!(pagerd)
         end
+
     elseif action == :fastleft
         if start_column > min_col
             start_column -= 10
-            start_column < min_col && (start_column = min_col)
+
+            if start_column < min_col
+                start_column = min_col
+            end
+
             _request_redraw!(pagerd)
         end
+
     elseif action == :bol
         if start_column ≠ min_col
             start_column = min_col
             _request_redraw!(pagerd)
         end
+
     elseif action == :end
         if cropped_lines > 0
             start_row += cropped_lines
             _request_redraw!(pagerd)
         end
+
     elseif action == :home
         if start_row ≠ min_row
             start_row = min_row
             _request_redraw!(pagerd)
         end
+
     elseif action == :pagedown
         if cropped_lines > 0
             start_row += min(display_size[1] - 1, cropped_lines)
             _request_redraw!(pagerd)
         end
+
     elseif action == :pageup
         if start_row ≠ min_row
             start_row -= (display_size[1] - 1)
-            start_row < min_row && (start_row = min_row)
+
+            if start_row < min_row
+                start_row = min_row
+            end
+
             _request_redraw!(pagerd)
         end
+
     elseif action == :halfpagedown
         if cropped_lines > 0
             start_row += min(div(display_size[1] - 1, 2), cropped_lines)
             _request_redraw!(pagerd)
         end
+
     elseif action == :halfpageup
         if start_row ≠ min_row
             start_row -= div(display_size[1] - 1, 2)
-            start_row < min_row && (start_row = min_row)
+
+            if start_row < min_row
+                start_row = min_row
+            end
+
             _request_redraw!(pagerd)
         end
+
     elseif action == :search
         event = :search
+
     elseif action == :next_match
         event = :next_match
+
     elseif action == :previous_match
         event = :previous_match
+
     elseif action == :quit_search
         event = :quit_search
+
     elseif action == :change_freeze
         if :change_freeze ∈ features
             event = :change_freeze
         end
+
     elseif action == :change_title_rows
         if :change_freeze ∈ features
             event = :change_title_rows
         end
+
     elseif action == :toggle_ruler
         event = :toggle_ruler
+
     elseif action == :quit_eot
         event = :quit_eot
+
     end
 
     # Repack values.
@@ -333,13 +351,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     return nothing
 end
 
-"""
-    _pager_event_process!(pagerd::Pager)
-
-Process the event in `pagerd`. If this function return `false`, then the
-application must exit.
-
-"""
+# Process the event in `pagerd`. If this function return `false`, then the
+# application must exit.
 function _pager_event_process!(pagerd::Pager)
     event = pagerd.event
     lines = pagerd.lines
@@ -352,9 +365,11 @@ function _pager_event_process!(pagerd::Pager)
 
     if event == :quit
         return false
+
     elseif event == :help
         _help!(pagerd)
         _request_redraw!(pagerd)
+
     elseif event == :search
         cmd_input = _read_cmd!(pagerd)
 
@@ -372,14 +387,17 @@ function _pager_event_process!(pagerd::Pager)
         _change_active_match!(pagerd, true)
         _move_view_to_match!(pagerd)
         _request_redraw!(pagerd)
+
     elseif event == :previous_match
         _change_active_match!(pagerd, false)
         _move_view_to_match!(pagerd)
         _request_redraw!(pagerd)
+
     elseif event == :quit_search
         _quit_search!(pagerd)
         _request_redraw!(pagerd)
         pagerd.mode = :view
+
     elseif event == :change_freeze
         cmd_input = _read_cmd!(
             pagerd;
@@ -420,6 +438,7 @@ function _pager_event_process!(pagerd::Pager)
         end
 
         _request_redraw!(pagerd)
+
     elseif event == :change_title_rows
         cmd_input = _read_cmd!(
             pagerd;
@@ -439,6 +458,7 @@ function _pager_event_process!(pagerd::Pager)
         end
 
         _request_redraw!(pagerd)
+
     elseif event == :toggle_ruler
         pagerd.show_ruler = !pagerd.show_ruler
 
@@ -470,8 +490,8 @@ function _redraw!(pagerd::Pager)
     term         = pagerd.term
     display_size = _get_pager_display_size(pagerd)
 
-    str = String(take!(buf.io))
-    lines = split(str, '\n')
+    str       = String(take!(buf.io))
+    lines     = split(str, '\n')
     num_lines = length(lines)
 
     _move_cursor(term.out_stream, 0, 0)
@@ -479,7 +499,7 @@ function _redraw!(pagerd::Pager)
     # Hide the cursor when drawing the buffer.
     _hide_cursor(term.out_stream)
 
-    for i = 1:num_lines
+    @inbounds for i = 1:num_lines
         _clear_to_eol(term.out_stream)
         write(term.out_stream, lines[i])
         write(term.out_stream, '\n')
@@ -499,4 +519,3 @@ function _redraw!(pagerd::Pager)
 
     return nothing
 end
-

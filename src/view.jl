@@ -7,12 +7,7 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-"""
-    _view!(pagerd::Pager)
-
-Write the view of pager `pagerd` to the view buffer.
-
-"""
+# Write the view of pager `pagerd` to the view buffer.
 function _view!(pagerd::Pager)
     # Get the available display size.
     rows, cols = _get_pager_display_size(pagerd)

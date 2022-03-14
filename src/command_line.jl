@@ -7,15 +7,15 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-"""
-    _print_cmd_message!(pagerd::Pager, msg::String)
+# Print the message `msg` in the command line of pager `pagerd`. The string
+# formatting can be selected using the keyword `crayon`.
+function _print_cmd_message!(
+    pagerd::Pager,
+    msg::String;
+    crayon::Crayon = crayon()
+)
 
-Print the message `msg` in the command line of pager `pagerd`. The string
-formatting can be selected using the keyword `crayon`.
-
-"""
-function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = crayon())
-    term = pagerd.term
+    term         = pagerd.term
     display_size = pagerd.display_size
 
     if get(term.out_stream, :color, true)
@@ -36,12 +36,7 @@ function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = crayon
     return nothing
 end
 
-"""
-    _redraw_cmd_line!(pagerd::Pager)
-
-Print the command line of pager `pagerd` to the display.
-
-"""
+# Print the command line of pager `pagerd` to the display.
 function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
     term          = pagerd.term
@@ -62,8 +57,13 @@ function _redraw_cmd_line!(pagerd::Pager)
     # Compute the information considering the current mode.
     if mode == :view
         cmd_help = "(↑ ↓ ← →:move, "
-        :help ∈ features && (cmd_help *= "?:help, ")
+
+        if :help ∈ features
+            cmd_help *= "?:help, "
+        end
+
         cmd_help *= "q:quit)"
+
     elseif mode == :searching
         active_search_match_id = pagerd.active_search_match_id
         search_matches         = pagerd.search_matches
@@ -72,17 +72,22 @@ function _redraw_cmd_line!(pagerd::Pager)
 
         # Check if there are matches.
         if num_matches > 0
-            cmd_help = "(match " * string(active_search_match_id) *
-                " of " * string(num_matches) * ")"
+            cmd_help =
+                "(match " *
+                string(active_search_match_id) *
+                " of " *
+                string(num_matches) *
+                ")"
         else
             cmd_help = "(no match found)"
         end
+
     else
         cmd_help = "ERROR"
     end
 
     # Compute the scroll position
-    pos = lpad(string(round(Int, 100 * (1 - cropped_lines / num_lines))), 3)
+    pos = lpad(round(Int, 100 * (1 - cropped_lines / num_lines)) |> string, 3)
     cmd_help *= " " * pos * "%"
 
     lcmd_help = length(cmd_help)
@@ -101,25 +106,19 @@ function _redraw_cmd_line!(pagerd::Pager)
     return nothing
 end
 
-"""
-    _read_cmd!(pagerd::Pager; prefix::String = "/")
-
-Read a command in the pager `pagerd`.
-
-This function returns a string with the command.
-
-"""
+# Read a command in the pager `pagerd`.
+# This function returns a string with the command.
 function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
     term         = pagerd.term
     display_size = pagerd.display_size
 
     # Initialize variables.
-    cmd = ""
-    cmd_width = 0
-    cursor_pos = 1
+    cmd         = ""
+    cmd_width   = 0
+    cursor_pos  = 1
     prefix_size = textwidth(prefix)
-    redraw = true
+    redraw      = true
 
     while true
         if redraw
@@ -144,13 +143,15 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             break
 
         elseif k.value isa String
-            cmd = first(cmd, (cursor_pos - 1)) *
+            cmd =
+                first(cmd, (cursor_pos - 1)) *
                 string(k.value) *
                 last(cmd, cmd_width - (cursor_pos - 1))
 
             cmd_width += 1
             cursor_pos += 1
             redraw = true
+
         elseif k.value == :backspace
             if cmd_width > 0
                 cmd = first(cmd, cmd_width - 1)
@@ -160,16 +161,19 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             else
                 break
             end
+
         elseif k.value == :left
             if cursor_pos > 1
                 cursor_pos -= 1
                 _cursor_back(term.out_stream)
             end
+
         elseif k.value == :right
             if cursor_pos < cmd_width + 1
                 cursor_pos += 1
                 _cursor_forward(term.out_stream)
             end
+
         elseif k.value == :home
             cursor_pos = 1
             _move_cursor(
@@ -177,6 +181,7 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
                 display_size[1],
                 cursor_pos + prefix_size
             )
+
         elseif k.value == :end
             cursor_pos = cmd_width + 1
             _move_cursor(

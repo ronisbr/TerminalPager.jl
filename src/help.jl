@@ -11,7 +11,6 @@
     _help!(pargerd::Pager)
 
 Open a new pager with the help.
-
 """
 function _help!(pagerd::Pager)
     # Unpack values.

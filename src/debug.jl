@@ -11,7 +11,6 @@
     debug_keycode()
 
 Debug key codes.
-
 """
 function debug_keycode()
     # Initialize the terminal.

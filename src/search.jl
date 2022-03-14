@@ -16,7 +16,6 @@ const _search_highlighting = Dict{Bool, Decoration}(
     reset_highlighting()
 
 Reset the search highlighting to the default one.
-
 """
 function reset_highlighting()
     _search_highlighting[false] = Decoration(
@@ -32,13 +31,8 @@ function reset_highlighting()
     return nothing
 end
 
-"""
-    _change_active_match!(pagerd::Pager, forward::Bool = true)
-
-Change the active matches in `pagerd`. If `forward` is `true`, then the search
-is performed forward. Otherwise, it is performed backwards.
-
-"""
+# Change the active matches in `pagerd`. If `forward` is `true`, then the search
+# is performed forward. Otherwise, it is performed backwards.
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     search_matches         = pagerd.search_matches
     active_search_match_id = pagerd.active_search_match_id
@@ -67,25 +61,15 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
     return nothing
 end
 
-"""
-    _find_matches!(pagerd::Pager, regex::Regex)
-
-Find all matches of `regex` in the text of the pager `pager`. The vector with
-the matches will be written to `pagerd`.
-
-"""
+# Find all matches of `regex` in the text of the pager `pager`. The vector with
+# the matches will be written to `pagerd`.
 function _find_matches!(pagerd::Pager, regex::Regex)
     pagerd.search_matches = string_search_per_line(pagerd.lines, regex)
     return nothing
 end
 
-"""
-    _move_view_to_match!(pagerd::Pager)
-
-Move the view of the pager `pagerd` to ensure that the current highlighted match
-is inside it.
-
-"""
+# Move the view of the pager `pagerd` to ensure that the current highlighted
+# match is inside it.
 function _move_view_to_match!(pagerd::Pager)
     # Unpack.
     active_search_match_id = pagerd.active_search_match_id
@@ -126,8 +110,8 @@ function _move_view_to_match!(pagerd::Pager)
         if i + Δ ≥ hl_i
             j = hl_i - i
 
-            match = search_matches[l][j]
-            hl_line = l
+            match      = search_matches[l][j]
+            hl_line    = l
             hl_col_beg = match[1]
             hl_col_end = hl_col_beg + match[2] - 1
             break
@@ -154,18 +138,13 @@ function _move_view_to_match!(pagerd::Pager)
         end
     end
 
-    pagerd.start_row    = start_row
     pagerd.start_column = start_column
+    pagerd.start_row    = start_row
 
     return nothing
 end
 
-"""
-    _quit_search!(pagerd::Pager)
-
-Quit search mode of pager `pagerd`.
-
-"""
+# Quit search mode of pager `pagerd`.
 function _quit_search!(pagerd::Pager)
     empty!(pagerd.search_matches)
     pagerd.active_search_match_id = 0
