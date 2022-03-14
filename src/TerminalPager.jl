@@ -64,14 +64,14 @@ Call the pager to show the output of the object `obj`.
     fit into the display. (**Default** = `false`)
 - `change_freeze::Bool`: If `true`, then the user can change the number of
     frozen rows and columns inside the pager. (**Default** = `true`)
-- `draw_ruler::Bool`: If `true`, then a vertical ruler is drawn at the pager
-    startup. (**Default** = `false`)
 - `frozen_columns::Int = 0`: Number of columns to be frozen at startup.
     (**Default** = 0)
 - `frozen_rows::Int = 0`: Number of rows to be frozen at starupt.
     (**Default** = 0)
 - `hashelp::Bool = true`: If `true`, then the user can see the pager help.
     (**Default** = `true`)
+- `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the
+    line numbers. (**Default** = `false`)
 """
 function pager(obj::Any; kwargs...)
     str = sprint(show, MIME"text/plain"(), obj, context = :color => true)

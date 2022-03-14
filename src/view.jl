@@ -20,12 +20,12 @@ function _view!(pagerd::Pager)
     # Get the necessary variables.
     active_search_match_id = pagerd.active_search_match_id
     buf                    = pagerd.buf
-    draw_ruler             = pagerd.draw_ruler
     frozen_columns         = pagerd.frozen_columns
     frozen_rows            = pagerd.frozen_rows
     lines                  = pagerd.lines
     num_lines              = pagerd.num_lines
     search_matches         = pagerd.search_matches
+    show_ruler             = pagerd.show_ruler
     start_column           = pagerd.start_column
     start_row              = pagerd.start_row
     title_rows             = pagerd.title_rows
@@ -45,7 +45,7 @@ function _view!(pagerd::Pager)
         maximum_number_of_lines     = rows,
         maximum_number_of_columns   = cols,
         search_matches              = search_matches,
-        show_ruler                  = draw_ruler,
+        show_ruler                  = show_ruler,
         title_lines                 = title_rows
     )
 

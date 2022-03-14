@@ -90,11 +90,11 @@ function _pager!(
     str::String;
     auto::Bool = false,
     change_freeze::Bool = true,
-    draw_ruler::Bool = false,
     frozen_columns::Int = 0,
     frozen_rows::Int = 0,
     title_rows::Int = 0,
     hashelp::Bool = true,
+    show_ruler::Bool = false
 )
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
@@ -159,7 +159,7 @@ function _pager!(
         frozen_rows = frozen_rows,
         title_rows = title_rows,
         features = features,
-        draw_ruler = draw_ruler
+        show_ruler = show_ruler
     )
 
     # Application main loop
@@ -440,11 +440,11 @@ function _pager_event_process!(pagerd::Pager)
 
         _request_redraw!(pagerd)
     elseif event == :toggle_ruler
-        pagerd.draw_ruler = !pagerd.draw_ruler
+        pagerd.show_ruler = !pagerd.show_ruler
 
         # If the ruler is hidden, we must verify if the screen is on the right
         # edge to fix the `start_column`.
-        if !pagerd.draw_ruler
+        if !pagerd.show_ruler
             ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
 
             if pagerd.cropped_columns ≤ ruler_spacing

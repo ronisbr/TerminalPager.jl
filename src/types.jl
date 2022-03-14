@@ -29,7 +29,7 @@ Base.@kwdef mutable struct Pager
     frozen_columns::Int = 0
     frozen_rows::Int = 0
     title_rows::Int = 0
-    draw_ruler::Bool = false
+    show_ruler::Bool = false
 end
 
 # This struct describe the decoration of a string.
