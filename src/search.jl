@@ -76,11 +76,19 @@ function _move_view_to_match!(pagerd::Pager)
     frozen_columns         = pagerd.frozen_columns
     frozen_rows            = pagerd.frozen_rows
     search_matches         = pagerd.search_matches
+    show_ruler             = pagerd.show_ruler
     start_column           = pagerd.start_column
     start_row              = pagerd.start_row
     title_rows             = pagerd.title_rows
 
     rows, cols = _get_pager_display_size(pagerd)
+
+    # If we show the ruler, the amount of available columns to draw data must be
+    # reduced to take into account its width.
+    if show_ruler
+        ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
+        cols -= ruler_spacing
+    end
 
     # Compute the last row and columns that is displayed.
     end_row = (start_row - 1) + (rows - frozen_rows)
