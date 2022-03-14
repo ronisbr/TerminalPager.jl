@@ -193,12 +193,12 @@ Process the keystroke `k` in pager `pagerd`.
 """
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
-    columns_cropped = pagerd.columns_cropped
+    cropped_columns = pagerd.cropped_columns
     display_size    = pagerd.display_size
     features        = pagerd.features
     frozen_columns  = pagerd.frozen_columns
     frozen_rows     = pagerd.frozen_rows
-    lines_cropped   = pagerd.lines_cropped
+    cropped_lines   = pagerd.cropped_lines
     start_column    = pagerd.start_column
     start_row       = pagerd.start_row
 
@@ -218,13 +218,13 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             event = :help
         end
     elseif action == :down
-        if lines_cropped > 0
+        if cropped_lines > 0
             start_row += 1
             _request_redraw!(pagerd)
         end
     elseif action == :fastdown
-        if lines_cropped > 0
-            start_row += min(5, lines_cropped)
+        if cropped_lines > 0
+            start_row += min(5, cropped_lines)
             _request_redraw!(pagerd)
         end
     elseif action == :up
@@ -239,18 +239,18 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         start_row < min_row && (start_row = min_row)
         _request_redraw!(pagerd)
     elseif action == :right
-        if columns_cropped > 0
+        if cropped_columns > 0
             start_column += 1
             _request_redraw!(pagerd)
         end
     elseif action == :fastright
-        if columns_cropped > 0
-            start_column += min(10, columns_cropped)
+        if cropped_columns > 0
+            start_column += min(10, cropped_columns)
             _request_redraw!(pagerd)
         end
     elseif action == :eol
-        if columns_cropped > 0
-            start_column += columns_cropped
+        if cropped_columns > 0
+            start_column += cropped_columns
             _request_redraw!(pagerd)
         end
     elseif action == :left
@@ -270,8 +270,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :end
-        if lines_cropped > 0
-            start_row += lines_cropped
+        if cropped_lines > 0
+            start_row += cropped_lines
             _request_redraw!(pagerd)
         end
     elseif action == :home
@@ -280,8 +280,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :pagedown
-        if lines_cropped > 0
-            start_row += min(display_size[1] - 1, lines_cropped)
+        if cropped_lines > 0
+            start_row += min(display_size[1] - 1, cropped_lines)
             _request_redraw!(pagerd)
         end
     elseif action == :pageup
@@ -291,8 +291,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
     elseif action == :halfpagedown
-        if lines_cropped > 0
-            start_row += min(div(display_size[1] - 1, 2), lines_cropped)
+        if cropped_lines > 0
+            start_row += min(div(display_size[1] - 1, 2), cropped_lines)
             _request_redraw!(pagerd)
         end
     elseif action == :halfpageup
@@ -326,8 +326,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Repack values.
     pagerd.start_column    = start_column
     pagerd.start_row       = start_row
-    pagerd.lines_cropped   = lines_cropped
-    pagerd.columns_cropped = columns_cropped
+    pagerd.cropped_lines   = cropped_lines
+    pagerd.cropped_columns = cropped_columns
     pagerd.event           = event
 
     return nothing
@@ -447,7 +447,7 @@ function _pager_event_process!(pagerd::Pager)
         if !pagerd.draw_ruler
             ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
 
-            if pagerd.columns_cropped ≤ ruler_spacing
+            if pagerd.cropped_columns ≤ ruler_spacing
                 pagerd.start_column -= ruler_spacing
                 pagerd.start_column < 1 && (pagerd.start_column = 1)
             end

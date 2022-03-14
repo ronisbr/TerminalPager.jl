@@ -18,8 +18,8 @@ Base.@kwdef mutable struct Pager
     start_column::Int = 1
     lines::Vector{String} = String[]
     num_lines::Int = 0
-    lines_cropped::Int = 0
-    columns_cropped::Int = 0
+    cropped_lines::Int = 0
+    cropped_columns::Int = 0
     search_matches::SearchMatches = SearchMatches()
     active_search_match_id::Int = 0
     redraw::Bool = true

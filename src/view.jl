@@ -35,7 +35,7 @@ function _view!(pagerd::Pager)
     start_column < 1 && (start_column = 1)
 
     # Render the view
-    rows_cropped, columns_cropped = textview(
+    cropped_lines, cropped_columns = textview(
         buf,
         lines,
         (start_row, -1, start_column, -1);
@@ -50,8 +50,8 @@ function _view!(pagerd::Pager)
     )
 
     # Write the information to the structure.
-    pagerd.columns_cropped = columns_cropped
-    pagerd.lines_cropped   = rows_cropped
+    pagerd.cropped_columns = cropped_columns
+    pagerd.cropped_lines   = cropped_lines
 
     # Since we modified the `buf`, we need to request redraw.
     _request_redraw!(pagerd)

@@ -47,7 +47,7 @@ function _redraw_cmd_line!(pagerd::Pager)
     term          = pagerd.term
     display_size  = pagerd.display_size
     num_lines     = pagerd.num_lines
-    lines_cropped = pagerd.lines_cropped
+    cropped_lines = pagerd.cropped_lines
     mode          = pagerd.mode
     features      = pagerd.features
 
@@ -82,7 +82,7 @@ function _redraw_cmd_line!(pagerd::Pager)
     end
 
     # Compute the scroll position
-    pos = lpad(string(round(Int, 100 * (1 - lines_cropped / num_lines))), 3)
+    pos = lpad(string(round(Int, 100 * (1 - cropped_lines / num_lines))), 3)
     cmd_help *= " " * pos * "%"
 
     lcmd_help = length(cmd_help)
