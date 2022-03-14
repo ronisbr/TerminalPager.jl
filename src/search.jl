@@ -92,7 +92,7 @@ function _move_view_to_match!(pagerd::Pager)
     frozen_columns         = pagerd.frozen_columns
     frozen_rows            = pagerd.frozen_rows
     search_matches         = pagerd.search_matches
-    start_col              = pagerd.start_col
+    start_column           = pagerd.start_column
     start_row              = pagerd.start_row
     title_rows             = pagerd.title_rows
 
@@ -100,7 +100,7 @@ function _move_view_to_match!(pagerd::Pager)
 
     # Compute the last row and columns that is displayed.
     end_row = (start_row - 1) + (rows - frozen_rows)
-    end_col = start_col + (cols - frozen_columns)
+    end_col = start_column + (cols - frozen_columns)
 
     # Get the active match.
     hl_i = active_search_match_id
@@ -147,15 +147,15 @@ function _move_view_to_match!(pagerd::Pager)
     # display it.
     if title_rows < hl_line
         # Check if the highlight column is visible.
-        if hl_col_beg < start_col
-            start_col = hl_col_beg
+        if hl_col_beg < start_column
+            start_column = hl_col_beg
         elseif hl_col_end > end_col
-            start_col = (hl_col_end + 1) - (cols - frozen_columns)
+            start_column = (hl_col_end + 1) - (cols - frozen_columns)
         end
     end
 
-    pagerd.start_row = start_row
-    pagerd.start_col = start_col
+    pagerd.start_row    = start_row
+    pagerd.start_column = start_column
 
     return nothing
 end

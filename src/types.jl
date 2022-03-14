@@ -15,7 +15,7 @@ Base.@kwdef mutable struct Pager
     buf::IOContext{IOBuffer}
     display_size::NTuple{2, Int} = (0, 0)
     start_row::Int = 1
-    start_col::Int = 1
+    start_column::Int = 1
     lines::Vector{String} = String[]
     num_lines::Int = 0
     lines_cropped::Int = 0

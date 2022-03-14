@@ -26,19 +26,19 @@ function _view!(pagerd::Pager)
     lines                  = pagerd.lines
     num_lines              = pagerd.num_lines
     search_matches         = pagerd.search_matches
-    start_col              = pagerd.start_col
+    start_column           = pagerd.start_column
     start_row              = pagerd.start_row
     title_rows             = pagerd.title_rows
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
-    start_col < 1 && (start_col = 1)
+    start_column < 1 && (start_column = 1)
 
     # Render the view
     rows_cropped, columns_cropped = textview(
         buf,
         lines,
-        (start_row, -1, start_col, -1);
+        (start_row, -1, start_column, -1);
         active_match                = active_search_match_id,
         frozen_lines_at_beginning   = frozen_rows,
         frozen_columns_at_beginning = frozen_columns,

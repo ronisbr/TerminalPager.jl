@@ -152,7 +152,7 @@ function _pager!(
         buf = buf,
         display_size = dsize,
         start_row = min(max(1, frozen_rows + 1), num_tokens),
-        start_col = max(1, frozen_columns + 1),
+        start_column = max(1, frozen_columns + 1),
         lines = tokens,
         num_lines = num_tokens,
         frozen_columns = frozen_columns,
@@ -199,7 +199,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     frozen_columns  = pagerd.frozen_columns
     frozen_rows     = pagerd.frozen_rows
     lines_cropped   = pagerd.lines_cropped
-    start_col       = pagerd.start_col
+    start_column    = pagerd.start_column
     start_row       = pagerd.start_row
 
     redraw = false
@@ -240,33 +240,33 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         _request_redraw!(pagerd)
     elseif action == :right
         if columns_cropped > 0
-            start_col += 1
+            start_column += 1
             _request_redraw!(pagerd)
         end
     elseif action == :fastright
         if columns_cropped > 0
-            start_col += min(10, columns_cropped)
+            start_column += min(10, columns_cropped)
             _request_redraw!(pagerd)
         end
     elseif action == :eol
         if columns_cropped > 0
-            start_col += columns_cropped
+            start_column += columns_cropped
             _request_redraw!(pagerd)
         end
     elseif action == :left
-        if start_col > min_col
-            start_col -= 1
+        if start_column > min_col
+            start_column -= 1
             _request_redraw!(pagerd)
         end
     elseif action == :fastleft
-        if start_col > min_col
-            start_col -= 10
-            start_col < min_col && (start_col = min_col)
+        if start_column > min_col
+            start_column -= 10
+            start_column < min_col && (start_column = min_col)
             _request_redraw!(pagerd)
         end
     elseif action == :bol
-        if start_col ≠ min_col
-            start_col = min_col
+        if start_column ≠ min_col
+            start_column = min_col
             _request_redraw!(pagerd)
         end
     elseif action == :end
@@ -324,7 +324,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     end
 
     # Repack values.
-    pagerd.start_col       = start_col
+    pagerd.start_column    = start_column
     pagerd.start_row       = start_row
     pagerd.lines_cropped   = lines_cropped
     pagerd.columns_cropped = columns_cropped
@@ -415,7 +415,7 @@ function _pager_event_process!(pagerd::Pager)
 
             elseif frozen_columns != nothing
                 pagerd.frozen_columns = max(0, frozen_columns)
-                pagerd.start_col = max(pagerd.start_col, frozen_columns + 1)
+                pagerd.start_column = max(pagerd.start_column, frozen_columns + 1)
             end
         end
 
@@ -443,13 +443,13 @@ function _pager_event_process!(pagerd::Pager)
         pagerd.draw_ruler = !pagerd.draw_ruler
 
         # If the ruler is hidden, we must verify if the screen is on the right
-        # edge to fix the `start_col`.
+        # edge to fix the `start_column`.
         if !pagerd.draw_ruler
             ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
 
             if pagerd.columns_cropped ≤ ruler_spacing
-                pagerd.start_col -= ruler_spacing
-                pagerd.start_col < 1 && (pagerd.start_col = 1)
+                pagerd.start_column -= ruler_spacing
+                pagerd.start_column < 1 && (pagerd.start_column = 1)
             end
         end
 
