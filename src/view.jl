@@ -18,17 +18,17 @@ function _view!(pagerd::Pager)
     rows, cols = _get_pager_display_size(pagerd)
 
     # Get the necessary variables.
-    start_row              = pagerd.start_row
-    start_col              = pagerd.start_col
+    active_search_match_id = pagerd.active_search_match_id
+    buf                    = pagerd.buf
+    draw_ruler             = pagerd.draw_ruler
+    frozen_columns         = pagerd.frozen_columns
+    frozen_rows            = pagerd.frozen_rows
     lines                  = pagerd.lines
     num_lines              = pagerd.num_lines
-    active_search_match_id = pagerd.active_search_match_id
     search_matches         = pagerd.search_matches
-    buf                    = pagerd.buf
-    freeze_columns         = pagerd.freeze_columns
-    freeze_rows            = pagerd.freeze_rows
+    start_col              = pagerd.start_col
+    start_row              = pagerd.start_row
     title_rows             = pagerd.title_rows
-    draw_ruler             = pagerd.draw_ruler
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
@@ -39,19 +39,19 @@ function _view!(pagerd::Pager)
         buf,
         lines,
         (start_row, -1, start_col, -1);
-        active_match = active_search_match_id,
-        frozen_lines_at_beginning = freeze_rows,
-        frozen_columns_at_beginning = freeze_columns,
-        maximum_number_of_lines = rows,
-        maximum_number_of_columns = cols,
-        search_matches = search_matches,
-        show_ruler = draw_ruler,
-        title_lines = title_rows
+        active_match                = active_search_match_id,
+        frozen_lines_at_beginning   = frozen_rows,
+        frozen_columns_at_beginning = frozen_columns,
+        maximum_number_of_lines     = rows,
+        maximum_number_of_columns   = cols,
+        search_matches              = search_matches,
+        show_ruler                  = draw_ruler,
+        title_lines                 = title_rows
     )
 
     # Write the information to the structure.
-    pagerd.lines_cropped   = rows_cropped
     pagerd.columns_cropped = columns_cropped
+    pagerd.lines_cropped   = rows_cropped
 
     # Since we modified the `buf`, we need to request redraw.
     _request_redraw!(pagerd)

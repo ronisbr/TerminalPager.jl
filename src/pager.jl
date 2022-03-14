@@ -91,8 +91,8 @@ function _pager!(
     auto::Bool = false,
     change_freeze::Bool = true,
     draw_ruler::Bool = false,
-    freeze_columns::Int = 0,
-    freeze_rows::Int = 0,
+    frozen_columns::Int = 0,
+    frozen_rows::Int = 0,
     title_rows::Int = 0,
     hashelp::Bool = true,
 )
@@ -151,12 +151,12 @@ function _pager!(
         term = term,
         buf = buf,
         display_size = dsize,
-        start_row = min(max(1, freeze_rows + 1), num_tokens),
-        start_col = max(1, freeze_columns + 1),
+        start_row = min(max(1, frozen_rows + 1), num_tokens),
+        start_col = max(1, frozen_columns + 1),
         lines = tokens,
         num_lines = num_tokens,
-        freeze_columns = freeze_columns,
-        freeze_rows = freeze_rows,
+        frozen_columns = frozen_columns,
+        frozen_rows = frozen_rows,
         title_rows = title_rows,
         features = features,
         draw_ruler = draw_ruler
@@ -193,14 +193,14 @@ Process the keystroke `k` in pager `pagerd`.
 """
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
+    columns_cropped = pagerd.columns_cropped
     display_size    = pagerd.display_size
+    features        = pagerd.features
+    frozen_columns  = pagerd.frozen_columns
+    frozen_rows     = pagerd.frozen_rows
+    lines_cropped   = pagerd.lines_cropped
     start_col       = pagerd.start_col
     start_row       = pagerd.start_row
-    lines_cropped   = pagerd.lines_cropped
-    columns_cropped = pagerd.columns_cropped
-    freeze_columns  = pagerd.freeze_columns
-    freeze_rows     = pagerd.freeze_rows
-    features        = pagerd.features
 
     redraw = false
     event = nothing
@@ -208,8 +208,8 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     action = get(_keybindings, key, nothing)
 
     # Compute the minimum values for start row and start column.
-    min_row = max(1, freeze_rows + 1)
-    min_col = max(1, freeze_columns + 1)
+    min_row = max(1, frozen_rows + 1)
+    min_col = max(1, frozen_columns + 1)
 
     if action == :quit
         event = :quit
@@ -383,11 +383,11 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :change_freeze
         cmd_input = _read_cmd!(
             pagerd;
-            prefix = "Freeze rows ($(pagerd.freeze_rows)): "
+            prefix = "Frozen rows # ($(pagerd.frozen_rows)): "
         )
-        freeze_rows = tryparse(Int, cmd_input; base = 10)
+        frozen_rows = tryparse(Int, cmd_input; base = 10)
 
-        if (freeze_rows == nothing) && !isempty(cmd_input)
+        if (frozen_rows == nothing) && !isempty(cmd_input)
             _print_cmd_message!(
                 pagerd,
                 "Invalid data!";
@@ -395,27 +395,27 @@ function _pager_event_process!(pagerd::Pager)
             )
             _jlgetch(pagerd.term.in_stream)
         else
-            if freeze_rows != nothing
-                pagerd.freeze_rows = max(0, freeze_rows)
-                pagerd.start_row = max(pagerd.start_row, freeze_rows + 1)
+            if frozen_rows != nothing
+                pagerd.frozen_rows = max(0, frozen_rows)
+                pagerd.start_row = max(pagerd.start_row, frozen_rows + 1)
             end
 
             cmd_input = _read_cmd!(
                 pagerd;
-                prefix = "Freeze columns ($(pagerd.freeze_columns)): "
+                prefix = "Frozen columns # ($(pagerd.frozen_columns)): "
             )
-            freeze_columns = tryparse(Int, cmd_input; base = 10)
+            frozen_columns = tryparse(Int, cmd_input; base = 10)
 
-            if (freeze_columns == nothing) && !isempty(cmd_input)
+            if (frozen_columns == nothing) && !isempty(cmd_input)
                 _print_cmd_message!(
                     pagerd, "Invalid data!";
                     crayon = crayon"red bold"
                 )
                 _jlgetch(pagerd.term.in_stream)
 
-            elseif freeze_columns != nothing
-                pagerd.freeze_columns = max(0, freeze_columns)
-                pagerd.start_col = max(pagerd.start_col, freeze_columns + 1)
+            elseif frozen_columns != nothing
+                pagerd.frozen_columns = max(0, frozen_columns)
+                pagerd.start_col = max(pagerd.start_col, frozen_columns + 1)
             end
         end
 

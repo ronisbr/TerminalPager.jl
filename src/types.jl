@@ -26,8 +26,8 @@ Base.@kwdef mutable struct Pager
     mode::Symbol = :view
     event::Union{Nothing, Symbol} = nothing
     features::Vector{Symbol} = Symbol[]
-    freeze_columns::Int = 0
-    freeze_rows::Int = 0
+    frozen_columns::Int = 0
+    frozen_rows::Int = 0
     title_rows::Int = 0
     draw_ruler::Bool = false
 end

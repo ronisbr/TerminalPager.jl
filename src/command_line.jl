@@ -145,8 +145,9 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
 
         elseif k.value isa String
             cmd = first(cmd, (cursor_pos - 1)) *
-                k.value *
+                string(k.value) *
                 last(cmd, cmd_width - (cursor_pos - 1))
+
             cmd_width += 1
             cursor_pos += 1
             redraw = true

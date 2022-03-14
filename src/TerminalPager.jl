@@ -66,9 +66,9 @@ Call the pager to show the output of the object `obj`.
     frozen rows and columns inside the pager. (**Default** = `true`)
 - `draw_ruler::Bool`: If `true`, then a vertical ruler is drawn at the pager
     startup. (**Default** = `false`)
-- `freeze_columns::Int = 0`: Number of columns to be frozen at startup.
+- `frozen_columns::Int = 0`: Number of columns to be frozen at startup.
     (**Default** = 0)
-- `freeze_rows::Int = 0`: Number of rows to be frozen at starupt.
+- `frozen_rows::Int = 0`: Number of rows to be frozen at starupt.
     (**Default** = 0)
 - `hashelp::Bool = true`: If `true`, then the user can see the pager help.
     (**Default** = `true`)

@@ -88,19 +88,19 @@ is inside it.
 """
 function _move_view_to_match!(pagerd::Pager)
     # Unpack.
-    start_row              = pagerd.start_row
-    start_col              = pagerd.start_col
     active_search_match_id = pagerd.active_search_match_id
+    frozen_columns         = pagerd.frozen_columns
+    frozen_rows            = pagerd.frozen_rows
     search_matches         = pagerd.search_matches
-    freeze_columns         = pagerd.freeze_columns
-    freeze_rows            = pagerd.freeze_rows
+    start_col              = pagerd.start_col
+    start_row              = pagerd.start_row
     title_rows             = pagerd.title_rows
 
     rows, cols = _get_pager_display_size(pagerd)
 
     # Compute the last row and columns that is displayed.
-    end_row = (start_row - 1) + (rows - freeze_rows)
-    end_col = start_col + (cols - freeze_columns)
+    end_row = (start_row - 1) + (rows - frozen_rows)
+    end_col = start_col + (cols - frozen_columns)
 
     # Get the active match.
     hl_i = active_search_match_id
@@ -138,9 +138,9 @@ function _move_view_to_match!(pagerd::Pager)
 
     # Check if the highlight row is visible.
     if (hl_line < start_row)
-        start_row = max(hl_line, freeze_rows + 1)
+        start_row = max(hl_line, frozen_rows + 1)
     elseif hl_line > end_row
-        start_row = (hl_line + 1) - (rows - freeze_rows)
+        start_row = (hl_line + 1) - (rows - frozen_rows)
     end
 
     # If the highlight is outsidde the title rows, then we can move the view to
@@ -150,7 +150,7 @@ function _move_view_to_match!(pagerd::Pager)
         if hl_col_beg < start_col
             start_col = hl_col_beg
         elseif hl_col_end > end_col
-            start_col = (hl_col_end + 1) - (cols - freeze_columns)
+            start_col = (hl_col_end + 1) - (cols - frozen_columns)
         end
     end
 
