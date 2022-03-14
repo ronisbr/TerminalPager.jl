@@ -45,7 +45,6 @@ include("./pager.jl")
 include("./repl.jl")
 include("./search.jl")
 include("./screen.jl")
-include("./string.jl")
 include("./view.jl")
 
 include("./input/keybindings.jl")
