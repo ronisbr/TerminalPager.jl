@@ -44,7 +44,8 @@ function _jlgetch(stream::IO)
         end
 
         if length(s) == 1
-            return Keystroke(raw = s, value = :esc)
+            return Keystroke(raw = s, value = "<esc>")
+
         elseif haskey(keycodes, s)
             aux = keycodes[s]
             return Keystroke(
@@ -55,10 +56,12 @@ function _jlgetch(stream::IO)
                 shift = aux.shift
             )
         else
-            return Keystroke(raw = s, value = :undefined)
+            return Keystroke(raw = s, value = "<undefined>")
         end
+
     elseif c == nocharval
-        return Keystroke(raw = string(c), value = :undefined)
+        return Keystroke(raw = string(c), value = "<undefined>")
+
     elseif 192 <= c <= 223 # utf8 based logic starts here
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
@@ -66,24 +69,26 @@ function _jlgetch(stream::IO)
             raw = string(bs1) * ", " * string(bs2),
             value = String([bs1, bs2])
         )
+
     elseif c < 192 || c > 253
         if c == 4
-            return Keystroke(raw = string(c), value = :eot)
+            return Keystroke(raw = string(c), value = "<eot>")
         elseif c == 9
-            return Keystroke(raw = string(c), value = :tab)
+            return Keystroke(raw = string(c), value = "<tab>")
         elseif c == 10
-            return Keystroke(raw = string(c), value = :enter)
+            return Keystroke(raw = string(c), value = "<enter>")
         elseif c == 13
-            return Keystroke(raw = string(c), value = :enter)
+            return Keystroke(raw = string(c), value = "<enter>")
         elseif c == 21
-            return Keystroke(raw = string(c), value = :shiftin)
+            return Keystroke(raw = string(c), value = "<shiftin>")
         elseif c == 127
-            return Keystroke(raw = string(c), value = :backspace)
+            return Keystroke(raw = string(c), value = "<backspace>")
         elseif c == 410
-            return Keystroke(raw = string(c), value = :resize)
+            return Keystroke(raw = string(c), value = "<resize>")
         else
             return Keystroke(raw = string(c), value = string(Char(c)))
         end
+
     elseif  224 <= c <= 239
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
@@ -94,6 +99,7 @@ function _jlgetch(stream::IO)
                   string(bs3),
             value = String([bs1, bs2, bs3])
         )
+
     elseif  240 <= c <= 247
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
@@ -106,6 +112,7 @@ function _jlgetch(stream::IO)
                   string(bs4),
             value = String([bs1, bs2, bs3, bs4])
         )
+
     elseif  248 <= c <= 251
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
@@ -120,6 +127,7 @@ function _jlgetch(stream::IO)
                   string(bs5),
             value = String([bs1, bs2, bs3, bs4, bs5])
         )
+
     elseif  252 <= c <= 253
         bs1 = UInt8(c)
         bs2 = read(stream, UInt8)::UInt8
@@ -138,5 +146,5 @@ function _jlgetch(stream::IO)
         )
     end
 
-    return Keystroke(value = :undefined)
+    return Keystroke(value = "<undefined>")
 end

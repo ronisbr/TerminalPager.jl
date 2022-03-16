@@ -62,9 +62,9 @@ Structure that defines a keystroke.
 * `shift`: `true` if SHIFT key was pressed (only valid if `value != :char`).
 """
 Base.@kwdef struct Keystroke
-    raw::String = ""
-    value::Union{Symbol, String}
-    alt::Bool   = false
-    ctrl::Bool  = false
-    shift::Bool = false
+    raw::String   = ""
+    value::String = ""
+    alt::Bool     = false
+    ctrl::Bool    = false
+    shift::Bool   = false
 end
