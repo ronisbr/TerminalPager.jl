@@ -9,5 +9,8 @@
 
 function precompilation_input()
     include("../test/runtests.jl")
-    rand(100, 100) |> pager
+
+    # Run the pager using the most common inputs.
+    rand(10, 10) |> pager
+    @help(pager)
 end
