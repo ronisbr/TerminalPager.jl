@@ -7,14 +7,6 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-const _HELP_CRAYON_B  = string(crayon"bold")
-const _HELP_CRAYON_D  = string(Crayon(reset = true))
-const _HELP_CRAYON_CB = string(crayon"cyan bold")
-const _HELP_CRAYON_C  = string(crayon"cyan")
-const _HELP_CRAYON_G  = string(crayon"dark_gray")
-const _HELP_CRAYON_R  = string(crayon"red bold")
-const _HELP_CRAYON_Y  = string(crayon"yellow bold")
-
 """
     _help!(pargerd::Pager)
 
@@ -26,17 +18,17 @@ function _help!(pagerd::Pager)
     buf  = pagerd.buf
 
     if get(term.out_stream, :color, true)::Bool
-        _b  = _HELP_CRAYON_B
-        _d  = _HELP_CRAYON_D
-        _cb = _HELP_CRAYON_CB
-        _c  = _HELP_CRAYON_C
-        _g  = _HELP_CRAYON_G
-        _r  = _HELP_CRAYON_R
-        _y  = _HELP_CRAYON_Y
+        _b  = _CRAYON_B
+        _c  = _CRAYON_C
+        _cb = _CRAYON_CB
+        _d  = _CRAYON_RESET
+        _g  = _CRAYON_G
+        _r  = _CRAYON_R
+        _y  = _CRAYON_Y
     else
         _b = ""
-        _d = ""
         _c = ""
+        _d = ""
         _g = ""
         _r = ""
         _y = ""

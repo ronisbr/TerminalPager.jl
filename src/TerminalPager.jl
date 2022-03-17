@@ -29,8 +29,13 @@ const CSI = "\x1b["
 const PKG_VERSION = v"0.2.1"
 
 # Crayons
-const _reset_crayon = string(Crayon(reset = true))
-const _ruler_crayon = string(crayon"dark_gray")
+const _CRAYON_B     = string(crayon"bold")
+const _CRAYON_CB    = string(crayon"cyan bold")
+const _CRAYON_C     = string(crayon"cyan")
+const _CRAYON_G     = string(crayon"dark_gray")
+const _CRAYON_R     = string(crayon"red bold")
+const _CRAYON_RESET = string(Crayon(reset = true))
+const _CRAYON_Y     = string(crayon"yellow bold")
 
 ################################################################################
 #                                   Includes

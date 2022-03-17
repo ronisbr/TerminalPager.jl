@@ -12,14 +12,14 @@
 function _print_cmd_message!(
     pagerd::Pager,
     msg::String;
-    crayon::Crayon = crayon()
+    crayon::Crayon = Crayon()
 )
 
     term         = pagerd.term
     display_size = pagerd.display_size
 
     if get(term.out_stream, :color, true)
-        _d = string(Crayon(reset = true))
+        _d = _CRAYON_RESET
         _h = string(crayon)
     else
         _d = ""
@@ -47,8 +47,8 @@ function _redraw_cmd_line!(pagerd::Pager)
     features      = pagerd.features
 
     if get(term.out_stream, :color, true)::Bool
-        _d = string(Crayon(reset = true))
-        _g = string(crayon"dark_gray")
+        _d = _CRAYON_RESET
+        _g = _CRAYON_G
     else
         _d = ""
         _g = ""
