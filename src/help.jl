@@ -163,7 +163,7 @@ $(_y)  :quit_search$(_d)
 $(_c)    Keybindings: $(kb_quit_search)$(_d)
 
 $(_b)                                 Freezing data$(_d)
-$(_g)  These action requires the feature :change_freeze.
+$(_g)  These actions requires the feature :change_freeze.
 $(_y)  :change_freeze$(_d)
     Two values will be requested in the command line. The first is the number of
     columns and the second is the number of rows that will be frozen. If the
