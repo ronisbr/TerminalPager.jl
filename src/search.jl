@@ -36,8 +36,7 @@ end
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     search_matches         = pagerd.search_matches
     active_search_match_id = pagerd.active_search_match_id
-
-    num_matches = length(search_matches)
+    num_matches            = pagerd.num_matches
 
     if num_matches == 0
         active_number_match = 0
@@ -65,6 +64,15 @@ end
 # the matches will be written to `pagerd`.
 function _find_matches!(pagerd::Pager, regex::Regex)
     pagerd.search_matches = string_search_per_line(pagerd.lines, regex)
+
+    num_matches = 0
+
+    for (k, v) in pagerd.search_matches
+        num_matches += length(v)
+    end
+
+    pagerd.num_matches = num_matches
+
     return nothing
 end
 

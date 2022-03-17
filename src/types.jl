@@ -21,6 +21,7 @@ Base.@kwdef mutable struct Pager
     cropped_lines::Int = 0
     cropped_columns::Int = 0
     search_matches::SearchMatches = SearchMatches()
+    num_matches::Int = 0
     active_search_match_id::Int = 0
     redraw::Bool = true
     mode::Symbol = :view
