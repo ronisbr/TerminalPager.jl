@@ -93,8 +93,8 @@ function __init__()
 
     # Modify the key bindings if the used wants `vi` mode.
     if get(ENV, "PAGER_MODE", "default") == "vi"
-        _keybindings[(:eot,     false, false, false)] = :halfpagedown
-        _keybindings[(:shiftin, false, false, false)] = :halfpageup
+        _keybindings[("<eot>",     false, false, false)] = :halfpagedown
+        _keybindings[("<shiftin>", false, false, false)] = :halfpageup
     end
 
     if isdefined(Base, :active_repl)
