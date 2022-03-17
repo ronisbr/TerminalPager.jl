@@ -1,6 +1,24 @@
 TerminalPager.jl
 ================
 
+Version 0.3.0
+-------------
+
+- ![BREAKING][badge-breaking]: The keywords `freeze_rows` and `freeze_columns`
+  were renamed to `frozen_rows` and `frozen_columns`.
+- ![BREAKING][badge-breaking]: The keyword `draw_ruler` was renamed to
+  `show_ruler`.
+- ![BREAKING][badge-breaking]: The type of keystroke values are now `String`
+  instead of `Union{Symbol, String}`. This modification can break code that adds
+  keybindings. However, it removed a lot of type instability and runtime
+  dispatch, leading to a substantial performance gain.
+- ![Feature][badge-feature] The function `set_highlighting` can be used to
+  change the active and inactive search highlight decoration.
+- ![Enhancement][badge-enhancement] Many performance improvements. The inner
+  engine to create text views, called "recipes", was removed in favour of the
+  algorithm in StringManipulation.jl (function `textview`).
+
+
 Version 0.2.2
 -------------
 
