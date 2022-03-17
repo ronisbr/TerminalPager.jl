@@ -7,10 +7,23 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-const _search_highlighting = Dict{Bool, Decoration}(
-    false => Decoration(foreground = "30", background = "47"),
-    true  => Decoration(foreground = "30", background = "43")
+export reset_highlighting, set_highlighting
+
+const _search_highlighting = Dict{Bool, String}(
+    false => CSI * "30;47m",
+    true  => CSI * "30;43m"
 )
+
+"""
+    set_highlighting(active::Crayon, inactive::Crayon)
+
+Set the active and inactive highlighting to the crayons `active` and `inactive`.
+"""
+function set_highlighting(active::Crayon, inactive::Crayon)
+    _search_highlighting[true]  = string(active)
+    _search_highlighting[false] = string(inactive)
+    return nothing
+end
 
 """
     reset_highlighting()
@@ -18,16 +31,8 @@ const _search_highlighting = Dict{Bool, Decoration}(
 Reset the search highlighting to the default one.
 """
 function reset_highlighting()
-    _search_highlighting[false] = Decoration(
-        foreground = "30",
-        background = "47"
-    )
-
-    _search_highlighting[true] = Decoration(
-        foreground = "30",
-        background = "43"
-    )
-
+    _search_highlighting[false] = CSI * "30;47m"
+    _search_highlighting[true]  = CSI * "30;43m"
     return nothing
 end
 

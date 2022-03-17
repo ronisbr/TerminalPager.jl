@@ -34,11 +34,13 @@ function _view!(pagerd::Pager)
         buf,
         lines,
         (start_row, -1, start_column, -1);
+        active_highlight            = _search_highlighting[true],
         active_match                = active_search_match_id,
-        frozen_lines_at_beginning   = frozen_rows,
         frozen_columns_at_beginning = frozen_columns,
-        maximum_number_of_lines     = rows,
+        frozen_lines_at_beginning   = frozen_rows,
+        highlight                   = _search_highlighting[false],
         maximum_number_of_columns   = cols,
+        maximum_number_of_lines     = rows,
         search_matches              = search_matches,
         show_ruler                  = show_ruler,
         title_lines                 = title_rows

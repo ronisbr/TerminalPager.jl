@@ -33,22 +33,6 @@ Base.@kwdef mutable struct Pager
     show_ruler::Bool = false
 end
 
-# This struct describe the decoration of a string.
-Base.@kwdef struct Decoration
-    foreground::String = ""
-    background::String = ""
-    bold::Bool         = false
-    underline::Bool    = false
-    reset::Bool        = false
-    reversed::Bool     = false
-
-    # This variable is used to force a formatting. This is necessary because we
-    # do not add escape sequences if the decoration is the default, avoiding
-    # unnecessary writing. However, we need to differentiate the decoration
-    # that is forcing to go back to the default.
-    force::Bool = false
-end
-
 """
     struct Keystorke
 
