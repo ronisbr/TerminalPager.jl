@@ -494,7 +494,7 @@ function _redraw!(pagerd::Pager)
     lines     = split(str, '\n')
     num_lines = length(lines)
 
-    _move_cursor(term.out_stream, 0, 0)
+    _move_cursor(term.out_stream, 1, 1)
 
     # Hide the cursor when drawing the buffer.
     _hide_cursor(term.out_stream)
@@ -507,7 +507,7 @@ function _redraw!(pagerd::Pager)
 
     # Clear the rest of the screen.
     for i = (num_lines + 1):display_size[1]
-        _move_cursor(term.out_stream, i - 1, 0)
+        _move_cursor(term.out_stream, i, 1)
         _clear_to_eol(term.out_stream)
     end
 

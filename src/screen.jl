@@ -11,8 +11,6 @@
 # overwritten. Otherwise, a new screen page will be printed, preserving the
 # history. At the end, the cursor position is `(0, 0)`.
 function _clear_screen(io::IO; newlines::Bool = false)
-    # TODO: The routing to clear the screen can be inside the routine to redraw.
-    # This will save some unnecessary cleaning.
     if newlines
         write(io, "$(CSI)2J")
 
@@ -20,12 +18,12 @@ function _clear_screen(io::IO; newlines::Bool = false)
         dsize::Tuple{Int, Int} = displaysize(io)
 
         for i = 1:dsize[1]
-            _move_cursor(io, i-1, 0)
+            _move_cursor(io, i, 1)
             _clear_to_eol(io)
         end
     end
 
-    _move_cursor(io, 0, 0)
+    _move_cursor(io, 1, 1)
 
     return nothing
 end

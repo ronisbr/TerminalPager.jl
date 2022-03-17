@@ -27,7 +27,7 @@ function _print_cmd_message!(
     end
 
     # Move the cursor to the last line and print the message.
-    _move_cursor(term.out_stream, display_size[1], 0)
+    _move_cursor(term.out_stream, display_size[1], 1)
     write(term.out_stream, _h)
     write(term.out_stream, msg)
     write(term.out_stream, _d)
@@ -99,7 +99,7 @@ function _redraw_cmd_line!(pagerd::Pager)
     end
 
     # Move the cursor to the last line and print the command line.
-    _move_cursor(term.out_stream, display_size[1], 0)
+    _move_cursor(term.out_stream, display_size[1], 1)
     write(term.out_stream, ":" * cmd_aligned)
     _move_cursor(term.out_stream, display_size[1], 2)
 
