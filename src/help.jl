@@ -7,6 +7,14 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+const _HELP_CRAYON_B  = string(crayon"bold")
+const _HELP_CRAYON_D  = string(Crayon(reset = true))
+const _HELP_CRAYON_CB = string(crayon"cyan bold")
+const _HELP_CRAYON_C  = string(crayon"cyan")
+const _HELP_CRAYON_G  = string(crayon"dark_gray")
+const _HELP_CRAYON_R  = string(crayon"red bold")
+const _HELP_CRAYON_Y  = string(crayon"yellow bold")
+
 """
     _help!(pargerd::Pager)
 
@@ -18,13 +26,13 @@ function _help!(pagerd::Pager)
     buf  = pagerd.buf
 
     if get(term.out_stream, :color, true)::Bool
-        _b  = string(crayon"bold")
-        _d  = string(Crayon(reset = true))
-        _cb = string(crayon"cyan bold")
-        _c  = string(crayon"cyan")
-        _g  = string(crayon"dark_gray")
-        _r  = string(crayon"red bold")
-        _y  = string(crayon"yellow bold")
+        _b  = _HELP_CRAYON_B
+        _d  = _HELP_CRAYON_D
+        _cb = _HELP_CRAYON_CB
+        _c  = _HELP_CRAYON_C
+        _g  = _HELP_CRAYON_G
+        _r  = _HELP_CRAYON_R
+        _y  = _HELP_CRAYON_Y
     else
         _b = ""
         _d = ""
@@ -198,7 +206,7 @@ function _getkb(action::Symbol)
     return str
 end
 
-function _kbtostr(kb::Tuple{Union{Symbol, String}, Bool, Bool, Bool})
+function _kbtostr(kb::Tuple{String, Bool, Bool, Bool})
     if kb[1] == " "
         str = "space"
     else
