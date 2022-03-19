@@ -12,7 +12,7 @@ StringManipulation = "892a3eda-7b42-436c-8928-eab12a02cf0e"
 
 [compat]
 Crayons = "4.0"
-StringManipulation = "0.2"
+StringManipulation = "0.2, 0.3"
 julia = "1"
 
 [extras]
