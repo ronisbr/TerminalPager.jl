@@ -439,6 +439,72 @@
     @test pagerd.redraw       == false
     @test pagerd.event        === nothing
 
+    # Half page up
+    # ==========================================================================
+
+    k = TerminalPager.Keystroke(value = "u")
+
+    pagerd.redraw          = false
+    pagerd.start_row       = 40
+    pagerd.start_column    = 10
+    pagerd.cropped_lines   = 20
+    pagerd.cropped_columns = 20
+    pagerd.display_size    = (20, 10)
+
+    TerminalPager._pager_key_process!(pagerd, k)
+
+    @test pagerd.start_row    == 31
+    @test pagerd.start_column == 10
+    @test pagerd.redraw       == true
+    @test pagerd.event        === nothing
+
+    pagerd.redraw          = false
+    pagerd.start_row       = 10
+    pagerd.start_column    = 10
+    pagerd.cropped_lines   = 0
+    pagerd.cropped_columns = 20
+    pagerd.display_size    = (20, 20)
+
+    TerminalPager._pager_key_process!(pagerd, k)
+
+    @test pagerd.start_row    == 1
+    @test pagerd.start_column == 10
+    @test pagerd.redraw       == true
+    @test pagerd.event        === nothing
+
+    # Half page down
+    # ==========================================================================
+
+    k = TerminalPager.Keystroke(value = "d")
+
+    pagerd.redraw          = false
+    pagerd.start_row       = 20
+    pagerd.start_column    = 10
+    pagerd.cropped_lines   = 30
+    pagerd.cropped_columns = 20
+    pagerd.display_size    = (10, 20)
+
+    TerminalPager._pager_key_process!(pagerd, k)
+
+    @test pagerd.start_row    == 24
+    @test pagerd.start_column == 10
+    @test pagerd.redraw       == true
+    @test pagerd.event        === nothing
+
+    pagerd.redraw          = false
+    pagerd.start_row       = 10
+    pagerd.start_column    = 10
+    pagerd.cropped_lines   = 10
+    pagerd.cropped_columns = 20
+    pagerd.display_size    = (20,20)
+
+    TerminalPager._pager_key_process!(pagerd, k)
+
+    @test pagerd.start_row    == 19
+    @test pagerd.start_column == 10
+    @test pagerd.redraw       == true
+    @test pagerd.event        === nothing
+
     # Page up
     # ==========================================================================
 
