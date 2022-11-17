@@ -228,7 +228,8 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         buf = IOBuffer()
         io = IOContext(
             IOContext(buf, stdout),
-            :limit => false
+            :displaysize => displaysize(stdout),
+            :limit => false,
         )
 
         # Redirect `stdout` to the new buffer.
@@ -302,7 +303,8 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         buf = IOBuffer()
         io = IOContext(
             IOContext(buf, stdout),
-            :limit => false
+            :displaysize => displaysize(stdout),
+            :limit => false,
         )
 
         # Get the AST that generates the help.
