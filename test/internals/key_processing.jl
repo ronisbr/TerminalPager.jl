@@ -43,6 +43,36 @@
     @test pagerd.redraw       == false
     @test pagerd.event        === nothing
 
+    k = TerminalPager.Keystroke(value = "<enter>")
+
+    pagerd.redraw          = false
+    pagerd.start_row       = 10
+    pagerd.start_column    = 10
+    pagerd.cropped_lines   = 20
+    pagerd.cropped_columns = 20
+    pagerd.display_size    = (20, 20)
+
+    TerminalPager._pager_key_process!(pagerd, k)
+
+    @test pagerd.start_row    == 11
+    @test pagerd.start_column == 10
+    @test pagerd.redraw       == true
+    @test pagerd.event        === nothing
+
+    pagerd.redraw          = false
+    pagerd.start_row       = 10
+    pagerd.start_column    = 10
+    pagerd.cropped_lines   = 0
+    pagerd.cropped_columns = 20
+    pagerd.display_size    = (20, 20)
+
+    TerminalPager._pager_key_process!(pagerd, k)
+
+    @test pagerd.start_row    == 10
+    @test pagerd.start_column == 10
+    @test pagerd.redraw       == false
+    @test pagerd.event        === nothing
+
     # Shift down
     # ==========================================================================
 
