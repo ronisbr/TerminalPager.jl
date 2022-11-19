@@ -9,7 +9,8 @@ Version 0.4.0
   columns to 80. (Issue [#25][gh-issue-25])
 - ![Feature][badge-feature] The keys `u/d` are now bound to `:halfup` and
   `:halfdown`. (PR [#22][gh-pr-22])
-- ![Feature][badge-feature] The key `<enter>` is now bound to `:down`.
+- ![Feature][badge-feature] The key `<enter>` is now bound to `:down`. (PR
+  [#24][gh-pr-24])
 
 Version 0.3.1
 -------------
@@ -148,6 +149,7 @@ Version 0.0.1
 [gh-issue-15]: https://github.com/ronisbr/PrettyTables.jl/issues/15
 [gh-issue-16]: https://github.com/ronisbr/PrettyTables.jl/issues/16
 [gh-issue-17]: https://github.com/ronisbr/PrettyTables.jl/issues/17
+[gh-issue-25]: https://github.com/ronisbr/PrettyTables.jl/issues/25
 
 [gh-pr-22]: https://github.com/ronisbr/PrettyTables.jl/pull/22
-[gh-pr-25]: https://github.com/ronisbr/PrettyTables.jl/pull/25
+[gh-pr-24]: https://github.com/ronisbr/PrettyTables.jl/pull/24
