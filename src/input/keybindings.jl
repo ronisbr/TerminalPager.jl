@@ -15,6 +15,7 @@ const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
     ("k",          false, false, false) => :up,
     ("<down>",     false, false, false) => :down,
     ("j",          false, false, false) => :down,
+    ("<enter>",    false, false, false) => :down,
     ("<left>",     false, false, false) => :left,
     ("h",          false, false, false) => :left,
     ("<right>",    false, false, false) => :right,
