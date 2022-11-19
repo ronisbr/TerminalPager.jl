@@ -1,6 +1,16 @@
 TerminalPager.jl
 ================
 
+Version 0.4.0
+-------------
+
+- ![BREAKING][badge-breaking] The REPL mode `pager?` now uses the entire
+  available display size to show the help, instead of fixing the number of
+  columns to 80. (Issue [#25][gh-issue-25])
+- ![Feature][badge-feature] The keys `u/d` are now bound to `:halfup` and
+  `:halfdown`. (PR [#22][gh-pr-22])
+- ![Feature][badge-feature] The key `<enter>` is now bound to `:down`.
+
 Version 0.3.1
 -------------
 
@@ -10,11 +20,11 @@ Version 0.3.1
 Version 0.3.0
 -------------
 
-- ![BREAKING][badge-breaking]: The keywords `freeze_rows` and `freeze_columns`
+- ![BREAKING][badge-breaking] The keywords `freeze_rows` and `freeze_columns`
   were renamed to `frozen_rows` and `frozen_columns`.
-- ![BREAKING][badge-breaking]: The keyword `draw_ruler` was renamed to
+- ![BREAKING][badge-breaking] The keyword `draw_ruler` was renamed to
   `show_ruler`.
-- ![BREAKING][badge-breaking]: The type of keystroke values are now `String`
+- ![BREAKING][badge-breaking] The type of keystroke values are now `String`
   instead of `Union{Symbol, String}`. This modification can break code that adds
   keybindings. However, it removed a lot of type instability and runtime
   dispatch, leading to a substantial performance gain.
@@ -138,3 +148,6 @@ Version 0.0.1
 [gh-issue-15]: https://github.com/ronisbr/PrettyTables.jl/issues/15
 [gh-issue-16]: https://github.com/ronisbr/PrettyTables.jl/issues/16
 [gh-issue-17]: https://github.com/ronisbr/PrettyTables.jl/issues/17
+
+[gh-pr-22]: https://github.com/ronisbr/PrettyTables.jl/pull/22
+[gh-pr-25]: https://github.com/ronisbr/PrettyTables.jl/pull/25
