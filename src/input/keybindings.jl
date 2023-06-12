@@ -26,6 +26,7 @@ const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
     ("<right>",    false, false, true ) => :fastright,
     ("<left>",     true,  false, false) => :bol,
     ("0",          false, false, false) => :bol,
+    ("^",          false, false, false) => :bol,
     ("<right>",    true,  false, false) => :eol,
     ("\$",         false, false, false) => :eol,
     ("u",          false, false, false) => :halfpageup,
