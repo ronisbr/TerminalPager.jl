@@ -175,7 +175,7 @@ $(_y)  :change_title_rows$(_d)
 $(_c)    Keybindings: $(kb_change_title_rows)$(_d)
 """
 
-    _pager!(pagerd.term, help_str; hashelp = false)
+    _pager!(pagerd.term, help_str; hashelp = false, has_visual_mode = false)
 
     return nothing
 end

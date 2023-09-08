@@ -74,6 +74,8 @@ Call the pager to show the output of the object `obj`.
     (**Default** = 0)
 - `hashelp::Bool = true`: If `true`, then the user can see the pager help.
     (**Default** = `true`)
+- `has_visual_mode::Bool = true`: If `true`, the user can use the visual mode.
+    (**Default** = `true`)
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the
     line numbers. (**Default** = `false`)
 """

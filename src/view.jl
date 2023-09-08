@@ -29,6 +29,15 @@ function _view!(pagerd::Pager)
     start_row < 1 && (start_row = 1)
     start_column < 1 && (start_column = 1)
 
+    if pagerd.visual_mode
+        current_line = pagerd.visual_mode_line + start_row - 1
+        visual_lines = vcat(current_line, pagerd.visual_mode_selected_lines)
+        visual_line_backgrounds = vcat("44", fill("100", length(pagerd.visual_mode_selected_lines)))
+    else
+        visual_lines = nothing
+        visual_line_backgrounds = ""
+    end
+
     # Render the view
     cropped_lines, cropped_columns = textview(
         buf,
@@ -43,7 +52,9 @@ function _view!(pagerd::Pager)
         maximum_number_of_lines     = rows,
         search_matches              = search_matches,
         show_ruler                  = show_ruler,
-        title_lines                 = title_rows
+        title_lines                 = title_rows,
+        visual_lines                = visual_lines,
+        visual_line_backgrounds     = visual_line_backgrounds
     )
 
     # Write the information to the structure.

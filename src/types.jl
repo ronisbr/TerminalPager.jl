@@ -31,6 +31,9 @@ Base.@kwdef mutable struct Pager
     frozen_rows::Int = 0
     title_rows::Int = 0
     show_ruler::Bool = false
+    visual_mode::Bool = false
+    visual_mode_line::Int = 1
+    visual_mode_selected_lines::Vector{Int} = Int[]
 end
 
 """

@@ -69,6 +69,7 @@ function _pager!(
     frozen_rows::Int = 0,
     title_rows::Int = 0,
     hashelp::Bool = true,
+    has_visual_mode::Bool = true,
     show_ruler::Bool = false
 )
     # Get the tokens (lines) of the input.
@@ -120,6 +121,7 @@ function _pager!(
     features = Symbol[]
     change_freeze && push!(features, :change_freeze)
     hashelp && push!(features, :help)
+    has_visual_mode && push!(features, :visual_mode)
 
     # Initialize the pager structure.
     pagerd = Pager(
@@ -168,14 +170,17 @@ Process the keystroke `k` in pager `pagerd`.
 """
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
-    cropped_columns = pagerd.cropped_columns
-    display_size    = pagerd.display_size
-    features        = pagerd.features
-    frozen_columns  = pagerd.frozen_columns
-    frozen_rows     = pagerd.frozen_rows
-    cropped_lines   = pagerd.cropped_lines
-    start_column    = pagerd.start_column
-    start_row       = pagerd.start_row
+    cropped_columns  = pagerd.cropped_columns
+    display_size     = pagerd.display_size
+    features         = pagerd.features
+    frozen_columns   = pagerd.frozen_columns
+    frozen_rows      = pagerd.frozen_rows
+    cropped_lines    = pagerd.cropped_lines
+    num_lines        = pagerd.num_lines
+    start_column     = pagerd.start_column
+    start_row        = pagerd.start_row
+    visual_mode      = pagerd.visual_mode
+    visual_mode_line = pagerd.visual_mode_line
 
     redraw = false
     event = nothing
@@ -186,6 +191,11 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     min_row = max(1, frozen_rows + 1)
     min_col = max(1, frozen_columns + 1)
 
+    # We should disable the visual line mode if all lines are frozen.
+    if (min_row >= num_lines) || (min_row >= display_size[1])
+        visual_mode = false
+    end
+
     if action == :quit
         event = :quit
 
@@ -195,33 +205,78 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         end
 
     elseif action == :down
-        if cropped_lines > 0
-            start_row += 1
+        if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
+            visual_mode_line += 1
+
+            # The visual line must not be placed after the last line.
+            if min_row + visual_mode_line - 1 > num_lines
+                visual_mode_line = num_lines - min_row + 1
+            end
+
             _request_redraw!(pagerd)
+        else
+            if cropped_lines > 0
+                start_row += 1
+                _request_redraw!(pagerd)
+            end
         end
 
     elseif action == :fastdown
-        if cropped_lines > 0
-            start_row += min(5, cropped_lines)
+        if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
+            visual_mode_line += 5
+
+            # If we passed the last line, we should keep the visual line in the last line,
+            # but scroll the view.
+            Δy = visual_mode_line - (display_size[1] - frozen_rows - 1)
+
+            if Δy > 0
+                start_row += min(Δy, cropped_lines)
+                visual_mode_line = display_size[1] - frozen_rows - 1
+            end
+
+            # The visual line must not be placed after the last line.
+            if min_row + visual_mode_line - 1 > num_lines
+                visual_mode_line = num_lines - min_row + 1
+            end
+
             _request_redraw!(pagerd)
+        else
+            if cropped_lines > 0
+                start_row += min(5, cropped_lines)
+                _request_redraw!(pagerd)
+            end
         end
 
     elseif action == :up
-        if start_row > min_row
-            start_row -= 1
+        if visual_mode && (visual_mode_line > 1)
+            visual_mode_line -= 1
             _request_redraw!(pagerd)
+        else
+            if start_row > min_row
+                start_row -= 1
+                _request_redraw!(pagerd)
+            end
         end
 
     elseif action == :fastup
-        if start_row > min_row
-            start_row -= 5
-        end
+        if visual_mode && (visual_mode_line > 1)
+            visual_mode_line -= 5
 
-        if start_row < min_row
-            start_row = min_row
-        end
+            if visual_mode_line < 1
+                visual_mode_line = 1
+            end
 
-        _request_redraw!(pagerd)
+            _request_redraw!(pagerd)
+        else
+            if start_row > min_row
+                start_row -= 5
+                _request_redraw!(pagerd)
+            end
+
+            if start_row < min_row
+                start_row = min_row
+            end
+        end
 
     elseif action == :right
         if cropped_columns > 0
@@ -264,21 +319,36 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
 
-    elseif action == :end
+    elseif action == (:end)
         if cropped_lines > 0
             start_row += cropped_lines
             _request_redraw!(pagerd)
         end
 
     elseif action == :home
-        if start_row ≠ min_row
-            start_row = min_row
-            _request_redraw!(pagerd)
+        if visual_mode
+            if (start_row ≠ min_row) || (visual_mode_line != 1)
+                start_row = min_row
+                visual_mode_line = 1
+                _request_redraw!(pagerd)
+            end
+
+        else
+            if start_row ≠ min_row
+                start_row = min_row
+                _request_redraw!(pagerd)
+            end
         end
 
     elseif action == :pagedown
         if cropped_lines > 0
             start_row += min(display_size[1] - 1, cropped_lines)
+
+            _request_redraw!(pagerd)
+        end
+
+        if visual_mode && (visual_mode_line ≠ display_size[1] - frozen_rows - 1)
+            visual_mode_line = display_size[1] - frozen_rows - 1
             _request_redraw!(pagerd)
         end
 
@@ -293,21 +363,56 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
 
-    elseif action == :halfpagedown
-        if cropped_lines > 0
-            start_row += min(div(display_size[1] - 1, 2), cropped_lines)
+        if visual_mode && (visual_mode_line ≠ 1)
+            visual_mode_line = 1
             _request_redraw!(pagerd)
         end
 
-    elseif action == :halfpageup
-        if start_row ≠ min_row
-            start_row -= div(display_size[1] - 1, 2)
+    elseif action == :halfpagedown
+        if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
+            visual_mode_line += div(display_size[1] - 1, 2)
 
-            if start_row < min_row
-                start_row = min_row
+            # If we passed the last line, we should keep the visual line in the last line,
+            # but scroll the view.
+            Δy = visual_mode_line - (display_size[1] - frozen_rows - 1)
+
+            if Δy > 0
+                start_row += min(Δy, cropped_lines)
+                visual_mode_line = display_size[1] - frozen_rows - 1
+            end
+
+            # The visual line must not be placed after the last line.
+            if min_row + visual_mode_line - 1 > num_lines
+                visual_mode_line = num_lines - min_row + 1
             end
 
             _request_redraw!(pagerd)
+        else
+            if cropped_lines > 0
+                start_row += min(div(display_size[1] - 1, 2), cropped_lines)
+                _request_redraw!(pagerd)
+            end
+        end
+
+    elseif action == :halfpageup
+        if visual_mode && (visual_mode_line > 1)
+            visual_mode_line -= div(display_size[1] - 1, 2)
+
+            if visual_mode_line < 1
+                visual_mode_line = 1
+            end
+
+            _request_redraw!(pagerd)
+        else
+            if start_row ≠ min_row
+                start_row -= div(display_size[1] - 1, 2)
+
+                if start_row < min_row
+                    start_row = min_row
+                end
+
+                _request_redraw!(pagerd)
+            end
         end
 
     elseif action == :search
@@ -335,17 +440,26 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     elseif action == :toggle_ruler
         event = :toggle_ruler
 
+    elseif action == :toggle_visual_mode
+        if :visual_mode ∈ features
+            event = :toggle_visual_mode
+        end
+
+    elseif action == :select_visual_mode_line
+        event = :select_visual_mode_line
+
     elseif action == :quit_eot
         event = :quit_eot
 
     end
 
     # Repack values.
-    pagerd.start_column    = start_column
-    pagerd.start_row       = start_row
-    pagerd.cropped_lines   = cropped_lines
-    pagerd.cropped_columns = cropped_columns
-    pagerd.event           = event
+    pagerd.start_column     = start_column
+    pagerd.start_row        = start_row
+    pagerd.cropped_lines    = cropped_lines
+    pagerd.cropped_columns  = cropped_columns
+    pagerd.event            = event
+    pagerd.visual_mode_line = visual_mode_line
 
     return nothing
 end
@@ -415,6 +529,7 @@ function _pager_event_process!(pagerd::Pager)
             if frozen_rows != nothing
                 pagerd.frozen_rows = max(0, frozen_rows)
                 pagerd.start_row = max(pagerd.start_row, frozen_rows + 1)
+                pagerd.visual_mode_line = 1
             end
 
             cmd_input = _read_cmd!(
@@ -473,6 +588,30 @@ function _pager_event_process!(pagerd::Pager)
         end
 
         _request_redraw!(pagerd)
+
+    elseif event == :toggle_visual_mode
+        pagerd.visual_mode = !pagerd.visual_mode
+
+        if !pagerd.visual_mode
+            pagerd.visual_mode_line = 1
+            empty!(pagerd.visual_mode_selected_lines)
+        end
+
+        _request_redraw!(pagerd)
+
+    elseif event == :select_visual_mode_line
+        if pagerd.visual_mode
+            visual_str_id = pagerd.visual_mode_line + pagerd.start_row - 1
+
+            # If the line is already selected, we will deselect it.
+            ids = findall(==(visual_str_id), pagerd.visual_mode_selected_lines)
+
+            if !isempty(ids)
+                deleteat!(pagerd.visual_mode_selected_lines, ids)
+            else
+                push!(pagerd.visual_mode_selected_lines, visual_str_id)
+            end
+        end
     end
 
     return true
@@ -485,9 +624,11 @@ Redraw the screen of pager `pagerd`.
 
 """
 function _redraw!(pagerd::Pager)
-    buf          = pagerd.buf
-    term         = pagerd.term
-    display_size = _get_pager_display_size(pagerd)
+    buf              = pagerd.buf
+    term             = pagerd.term
+    display_size     = _get_pager_display_size(pagerd)
+    visual_mode      = pagerd.visual_mode
+    visual_mode_line = pagerd.visual_mode_line
 
     str       = String(take!(buf.io))
     lines     = split(str, '\n')
@@ -498,7 +639,7 @@ function _redraw!(pagerd::Pager)
     # Hide the cursor when drawing the buffer.
     _hide_cursor(term.out_stream)
 
-    @inbounds for i = 1:num_lines
+    @inbounds for i in 1:num_lines
         _clear_to_eol(term.out_stream)
         write(term.out_stream, lines[i])
         write(term.out_stream, '\n')
