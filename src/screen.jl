@@ -1,15 +1,15 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   Functions related to screen management.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Clear the screen `io`. If `newlines` is false, then the display lines will be
-# overwritten. Otherwise, a new screen page will be printed, preserving the
-# history. At the end, the cursor position is `(0, 0)`.
+# Clear the screen `io`. If `newlines` is false, then the display lines will be overwritten.
+# Otherwise, a new screen page will be printed, preserving the history. At the end, the
+# cursor position is `(0, 0)`.
 function _clear_screen(io::IO; newlines::Bool = false)
     if newlines
         write(io, "$(CSI)2J")

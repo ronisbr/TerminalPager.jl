@@ -1,11 +1,11 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   This file contains functions related to key bindings.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Dictionary with the default bindings.
 const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}(
@@ -55,15 +55,15 @@ const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
     ("m",          false, false, false) => :select_visual_mode_line
 )
 
-# Dictionary with the current keybindings, it is initialized here with the
-# default values to improve startup time.
+# Dictionary with the current keybindings, it is initialized here with the default values to
+# improve startup time.
 const _keybindings = copy(_default_keybindings)
 
 """
-    delete_keybinding(key::Union{Char, Symbol}; alt::Bool = false, ctrl::Bool = false, shift::Bool = false)
+    delete_keybinding(key::Union{Char, Symbol}; kwargs...) -> Nothing
 
-Delete the keybinding `key`. The modifiers keys can be selected using the
-keywords `alt`, `ctrl`, and `shift`.
+Delete the keybinding `key`. The modifiers keys can be selected using the keywords `alt`,
+`ctrl`, and `shift`.
 
 For more information about how specify `key` see [`set_keybinding`](@ref).
 """
@@ -79,7 +79,7 @@ function delete_keybinding(
 end
 
 """
-    reset_keybindings()
+    reset_keybindings() -> Nothing
 
 Reset key bindings to the original ones.
 """
@@ -99,13 +99,12 @@ function reset_keybindings()
 end
 
 """
-    set_keybinding(key::Union{Char, Symbol}, action::Symbol; alt::Bool = false, ctrl::Bool = false, shift::Bool = false)
+    set_keybinding(key::Union{Char, Symbol}, action::Symbol; kwargs...) -> Nothing
 
-Set key binding `key` to the action `action`. The modifiers keys can be selected
-using the keywords `alt`, `ctrl`, and `shift`.
+Set key binding `key` to the action `action`. The modifiers keys can be selected using the
+keywords `alt`, `ctrl`, and `shift`.
 
-`key` can be a `Char` or a `Symbol` indicating one of the following special
-keys:
+`key` can be a `Char` or a `Symbol` indicating one of the following special keys:
 
     "<up>", "<down>", "<right>", "<left>", "<home>", "<end>", "<F1>", "<F2>",
     "<F3>", "<F4>", "<F5>", "<F6>", "<F7>", "<F8>", "<F9>", "<F10>", "<F11>",

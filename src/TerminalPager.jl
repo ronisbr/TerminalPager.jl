@@ -15,15 +15,15 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optle
     @eval Base.Experimental.@optlevel 1
 end
 
-################################################################################
-#                             Types and structures
-################################################################################
+############################################################################################
+#                                          Types
+############################################################################################
 
 include("./types.jl")
 
-################################################################################
-#                                  Constants
-################################################################################
+############################################################################################
+#                                        Constants
+############################################################################################
 
 const CSI = "\x1b["
 const PKG_VERSION = v"0.3.0"
@@ -37,9 +37,9 @@ const _CRAYON_R     = string(crayon"red bold")
 const _CRAYON_RESET = string(Crayon(reset = true))
 const _CRAYON_Y     = string(crayon"yellow bold")
 
-################################################################################
-#                                   Includes
-################################################################################
+############################################################################################
+#                                         Includes
+############################################################################################
 
 include("./command_line.jl")
 include("./debug.jl")
@@ -64,20 +64,18 @@ Call the pager to show the output of the object `obj`.
 
 # Keywords
 
-- `auto::Bool`: If `true`, then the pager is only shown if the output does not
-    fit into the display. (**Default** = `false`)
-- `change_freeze::Bool`: If `true`, then the user can change the number of
-    frozen rows and columns inside the pager. (**Default** = `true`)
-- `frozen_columns::Int = 0`: Number of columns to be frozen at startup.
-    (**Default** = 0)
-- `frozen_rows::Int = 0`: Number of rows to be frozen at starupt.
-    (**Default** = 0)
+- `auto::Bool`: If `true`, then the pager is only shown if the output does not fit into the
+    display. (**Default** = `false`)
+- `change_freeze::Bool`: If `true`, then the user can change the number of frozen rows and
+    columns inside the pager. (**Default** = `true`)
+- `frozen_columns::Int = 0`: Number of columns to be frozen at startup. (**Default** = 0)
+- `frozen_rows::Int = 0`: Number of rows to be frozen at startup. (**Default** = 0)
 - `hashelp::Bool = true`: If `true`, then the user can see the pager help.
     (**Default** = `true`)
 - `has_visual_mode::Bool = true`: If `true`, the user can use the visual mode.
     (**Default** = `true`)
-- `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the
-    line numbers. (**Default** = `false`)
+- `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
+    numbers. (**Default** = `false`)
 """
 function pager(obj::Any; kwargs...)
     str = sprint(show, MIME"text/plain"(), obj, context = :color => true)
@@ -90,8 +88,8 @@ const less = pager
 
 function __init__()
     # TODO: Fix initialization time with PAGER_MODE=vi
-    #   The code that adds a key into `_keybindings` takes a lot of time. The
-    #   startup time is increased by almost 0.1s with `PAGER_MODE=vi`.
+    # The code that adds a key into `_keybindings` takes a lot of time. The startup time
+    # is increased by almost 0.1s with `PAGER_MODE=vi`.
 
     # Modify the key bindings if the used wants `vi` mode.
     if get(ENV, "PAGER_MODE", "default") == "vi"
@@ -116,17 +114,16 @@ function __init__()
     return nothing
 end
 
-################################################################################
-#                                Precompilation
-################################################################################
+############################################################################################
+#                                      Precompilation
+############################################################################################
 
-# The environment variable `TERMINAL_PAGER_NO_PRECOMPILATION` is used to disable
-# the precompilation directives. This option must only be used inside Github
-# Actions to improve the coverage results.
+# The environment variable `TERMINAL_PAGER_NO_PRECOMPILATION` is used to disable the
+# precompilation directives. This option must only be used inside Github Actions to improve
+# the coverage results.
 if Base.VERSION >= v"1.4.2" && !haskey(ENV, "TERMINAL_PAGER_NO_PRECOMPILATION")
-    # This try/catch is necessary in case the precompilation statements do not
-    # exists. In this case, TerminalPager.jl will work correctly but without the
-    # optimizations.
+    # This try/catch is necessary in case the precompilation statements do not exists. In
+    # this case, TerminalPager.jl will work correctly but without the optimizations.
     try
         include("../precompilation/precompile_TerminalPager.jl")
         _precompile_()

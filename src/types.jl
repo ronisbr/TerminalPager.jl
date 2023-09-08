@@ -1,11 +1,11 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   Definition of types and structures.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 const SearchMatches = Dict{Int, Vector{Tuple{Int, Int}}}
 
@@ -43,11 +43,11 @@ Structure that defines a keystroke.
 
 # Fields
 
-* `raw`: Raw keystroke code converted to string.
-* `value`: String representing the keystroke.
-* `alt`: `true` if ALT key was pressed (only valid if `value != :char`).
-* `ctrl`: `true` if CTRL key was pressed (only valid if `value != :char`).
-* `shift`: `true` if SHIFT key was pressed (only valid if `value != :char`).
+- `raw::String`: Raw keystroke code converted to string.
+- `value::String`: String representing the keystroke.
+- `alt::Bool`: `true` if ALT key was pressed (only valid if `value != :char`).
+- `ctrl::Bool`: `true` if CTRL key was pressed (only valid if `value != :char`).
+- `shift::Bool`: `true` if SHIFT key was pressed (only valid if `value != :char`).
 """
 Base.@kwdef struct Keystroke
     raw::String   = ""

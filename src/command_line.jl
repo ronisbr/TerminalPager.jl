@@ -1,20 +1,15 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   Functions related with the command line.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Print the message `msg` in the command line of pager `pagerd`. The string
-# formatting can be selected using the keyword `crayon`.
-function _print_cmd_message!(
-    pagerd::Pager,
-    msg::String;
-    crayon::Crayon = Crayon()
-)
-
+# Print the message `msg` in the command line of pager `pagerd`. The string formatting can
+# be selected using the keyword `crayon`.
+function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon())
     term         = pagerd.term
     display_size = pagerd.display_size
 

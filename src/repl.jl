@@ -1,28 +1,27 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   Functions to create the REPL mode `pager`.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # References
-# ==============================================================================
+# ==========================================================================================
 #
 #   This code was adapted from the Pkg.jl project.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
-# Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must
-# be the main REPL mode (julia prompt).
+# Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must be the main
+# REPL mode (julia prompt).
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
-    # Prompt of the pager mode
-    # ==========================================================================
+    # Prompt of the Pager Mode
+    # ======================================================================================
 
-    # In this case, we will use the same completion provider as the julia
-    # prompt.
+    # In this case, we will use the same completion provider as the julia prompt.
     tp_mode = LineEdit.Prompt(
         _tp_mode_prompt;
         complete      = REPL.REPLCompletionProvider(),
@@ -49,8 +48,7 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
 
     tp_mode.repl = repl
 
-    # Check if the expression is incomplete, and, if so, request for another
-    # line.
+    # Check if the expression is incomplete, and, if so, request for another line.
     tp_mode.on_enter = REPL.return_callback
 
     # Let the command history be equal to the julia prompt.
@@ -61,8 +59,8 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # Create the sub mode: pager help.
     tp_help_mode = _create_pager_help_repl_mode(repl, main, tp_mode)
 
-    # Key mappings
-    # ==========================================================================
+    # Key Mappings
+    # ======================================================================================
 
     # We want to support all the default keymap prefixes.
     prefix_prompt, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
@@ -78,7 +76,7 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
         '?' => function(s, args...)
             # We must only switch to pager mode if `|` is typed at the beginning
             # of the line.
-            if isempty(s) || position(LineEdit.buffer(s)) == 0
+            if isempty(s) || (position(LineEdit.buffer(s)) == 0)
                 buf = copy(LineEdit.buffer(s))
                 LineEdit.transition(s, tp_help_mode) do
                     LineEdit.state(s, tp_help_mode).input_buffer = buf
@@ -104,16 +102,15 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     return tp_mode
 end
 
-# Create the REPL mode `pager help`. `repl` must be the active REPL, `main` must
-# be the main REPL mode (julia prompt), and `tp_mode` must be the REPL mode
-# `pager`.
+# Create the REPL mode `pager help`. `repl` must be the active REPL, `main` must be the main
+# REPL mode (julia prompt), and `tp_mode` must be the REPL mode `pager`.
 function _create_pager_help_repl_mode(
     repl::REPL.AbstractREPL,
     main::LineEdit.Prompt,
     tp_mode::LineEdit.Prompt
 )
-    # Prompt of the pager help mode
-    # ==========================================================================
+    # Prompt of the Pager Help Mode
+    # ======================================================================================
 
     tp_help_mode = LineEdit.Prompt(
         _tp_help_mode_prompt;
@@ -136,8 +133,8 @@ function _create_pager_help_repl_mode(
         s.current_mode.sticky || REPL.transition(s, tp_mode)
     end
 
-    # Key mappings
-    # ==========================================================================
+    # Key Mappings
+    # ======================================================================================
 
     hp = main.hist
     hp.mode_mapping[:pager_help] = tp_help_mode
@@ -168,12 +165,7 @@ function _create_pager_help_repl_mode(
     return tp_help_mode
 end
 
-"""
-    _init_pager_repl_mode(repl::AbstractREPL)
-
-Initialize the pager mode in the `repl`.
-
-"""
+# Initialize the pager mode in the `repl`.
 function _init_pager_repl_mode(repl::AbstractREPL)
     # Get the main REPL mode (julia prompt).
     main_mode = repl.interface.modes[1]
@@ -200,27 +192,26 @@ function _init_pager_repl_mode(repl::AbstractREPL)
         end
     )
 
-    # Add the key map that initialize the pager mode to the default REPL key
-    # mappings.
+    # Add the key map that initialize the pager mode to the default REPL key mappings.
     main_mode.keymap_dict = LineEdit.keymap_merge(main_mode.keymap_dict, keymap)
 
     return nothing
 end
 
-################################################################################
-#                     Command treatment for the REPL modes
-################################################################################
+############################################################################################
+#                           Command Treatment for the REPL Modes
+############################################################################################
 
-# Execute the actions when a command has been received in the REPL mode `pager`.
-# `repl` must be the active REPL, and `input` is a string with the command.
+# Execute the actions when a command has been received in the REPL mode `pager`.  `repl`
+# must be the active REPL, and `input` is a string with the command.
 function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     if !isinteractive() && !PRINTED_REPL_WARNING[]
         @warn "The parger mode is intended for interaction use only, and should not be used from scripts."
         PRINTED_REPL_WARNING[] = true
     end
 
-    # The `stdout` will be redirected inside the try/catch. Hence, we need to
-    # store the old one to restore it if everything fails.
+    # The `stdout` will be redirected inside the try/catch. Hence, we need to store the old
+    # one to restore it if everything fails.
     old_stdout = stdout
 
     try
@@ -242,7 +233,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         cmd = ""
 
         # Loop throught the lines.
-        @inbounds for i ∈ 1:length(lines)
+        @inbounds for i in 1:length(lines)
             cmd *= lines[i] * "\n"
             ast = Base.parse_input_line(cmd)
 
@@ -254,15 +245,14 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
 
             # Make `ans` be the last evaluated expression.
             #
-            # This code was copied from the function `eval_user_input` in REPL
-            # stdlib.
+            # This code was copied from the function `eval_user_input` in REPL stdlib.
             ccall(:jl_set_global, Cvoid, (Any, Any, Any), Main, :ans, result)
 
-            # If the user added `;` at the end of the command, then we should
-            # not show the output.
+            # If the user added `;` at the end of the command, then we should not show the
+            # output.
             if !REPL.ends_with_semicolon(cmd)
-                # If the output is not `nothing`, call `show` with
-                # `MIME("text/plain")` to render the object.
+                # If the output is not `nothing`, call `show` with `MIME("text/plain")` to
+                # render the object.
                 if result !== nothing
                     Base.invokelatest(show, stdout, MIME("text/plain"), result)
                     write(stdout, '\n')
@@ -276,9 +266,8 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Restore the old stdout.
         Base.eval(:(stdout = $old_stdout))
 
-        # Take everything and display in the pager using `auto` mode. In this
-        # case, the pager will only be called if there is not space in the
-        # display to show everything.
+        # Take everything and display in the pager using `auto` mode. In this case, the
+        # pager will only be called if there is not space in the display to show everything.
         pager(String(take!(buf)); auto = true)
 
         close(io)
@@ -293,11 +282,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     return nothing
 end
 
-# Execute the actions when a command has been received in the REPL mode `pager
-# help`. `repl` must be the active REPL, and `input` is a string with the command.
+# Execute the actions when a command has been received in the REPL mode `pager help`. `repl`
+# must be the active REPL, and `input` is a string with the command.
 function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
-    # We do not need to verify if we are in a interactive environment because
-    # this mode is only accessible throught pager mode, which already checks it.
+    # We do not need to verify if we are in a interactive environment because this mode is
+    # only accessible throught pager mode, which already checks it.
     try
         # Create a buffer that will replace `stdout`.
         buf = IOBuffer()
@@ -317,9 +306,8 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         show(io, MIME("text/plain"), response)
         write(io, '\n')
 
-        # Take everything and display in the pager using `auto` mode. In this
-        # case, the pager will only be called if there is not space in the
-        # display to show everything.
+        # Take everything and display in the pager using `auto` mode. In this case, the
+        # pager will only be called if there is not space in the display to show everything.
         pager(String(take!(buf)); auto = true)
 
         close(io)
@@ -331,9 +319,9 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     return nothing
 end
 
-################################################################################
-#                                   Prompts
-################################################################################
+############################################################################################
+#                                         Prompts
+############################################################################################
 
 _tp_mode_prompt() = "pager> "
 _tp_help_mode_prompt() = "pager?> "

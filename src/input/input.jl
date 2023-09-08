@@ -1,29 +1,27 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   This file contains functions reltated to input handling. This code was
 #   adapted from the on in TextUserInterfaces.jl.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-################################################################################
-#                                  Constants
-################################################################################
+############################################################################################
+#                                        Constants
+############################################################################################
 
 include("keycodes.jl")
 
-################################################################################
-#                                  Functions
-################################################################################
+############################################################################################
+#                                        Functions
+############################################################################################
 
 """
-    _jlgetch(stream::IO)
+    _jlgetch(stream::IO) -> Keystroke
 
-Wait for an keystroke in the stream `stream` and return it (see
-[`Keystroke`](@ref)).
-
+Wait for an keystroke in the stream `stream` and return it (see [`Keystroke`](@ref)).
 """
 function _jlgetch(stream::IO)
     c_raw = read(stream, UInt8)::UInt8
@@ -36,7 +34,7 @@ function _jlgetch(stream::IO)
         s = string(Char(c))
 
         # Read the entire sequence limited to 10 characters.
-        for i = 1:10
+        for i in 1:10
             stream.buffer.size == i && break
             nc = read(stream, Char)::Char
             s *= string(Char(nc))
@@ -49,10 +47,10 @@ function _jlgetch(stream::IO)
         elseif haskey(keycodes, s)
             aux = keycodes[s]
             return Keystroke(
-                raw = s,
+                raw   = s,
                 value = aux.value,
-                alt = aux.alt,
-                ctrl = aux.ctrl,
+                alt   = aux.alt,
+                ctrl  = aux.ctrl,
                 shift = aux.shift
             )
         else

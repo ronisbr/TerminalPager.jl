@@ -1,11 +1,11 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   Functions related to searching text.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 export reset_highlighting, set_highlighting
 
@@ -36,8 +36,8 @@ function reset_highlighting()
     return nothing
 end
 
-# Change the active matches in `pagerd`. If `forward` is `true`, then the search
-# is performed forward. Otherwise, it is performed backwards.
+# Change the active matches in `pagerd`. If `forward` is `true`, the search is performed
+# forward. Otherwise, it is performed backwards.
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     search_matches         = pagerd.search_matches
     active_search_match_id = pagerd.active_search_match_id
@@ -65,8 +65,8 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
     return nothing
 end
 
-# Find all matches of `regex` in the text of the pager `pager`. The vector with
-# the matches will be written to `pagerd`.
+# Find all matches of `regex` in the text of the pager `pager`. The vector with the matches
+# will be written to `pagerd`.
 function _find_matches!(pagerd::Pager, regex::Regex)
     pagerd.search_matches = string_search_per_line(pagerd.lines, regex)
 
@@ -81,8 +81,8 @@ function _find_matches!(pagerd::Pager, regex::Regex)
     return nothing
 end
 
-# Move the view of the pager `pagerd` to ensure that the current highlighted
-# match is inside it.
+# Move the view of the pager `pagerd` to ensure that the current highlighted match is inside
+# it.
 function _move_view_to_match!(pagerd::Pager)
     # Unpack.
     active_search_match_id = pagerd.active_search_match_id
@@ -96,8 +96,8 @@ function _move_view_to_match!(pagerd::Pager)
 
     rows, cols = _get_pager_display_size(pagerd)
 
-    # If we show the ruler, the amount of available columns to draw data must be
-    # reduced to take into account its width.
+    # If we show the ruler, the amount of available columns to draw data must be reduced to
+    # take into account its width.
     if show_ruler
         ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
         cols -= ruler_spacing
@@ -111,9 +111,9 @@ function _move_view_to_match!(pagerd::Pager)
     hl_i = active_search_match_id
     hl_i == 0 && return nothing
 
-    # The search matches are a dictionary in which the key is the line with a
-    # match. Hence, we need to order the keys to count the matches and find the
-    # information about the active match.
+    # The search matches are a dictionary in which the key is the line with a match. Hence,
+    # we need to order the keys to count the matches and find the information about the
+    # active match.
     #
     # TODO: Can it be improved?
     lines = search_matches |> keys |> collect |> sort
@@ -148,8 +148,7 @@ function _move_view_to_match!(pagerd::Pager)
         start_row = (hl_line + 1) - (rows - frozen_rows)
     end
 
-    # If the highlight is outsidde the title rows, then we can move the view to
-    # display it.
+    # If the highlight is outsidde the title rows, we can move the view to display it.
     if title_rows < hl_line
         # Check if the highlight column is visible.
         if hl_col_beg < start_column

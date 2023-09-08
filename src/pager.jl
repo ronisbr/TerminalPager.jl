@@ -1,16 +1,15 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   Functions related to the pager.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-
-################################################################################
-#                    Functions related to `Pager` structure
-################################################################################
+############################################################################################
+#                          Functions Related to `Pager` Structure
+############################################################################################
 
 # Get the display size of the pager `p`.
 function _get_pager_display_size(p::Pager)
@@ -38,17 +37,17 @@ function _update_display_size!(p::Pager)
     return nothing
 end
 
-################################################################################
-#                        Functions related to the pager
-################################################################################
+############################################################################################
+#                              Functions Related to the Pager
+############################################################################################
 
 # Initialize the pager with the string `str`.
 function _pager(str::String; kwargs...)
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
-    # Switch the terminal to raw mode, meaning that all keystroke is immediatly
-    # passed to us instead of waiting for <return>.
+    # Switch the terminal to raw mode, meaning that all keystroke is immediately passed to
+    # us instead of waiting for <return>.
     REPL.Terminals.raw!(term, true)
 
     _pager!(term, str; kwargs...)
@@ -58,8 +57,8 @@ function _pager(str::String; kwargs...)
     return nothing
 end
 
-# Initialize the pager with the string `str` using the terminal `term`. The user
-# must ensure that `term` is in raw mode.
+# Initialize the pager with the string `str` using the terminal `term`. The user must ensure
+# that `term` is in raw mode.
 function _pager!(
     term::REPL.Terminals.TTYTerminal,
     str::String;
@@ -79,13 +78,12 @@ function _pager!(
     # Get the display size and make sure it is type stable.
     dsize = displaysize(term.out_stream)::Tuple{Int, Int}
 
-    # If `auto` is true, then only show the pager if the text is larger than the
-    # screen.
+    # If `auto` is true, then only show the pager if the text is larger than the screen.
     if auto
         use_pager = false
 
-        # Check if we can display everything vertically. Notice that here we
-        # must account two lines at the end.
+        # Check if we can display everything vertically. Notice that here we must account
+        # two lines at the end.
         if dsize[1] - 2 ≥ num_tokens
             for t in tokens
                 # Compute the printable textwidth.
@@ -110,10 +108,9 @@ function _pager!(
     # Clear the screen and position the cursor at the top.
     _clear_screen(term.out_stream, newlines = true)
 
-    # The pager is divided in two parts, the view buffer and command line. The
-    # view buffer contains the string that is shown. To improve speed,
-    # everything in the view buffer is written to this buffer and then flushed
-    # to the screen.
+    # The pager is divided in two parts, the view buffer and command line. The view buffer
+    # contains the string that is shown. To improve speed, everything in the view buffer is
+    # written to this buffer and then flushed to the screen.
     iobuf    = IOBuffer()
     hascolor = get(stdout, :color, true)::Bool
     buf      = IOContext(iobuf, :color => hascolor)
@@ -139,8 +136,8 @@ function _pager!(
         title_rows     = title_rows
     )
 
-    # Application main loop
-    # ==========================================================================
+    # Application Main Loop
+    # ======================================================================================
 
     while true
         # Check if the display size was changed.
@@ -162,12 +159,7 @@ function _pager!(
     return nothing
 end
 
-"""
-    _pager_key_process!(pagerd::Pager, k::Keystroke)
-
-Process the keystroke `k` in pager `pagerd`.
-
-"""
+# Process the keystroke `k` in pager `pagerd`.
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
     cropped_columns  = pagerd.cropped_columns
@@ -464,14 +456,13 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     return nothing
 end
 
-# Process the event in `pagerd`. If this function return `false`, then the
-# application must exit.
+# Process the event in `pagerd`. If this function return `false`, the application must exit.
 function _pager_event_process!(pagerd::Pager)
     event = pagerd.event
     lines = pagerd.lines
 
-    # For EOT (^D), we will implement two types of "quit" action. If we are in
-    # searching mode, then exit it. If not, quit the pager.
+    # For EOT (^D), we will implement two types of "quit" action. If we are in searching
+    # mode, exit it. If not, quit the pager.
     if event == :quit_eot
         event = pagerd.mode == :searching ? :quit_search : :quit
     end
@@ -576,8 +567,8 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :toggle_ruler
         pagerd.show_ruler = !pagerd.show_ruler
 
-        # If the ruler is hidden, we must verify if the screen is on the right
-        # edge to fix the `start_column`.
+        # If the ruler is hidden, we must verify if the screen is on the right edge to fix
+        # the `start_column`.
         if !pagerd.show_ruler
             ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
 
@@ -617,12 +608,7 @@ function _pager_event_process!(pagerd::Pager)
     return true
 end
 
-"""
-    _redraw!(pagerd::Pager)
-
-Redraw the screen of pager `pagerd`.
-
-"""
+# Redraw the screen of pager `pagerd`.
 function _redraw!(pagerd::Pager)
     buf              = pagerd.buf
     term             = pagerd.term
@@ -646,7 +632,7 @@ function _redraw!(pagerd::Pager)
     end
 
     # Clear the rest of the screen.
-    for i = (num_lines + 1):display_size[1]
+    for i in (num_lines + 1):display_size[1]
         _move_cursor(term.out_stream, i, 1)
         _clear_to_eol(term.out_stream)
     end

@@ -1,14 +1,14 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
-# ==============================================================================
+# ==========================================================================================
 #
 #   Functions related to help screen.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 """
-    _help!(pargerd::Pager)
+    _help!(pargerd::Pager) -> Nothing
 
 Open a new pager with the help.
 """
@@ -70,18 +70,21 @@ function _help!(pagerd::Pager)
     kb_change_freeze     = _getkb(:change_freeze)
     kb_change_title_rows = _getkb(:change_title_rows)
 
+    # Visual mode
+    kb_toggle_visual_mode      = _getkb(:toggle_visual_mode)
+    kb_select_visual_mode_line = _getkb(:select_visual_mode_line)
+
     help_str =
 """
   $(_cb)TerminalPager.jl $(PKG_VERSION)$(_d)
 
-  The pager can execute some type of actions as shown in the following. The key
-  bindings of each actions can be changed using the function $(_c)set_keybinding$(_d).
+  The pager can execute some type of actions as shown in the following. The key bindings of
+  each actions can be changed using the function $(_c)set_keybinding$(_d).
 
-  Some actions are only available if a feature is enabled. The set of enabled
-  features can be selected using the keyword $(_c)features$(_d) when calling the
-  pager.
+  Some actions are only available if a feature is enabled. The set of enabled features can
+  be selected using the keyword $(_c)features$(_d) when calling the pager.
 
-$(_b)                                     General$(_d)
+$(_b)                                          General$(_d)
 $(_y)  :help$(_d)
     Show this screen.
 $(_c)    Keybindings: $(kb_help)$(_d)
@@ -91,14 +94,14 @@ $(_y)  :quit$(_d)
 $(_c)    Keybindings: $(kb_quit)$(_d)
 $(_y)  :quit_eot$(_d)
     This is an special quit action design for the $(_c)END OF TRANSMISSION (^D)$(_d)
-    keycode. If we are in a search operation, then it quits the search. If not,
-    then it quits the pager.
+    keycode. If we are in a search operation, then it quits the search. If not, then it
+    quits the pager.
 $(_c)    Keybindings: $(kb_quit_eot)$(_d)
 $(_y)  :toggle_ruler$(_d)
     Toggle the vertical ruler.
 $(_c)    Keybindings: $(kb_toggle_ruler)$(_d)
 
-$(_b)                                    Movement$(_d)
+$(_b)                                          Movement$(_d)
 $(_y)  :up$(_d)
     Move the display one line up.
 $(_c)    Keybindings: $(kb_up)$(_d)
@@ -148,7 +151,7 @@ $(_y)  :end$(_d)
     Move the display to show the last line.
 $(_c)    Keybindings: $(kb_end)$(_d)
 
-$(_b)                                   Searching$(_d)
+$(_b)                                         Searching$(_d)
 $(_y)  :search$(_d)
     Request a regex in the command line and highlight all the matches.
 $(_c)    Keybindings: $(kb_search)$(_d)
@@ -162,17 +165,28 @@ $(_y)  :quit_search$(_d)
     Quit searching, removing all the highlights (only during search mode).
 $(_c)    Keybindings: $(kb_quit_search)$(_d)
 
-$(_b)                                 Freezing data$(_d)
+$(_b)                                       Freezing Data$(_d)
 $(_g)  These actions requires the feature :change_freeze.
 $(_y)  :change_freeze$(_d)
-    Two values will be requested in the command line. The first is the number of
-    columns and the second is the number of rows that will be frozen. If the
-    value is equal or lower than 0, then no row or column will be frozen.
+    Two values will be requested in the command line. The first is the number of columns and
+    the second is the number of rows that will be frozen. If the value is equal or lower
+    than 0, then no row or column will be frozen.
 $(_c)    Keybindings: $(kb_change_freeze)$(_d)
 $(_y)  :change_title_rows$(_d)
-    Define the number of rows within the frozen rows that will be considered as
-    titles. In this case, these rows will not scroll horizontally.
+    Define the number of rows within the frozen rows that will be considered as titles. In
+    this case, these rows will not scroll horizontally.
 $(_c)    Keybindings: $(kb_change_title_rows)$(_d)
+
+$(_b)                                        Visual Mode$(_d)
+$(_g)  These actions requires the feature :visual_mode.
+$(_y)  :toggle_visual_mode$(_d)
+    Toggle visual mode, where a visual line is displayed on the screen. In this mode, the
+    movements are slight modified to be relative to the visual line.
+$(_c)    Keybindings: $(kb_toggle_visual_mode)$(_d)
+$(_y)  :select_visual_mode_line$(_d)
+    Mark the current visual line. Notice if the line is already marked, it will be unmarked.
+    All the lines are unmarked when we exit the visual mode.
+$(_c)    Keybindings: $(kb_select_visual_mode_line)$(_d)
 """
 
     _pager!(pagerd.term, help_str; hashelp = false, has_visual_mode = false)
@@ -180,9 +194,9 @@ $(_c)    Keybindings: $(kb_change_title_rows)$(_d)
     return nothing
 end
 
-################################################################################
-#                              Private functions
-################################################################################
+############################################################################################
+#                                    Private Functions
+############################################################################################
 
 function _getkb(action::Symbol)
     kb = [_kbtostr(k) for (k, v) in _keybindings if v == action]
@@ -199,11 +213,7 @@ function _getkb(action::Symbol)
 end
 
 function _kbtostr(kb::Tuple{String, Bool, Bool, Bool})
-    if kb[1] == " "
-        str = "space"
-    else
-        str = string(kb[1])
-    end
+    str = kb[1] == " " ? "space" : string(kb[1])
 
     kb[2] && (str = "ALT " * str)
     kb[3] && (str = "CTRL " * str)
