@@ -73,6 +73,7 @@ function _help!(pagerd::Pager)
     # Visual mode
     kb_toggle_visual_mode      = _getkb(:toggle_visual_mode)
     kb_select_visual_mode_line = _getkb(:select_visual_mode_line)
+    kb_yank                    = _getkb(:yank)
 
     help_str =
 """
@@ -188,7 +189,8 @@ $(_y)  :select_visual_mode_line$(_d)
     All the lines are unmarked when we exit the visual mode.
 $(_c)    Keybindings: $(kb_select_visual_mode_line)$(_d)
 $(_y)  :yank$(_d)
-    Copy (yank) the selected and current visual lines to the system clipboard
+    Copy (yank) the selected and current visual lines to the system clipboard.
+$(_c)    Keybindings: $(kb_yank)$(_d)
 """
 
     _pager!(pagerd.term, help_str; hashelp = false, has_visual_mode = false)
