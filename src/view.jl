@@ -32,7 +32,10 @@ function _view!(pagerd::Pager)
     if pagerd.visual_mode
         current_line = pagerd.visual_mode_line + start_row - 1
         visual_lines = vcat(current_line, pagerd.visual_mode_selected_lines)
-        visual_line_backgrounds = vcat("44", fill("100", length(pagerd.visual_mode_selected_lines)))
+        visual_line_backgrounds = vcat(
+            _VISUAL_MODE_BACKGROUNDS[false],
+            fill(_VISUAL_MODE_BACKGROUNDS[true], length(pagerd.visual_mode_selected_lines))
+        )
     else
         visual_lines = nothing
         visual_line_backgrounds = ""

@@ -52,6 +52,7 @@ include("./repl.jl")
 include("./search.jl")
 include("./screen.jl")
 include("./view.jl")
+include("./visual_mode.jl")
 
 include("./input/keybindings.jl")
 include("./input/input.jl")
