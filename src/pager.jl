@@ -451,7 +451,14 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         end
 
     elseif action == :select_visual_mode_line
-        event = :select_visual_mode_line
+        if :visual_mode ∈ features
+            event = :select_visual_mode_line
+        end
+
+    elseif action == :yank
+        if :visual_mode ∈ features
+            event = :yank
+        end
 
     elseif action == :quit_eot
         event = :quit_eot
@@ -615,6 +622,29 @@ function _pager_event_process!(pagerd::Pager)
             else
                 push!(pagerd.visual_mode_selected_lines, visual_str_id)
             end
+        end
+
+    elseif event == :yank
+        if pagerd.visual_mode
+            yanked_lines = vcat(
+                pagerd.visual_mode_line,
+                pagerd.visual_mode_selected_lines
+            ) |> unique! |> sort!
+
+            num_yanked_lines = length(yanked_lines)
+
+            buf = IOBuffer(sizehint = floor(Int, sum(sizeof.(yanked_lines)) + num_yanked_lines))
+
+            for l in yanked_lines
+                write(buf, pagerd.lines[l] |> remove_decorations, '\n')
+            end
+
+            clipboard(String(take!(buf)))
+
+            _print_cmd_message!(
+                pagerd,
+                num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" : "1 line copied"
+            )
         end
     end
 

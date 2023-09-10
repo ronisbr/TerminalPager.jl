@@ -52,7 +52,8 @@ const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
     ("r",          false, false, false) => :toggle_ruler,
     ("t",          false, false, false) => :change_title_rows,
     ("v",          false, false, false) => :toggle_visual_mode,
-    ("m",          false, false, false) => :select_visual_mode_line
+    ("m",          false, false, false) => :select_visual_mode_line,
+    ("y",          false, false, false) => :yank
 )
 
 # Dictionary with the current keybindings, it is initialized here with the default values to

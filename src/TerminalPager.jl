@@ -4,6 +4,7 @@ using REPL
 using REPL.LineEdit
 
 using Crayons
+using InteractiveUtils
 using StringManipulation
 
 import Base: convert, string

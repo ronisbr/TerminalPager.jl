@@ -187,6 +187,8 @@ $(_y)  :select_visual_mode_line$(_d)
     Mark the current visual line. Notice if the line is already marked, it will be unmarked.
     All the lines are unmarked when we exit the visual mode.
 $(_c)    Keybindings: $(kb_select_visual_mode_line)$(_d)
+$(_y)  :yank$(_d)
+    Copy (yank) the selected and current visual lines to the system clipboard
 """
 
     _pager!(pagerd.term, help_str; hashelp = false, has_visual_mode = false)
