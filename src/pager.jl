@@ -627,7 +627,7 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :yank
         if pagerd.visual_mode
             yanked_lines = vcat(
-                pagerd.visual_mode_line,
+                pagerd.visual_mode_line + pagerd.start_row - 1,
                 pagerd.visual_mode_selected_lines
             ) |> unique! |> sort!
 
