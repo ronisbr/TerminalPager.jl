@@ -9,7 +9,7 @@
 
 export reset_highlighting, set_highlighting
 
-const _search_highlighting = Dict{Bool, String}(
+const _SEARCH_HIGHLIGHTING = Dict{Bool, String}(
     false => CSI * "30;47m",
     true  => CSI * "30;43m"
 )
@@ -20,8 +20,8 @@ const _search_highlighting = Dict{Bool, String}(
 Set the active and inactive highlighting to the crayons `active` and `inactive`.
 """
 function set_highlighting(active::Crayon, inactive::Crayon)
-    _search_highlighting[true]  = string(active)
-    _search_highlighting[false] = string(inactive)
+    _SEARCH_HIGHLIGHTING[true]  = string(active)
+    _SEARCH_HIGHLIGHTING[false] = string(inactive)
     return nothing
 end
 
@@ -31,8 +31,8 @@ end
 Reset the search highlighting to the default one.
 """
 function reset_highlighting()
-    _search_highlighting[false] = CSI * "30;47m"
-    _search_highlighting[true]  = CSI * "30;43m"
+    _SEARCH_HIGHLIGHTING[false] = CSI * "30;47m"
+    _SEARCH_HIGHLIGHTING[true]  = CSI * "30;43m"
     return nothing
 end
 
