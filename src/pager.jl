@@ -317,19 +317,26 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         end
 
-    elseif action == :home
-        if visual_mode
-            if (start_row ≠ min_row) || (visual_mode_line != 1)
-                start_row = min_row
-                visual_mode_line = 1
-                _request_redraw!(pagerd)
+        if visual_mode && (visual_mode_line ≠ display_size[1] - frozen_rows - 1)
+            visual_mode_line = display_size[1] - frozen_rows - 1
+
+            # The visual line must not be placed after the last line.
+            if min_row + visual_mode_line - 1 > num_lines
+                visual_mode_line = num_lines - min_row + 1
             end
 
-        else
-            if start_row ≠ min_row
-                start_row = min_row
-                _request_redraw!(pagerd)
-            end
+            _request_redraw!(pagerd)
+        end
+
+    elseif action == :home
+        if start_row ≠ min_row
+            start_row = min_row
+            _request_redraw!(pagerd)
+        end
+
+        if visual_mode && (visual_mode_line != 1)
+            visual_mode_line = 1
+            _request_redraw!(pagerd)
         end
 
     elseif action == :pagedown
@@ -341,6 +348,12 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
         if visual_mode && (visual_mode_line ≠ display_size[1] - frozen_rows - 1)
             visual_mode_line = display_size[1] - frozen_rows - 1
+
+            # The visual line must not be placed after the last line.
+            if min_row + visual_mode_line - 1 > num_lines
+                visual_mode_line = num_lines - min_row + 1
+            end
+
             _request_redraw!(pagerd)
         end
 
