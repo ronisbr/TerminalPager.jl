@@ -14,7 +14,6 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-
 # Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must be the main
 # REPL mode (julia prompt).
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
@@ -232,7 +231,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Variable to assemble the command, which can have multiple lines.
         cmd = ""
 
-        # Loop throught the lines.
+        # Loop through the lines.
         @inbounds for i in 1:length(lines)
             cmd *= lines[i] * "\n"
             ast = Base.parse_input_line(cmd)
