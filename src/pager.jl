@@ -616,28 +616,39 @@ function _redraw!(pagerd::Pager)
     visual_mode      = pagerd.visual_mode
     visual_mode_line = pagerd.visual_mode_line
 
+    # We will split the lines to make sure that every line is cleaned. We will not use the
+    # ANSI escape sequence `\e[2J` because it adds new lines to the screen.
     str       = String(take!(buf.io))
     lines     = split(str, '\n')
     num_lines = length(lines)
 
-    _move_cursor(term.out_stream, 1, 1)
-
-    # Hide the cursor when drawing the buffer.
-    _hide_cursor(term.out_stream)
+    # To improve the speed, it is advisable to create an intermediate buffer to write
+    # everything and then flush to the terminal.
+    ibuf = IOBuffer()
 
     @inbounds for i in 1:num_lines
-        _clear_to_eol(term.out_stream)
-        write(term.out_stream, lines[i])
-        write(term.out_stream, '\n')
+        _clear_to_eol(ibuf)
+        write(ibuf, lines[i], '\n')
     end
 
     # Clear the rest of the screen.
     for i in (num_lines + 1):display_size[1]
-        _move_cursor(term.out_stream, i, 1)
-        _clear_to_eol(term.out_stream)
+        _move_cursor(ibuf, i, 1)
+        _clear_to_eol(ibuf)
     end
 
-    # Show the cursor.
+    # Now, we can flush everything to the terminal.
+
+    # Hide the cursor when drawing the buffer.
+    _hide_cursor(term.out_stream)
+
+    # Move the cursor to the beginning of the screen.
+    _move_cursor(term.out_stream, 1, 1)
+
+    # Write everything.
+    write(term.out_stream, take!(ibuf))
+
+    # Show the cursor again.
     _show_cursor(term.out_stream)
 
     # Indicate that the redraw request was accomplished.
