@@ -3,8 +3,8 @@
 # Description
 # ==========================================================================================
 #
-#   This file contains functions reltated to input handling. This code was
-#   adapted from the on in TextUserInterfaces.jl.
+#   This file contains functions related to input handling. This code was adapted from the
+#   on in TextUserInterfaces.jl.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
