@@ -118,17 +118,6 @@ end
 #                                      Precompilation
 ############################################################################################
 
-# The environment variable `TERMINAL_PAGER_NO_PRECOMPILATION` is used to disable the
-# precompilation directives. This option must only be used inside Github Actions to improve
-# the coverage results.
-if Base.VERSION >= v"1.4.2" && !haskey(ENV, "TERMINAL_PAGER_NO_PRECOMPILATION")
-    # This try/catch is necessary in case the precompilation statements do not exists. In
-    # this case, TerminalPager.jl will work correctly but without the optimizations.
-    try
-        include("../precompilation/precompile_TerminalPager.jl")
-        _precompile_()
-    catch
-    end
-end
+include("precompilation.jl")
 
 end # module
