@@ -94,6 +94,9 @@ The user can defined custom preferences using the function
 - `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
     string. (**Default** = `string(crayon"black bg:light_gray")`)
+- `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
+    Notice that this change only takes effect when a new Julia session is initialized.
+    (**Default** = "default")
 - `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
     selected lines in the visual mode. (**Default** = "100")
 - `"visual_mode_active_line_background"`: `String` with the ANSI code of the background for
@@ -112,12 +115,8 @@ pager(obj::AbstractString; kwargs...) = return _pager(obj; kwargs...)
 const less = pager
 
 function __init__()
-    # TODO: Fix initialization time with PAGER_MODE=vi
-    # The code that adds a key into `_keybindings` takes a lot of time. The startup time
-    # is increased by almost 0.1s with `PAGER_MODE=vi`.
-
     # Modify the key bindings if the used wants `vi` mode.
-    if get(ENV, "PAGER_MODE", "default") == "vi"
+    if _get_preference("pager_mode") == "vi"
         _keybindings[("<eot>",     false, false, false)] = :halfpagedown
         _keybindings[("<shiftin>", false, false, false)] = :halfpageup
     end
