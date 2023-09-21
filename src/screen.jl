@@ -51,3 +51,9 @@ _save_cursor(io::IO) = write(io, "$(CSI)s")
 
 # Show cursor.
 _show_cursor(io::IO) = write(io, "$(CSI)?25h")
+
+# Turn on the alternate screen buffer in `io`, clearing it first.
+_turn_on_alternate_screen_buffer(io::IO) = write(io, "$(CSI)?1049h")
+
+# Turn off the alternate screen buffer in `io`, restoring the old buffer.
+_turn_off_alternate_screen_buffer(io::IO) = write(io, "$(CSI)?1049l")

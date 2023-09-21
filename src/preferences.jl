@@ -14,6 +14,7 @@
 const _AVAILABLE_PREFERENCES = Dict{String, Any}(
     "active_search_decoration" => string(crayon"black bg:yellow"),
     "inactive_search_decoration" => string(crayon"black bg:light_gray"),
+    "block_alternate_screen_buffer" => false,
     "pager_mode" => "default",
     "visual_mode_line_background" => "100",
     "visual_mode_active_line_background" => "44"

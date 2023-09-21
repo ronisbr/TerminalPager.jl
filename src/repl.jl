@@ -305,9 +305,9 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         show(io, MIME("text/plain"), response)
         write(io, '\n')
 
-        # Take everything and display in the pager using `auto` mode. In this case, the
-        # pager will only be called if there is not space in the display to show everything.
-        pager(String(take!(buf)); auto = true)
+        # Take everything and display in the pager using the alternate screen buffer to
+        # avoid modifying the current screen state.
+        pager(String(take!(buf)); use_alternate_screen_buffer = true)
 
         close(io)
 

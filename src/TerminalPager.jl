@@ -82,6 +82,10 @@ Call the pager to show the output of the object `obj`.
     (**Default** = `true`)
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
     numbers. (**Default** = `false`)
+- `use_alternate_screen_buffer::Bool`: If `true`, the pager will use the alternate screen
+    buffer, which keeps the current screen when exiting the pager. Notice, however, that we
+    use the XTerm escape sequences here. Hence, if your terminal is different, this option
+    can lead to rendering problems.
 
 # Preferences
 
@@ -94,6 +98,9 @@ The user can defined custom preferences using the function
 - `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
     string. (**Default** = `string(crayon"black bg:light_gray")`)
+- `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
+    globally blocked, regardless of the keyword options. This modification is helpful when
+    the terminal is not compatible with XTerm. (**Default** = `false`)
 - `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
     (**Default** = "default")

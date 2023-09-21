@@ -69,7 +69,8 @@ function _pager!(
     title_rows::Int = 0,
     hashelp::Bool = true,
     has_visual_mode::Bool = true,
-    show_ruler::Bool = false
+    show_ruler::Bool = false,
+    use_alternate_screen_buffer::Bool = false
 )
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
@@ -77,6 +78,10 @@ function _pager!(
 
     # Get the display size and make sure it is type stable.
     dsize = displaysize(term.out_stream)::Tuple{Int, Int}
+
+    # Check if we should block the alternate screen buffer.
+    block_alternate_screen_buffer = _get_preference("block_alternate_screen_buffer")
+    use_alternate_screen_buffer &= !block_alternate_screen_buffer
 
     # If `auto` is true, then only show the pager if the text is larger than the screen.
     if auto
@@ -106,7 +111,11 @@ function _pager!(
     end
 
     # Clear the screen and position the cursor at the top.
-    _clear_screen(term.out_stream, newlines = true)
+    if use_alternate_screen_buffer
+        _turn_on_alternate_screen_buffer(term.out_stream)
+    else
+        _clear_screen(term.out_stream, newlines = true)
+    end
 
     # The pager is divided in two parts, the view buffer and command line. The view buffer
     # contains the string that is shown. To improve speed, everything in the view buffer is
@@ -155,6 +164,8 @@ function _pager!(
         _pager_key_process!(pagerd, k)
         _pager_event_process!(pagerd) || break
     end
+
+    use_alternate_screen_buffer && _turn_off_alternate_screen_buffer(term.out_stream)
 
     return nothing
 end
