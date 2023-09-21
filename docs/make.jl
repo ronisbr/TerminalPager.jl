@@ -13,7 +13,8 @@ makedocs(
     pages = [
         "Introduction" => "index.md",
         "Usage"        => "man/usage.md",
-    ]
+        "Library"      => "lib/library.md"
+    ],
 )
 
 deploydocs(

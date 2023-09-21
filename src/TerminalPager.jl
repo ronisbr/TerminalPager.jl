@@ -90,7 +90,7 @@ Call the pager to show the output of the object `obj`.
 # Preferences
 
 The user can defined custom preferences using the function
-[`TerminalPager.set_preference`](@ref). The available preferences are listed as follows:
+[`TerminalPager.set_preference!`](@ref). The available preferences are listed as follows:
 
 - `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     active search element. One can easily obtain this sequence by converting a `Crayon` to
