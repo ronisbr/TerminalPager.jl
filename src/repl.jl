@@ -265,9 +265,14 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Restore the old stdout.
         Base.eval(:(stdout = $old_stdout))
 
+        # Check if we need to use the alternate screen.
+        use_alternate_screen_buffer = _get_preference(
+            "always_use_alternate_screen_buffer_in_repl_mode"
+        )
+
         # Take everything and display in the pager using `auto` mode. In this case, the
         # pager will only be called if there is not space in the display to show everything.
-        pager(String(take!(buf)); auto = true)
+        pager(String(take!(buf)); auto = true, use_alternate_screen_buffer)
 
         close(io)
 

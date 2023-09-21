@@ -98,6 +98,8 @@ The user can defined custom preferences using the function
 - `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
     string. (**Default** = `string(crayon"black bg:light_gray")`)
+- `"always_use_alternate_screen_buffer_in_repl_mode"`: If `true`, we will always use the
+    alternate screen buffer when showing the pager in REPL mode. (**Default** = false)
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
     the terminal is not compatible with XTerm. (**Default** = `false`)
