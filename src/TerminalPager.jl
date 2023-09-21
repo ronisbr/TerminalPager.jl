@@ -5,6 +5,7 @@ using REPL.LineEdit
 
 using Crayons
 using InteractiveUtils
+using Preferences
 using StringManipulation
 
 import Base: convert, string
@@ -48,11 +49,11 @@ include("./deprecations.jl")
 include("./help.jl")
 include("./helpers.jl")
 include("./pager.jl")
+include("./preferences.jl")
 include("./repl.jl")
 include("./search.jl")
 include("./screen.jl")
 include("./view.jl")
-include("./visual_mode.jl")
 
 include("./input/keybindings.jl")
 include("./input/input.jl")
@@ -66,6 +67,9 @@ Call the pager to show the output of the object `obj`.
 
 # Keywords
 
+!!! info
+    Some of the default values shown here can be modified by user-defined preferences.
+
 - `auto::Bool`: If `true`, then the pager is only shown if the output does not fit into the
     display. (**Default** = `false`)
 - `change_freeze::Bool`: If `true`, then the user can change the number of frozen rows and
@@ -78,6 +82,25 @@ Call the pager to show the output of the object `obj`.
     (**Default** = `true`)
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
     numbers. (**Default** = `false`)
+
+# Preferences
+
+The user can defined custom preferences using the function
+[`TerminalPager.set_preference`](@ref). The available preferences are listed as follows:
+
+- `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
+    active search element. One can easily obtain this sequence by converting a `Crayon` to
+    string. (**Default** = `string(crayon"black bg:yellow")`)
+- `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
+    inactive search element. One can easily obtain this sequence by converting a `Crayon` to
+    string. (**Default** = `string(crayon"black bg:light_gray")`)
+- `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
+    selected lines in the visual mode. (**Default** = "100")
+- `"visual_mode_active_line_background"`: `String` with the ANSI code of the background for
+    the active line in the visual mode. (**Default** = "44")
+
+For more information, see: [`TerminalPager.set_preference!`](@ref),
+[`TerminalPager.drop_preference!`](@ref), and [`TerminalPager.drop_all_preferences!`](@ref).
 """
 function pager(obj::Any; kwargs...)
     str = sprint(show, MIME"text/plain"(), obj, context = :color => true)

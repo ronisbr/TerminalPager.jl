@@ -29,12 +29,18 @@ function _view!(pagerd::Pager)
     start_row < 1 && (start_row = 1)
     start_column < 1 && (start_column = 1)
 
+    # Get preferences.
+    active_highlight          = _get_preference("active_search_decoration")
+    inactive_highlight        = _get_preference("inactive_search_decoration")
+    vm_active_line_background = _get_preference("visual_mode_active_line_background")
+    vm_line_background        = _get_preference("visual_mode_line_background")
+
     if pagerd.visual_mode
         current_line = pagerd.visual_mode_line + start_row - 1
         visual_lines = vcat(current_line, pagerd.visual_mode_selected_lines)
         visual_line_backgrounds = vcat(
-            _VISUAL_MODE_BACKGROUNDS[false],
-            fill(_VISUAL_MODE_BACKGROUNDS[true], length(pagerd.visual_mode_selected_lines))
+            vm_active_line_background,
+            fill(vm_line_background, length(pagerd.visual_mode_selected_lines))
         )
     else
         visual_lines = nothing
@@ -46,11 +52,11 @@ function _view!(pagerd::Pager)
         buf,
         lines,
         (start_row, -1, start_column, -1);
-        active_highlight            = _SEARCH_HIGHLIGHTING[true],
+        active_highlight            = active_highlight,
         active_match                = active_search_match_id,
         frozen_columns_at_beginning = frozen_columns,
         frozen_lines_at_beginning   = frozen_rows,
-        highlight                   = _SEARCH_HIGHLIGHTING[false],
+        highlight                   = inactive_highlight,
         maximum_number_of_columns   = cols,
         maximum_number_of_lines     = rows,
         search_matches              = search_matches,

@@ -7,35 +7,6 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-export reset_highlighting, set_highlighting
-
-const _SEARCH_HIGHLIGHTING = Dict{Bool, String}(
-    false => CSI * "30;47m",
-    true  => CSI * "30;43m"
-)
-
-"""
-    set_highlighting(active::Crayon, inactive::Crayon)
-
-Set the active and inactive highlighting to the crayons `active` and `inactive`.
-"""
-function set_highlighting(active::Crayon, inactive::Crayon)
-    _SEARCH_HIGHLIGHTING[true]  = string(active)
-    _SEARCH_HIGHLIGHTING[false] = string(inactive)
-    return nothing
-end
-
-"""
-    reset_highlighting()
-
-Reset the search highlighting to the default one.
-"""
-function reset_highlighting()
-    _SEARCH_HIGHLIGHTING[false] = CSI * "30;47m"
-    _SEARCH_HIGHLIGHTING[true]  = CSI * "30;43m"
-    return nothing
-end
-
 # Change the active matches in `pagerd`. If `forward` is `true`, the search is performed
 # forward. Otherwise, it is performed backwards.
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
