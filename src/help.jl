@@ -203,7 +203,7 @@ end
 ############################################################################################
 
 function _getkb(action::Symbol)
-    kb = [_kbtostr(k) for (k, v) in _keybindings if v == action]
+    kb = [_kbtostr(k) for (k, v) in _KEYBINDINGS if v == action]
     num_kb = length(kb)
 
     str = ""

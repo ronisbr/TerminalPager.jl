@@ -8,7 +8,7 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Dictionary with the default bindings.
-const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}(
+const _DEFAULT_KEYBINDINGS = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}(
     ("q",          false, false, false) => :quit,
     ("?",          false, false, false) => :help,
     ("<up>",       false, false, false) => :up,
@@ -58,7 +58,7 @@ const _default_keybindings = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
 
 # Dictionary with the current keybindings, it is initialized here with the default values to
 # improve startup time.
-const _keybindings = copy(_default_keybindings)
+const _KEYBINDINGS = copy(_DEFAULT_KEYBINDINGS)
 
 """
     delete_keybinding(key::Union{Char, Symbol}; kwargs...) -> Nothing
@@ -75,7 +75,7 @@ function delete_keybinding(
     shift::Bool = false
 )
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
-    delete!(_keybindings, dict_key)
+    delete!(_KEYBINDINGS, dict_key)
     return nothing
 end
 
@@ -85,15 +85,15 @@ end
 Reset key bindings to the original ones.
 """
 function reset_keybindings()
-    empty!(_keybindings)
-    merge!(_keybindings, _default_keybindings)
+    empty!(_KEYBINDINGS)
+    merge!(_KEYBINDINGS, _DEFAULT_KEYBINDINGS)
 
     # Key bindings that depends on the mode.
-    if get(ENV, "PAGER_MODE", "default") == "vi"
-        _keybindings[("<eot>",     false, false, false)] = :halfpagedown
-        _keybindings[("<shiftin>", false, false, false)] = :halfpageup
+    if _get_preference("pager_mode") == "vi"
+        _KEYBINDINGS[("<eot>",     false, false, false)] = :halfpagedown
+        _KEYBINDINGS[("<shiftin>", false, false, false)] = :halfpageup
     else
-        _keybindings[("<eot>", false, false, false)] = :quit_eot
+        _KEYBINDINGS[("<eot>", false, false, false)] = :quit_eot
     end
 
     return nothing
@@ -128,7 +128,7 @@ function set_keybinding(
     shift::Bool = false
 )
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
-    _keybindings[dict_key] = action
+    _KEYBINDINGS[dict_key] = action
     return nothing
 end
 

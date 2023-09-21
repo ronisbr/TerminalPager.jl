@@ -188,7 +188,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     redraw = false
     event = nothing
     key = (k.value, k.alt, k.ctrl, k.shift)
-    action = get(_keybindings, key, nothing)
+    action = get(_KEYBINDINGS, key, nothing)
 
     # Compute the minimum values for start row and start column.
     min_row = max(1, frozen_rows + 1)
