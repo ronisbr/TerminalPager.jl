@@ -28,7 +28,7 @@ include("./types.jl")
 ############################################################################################
 
 const CSI = "\x1b["
-const PKG_VERSION = v"0.3.0"
+const PKG_VERSION = v"0.5.0"
 
 # Crayons
 const _CRAYON_B     = string(crayon"bold")
