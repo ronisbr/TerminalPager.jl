@@ -17,7 +17,7 @@ function _clear_screen(io::IO; newlines::Bool = false)
     else
         dsize::Tuple{Int, Int} = displaysize(io)
 
-        for i = 1:dsize[1]
+        for i in 1:dsize[1]
             _move_cursor(io, i, 1)
             _clear_to_eol(io)
         end
