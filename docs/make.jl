@@ -11,9 +11,10 @@ makedocs(
     sitename = "Terminal Pager",
     authors = "Ronan Arraes Jardim Chagas",
     pages = [
-        "Introduction" => "index.md",
-        "Usage"        => "man/usage.md",
-        "Library"      => "lib/library.md"
+        "Introduction"  => "index.md",
+        "Usage"         => "man/usage.md",
+        "Customization" => "man/customization.md",
+        "Library"       => "lib/library.md"
     ],
 )
 

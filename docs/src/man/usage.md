@@ -56,3 +56,15 @@ julia> @stdout_to_pager for i = 1:100
 
 !!! note
     This macro can also be called using the shorter name `@out2pr`.
+
+## REPL Modes
+
+**TerminalPager.jl** comes with a REPL mode that automatically renders the command output to
+a pager if it does not fit the screen. To access this mode, just type `|` at the beginning
+of the REPL command line. If the mode is load correctly, the prompt `julia>` is changed to
+`pager>`.
+
+In pager mode, you can also type `?` at the beginning of the command line to access the pager
+help mode. In this case, the prompt is changed to `pager?>`. Any docstring accessed in this
+mode is rendered inside a pager. By the default, we use the alternate screen buffer,
+allowing to keep the screen content after exiting the pager.
