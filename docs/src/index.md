@@ -19,6 +19,19 @@ julia> using Pkg
 julia> Pkg.add("TerminalPager")
 ```
 
+## Automatically Start with Julia
+
+If you want to automatically load **TerminalPager.jl**, add the following line to the file
+`.julia/config/startup.jl` after you have installed the package:
+
+```julia
+using TerminalPager
+```
+
+Another way is to compile the package directly into your Julia system image. For more
+information, see the documentation of the package
+[PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl).
+
 ## Manual outline
 
 ```@contents
