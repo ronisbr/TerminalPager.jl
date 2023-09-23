@@ -1,6 +1,15 @@
 TerminalPager.jl
 ================
 
+Version 0.5.1
+-------------
+
+- ![Bugfix][badge-bugfix] Fix the precompilation in Julia v1.6. (PR [#31][gh-pr-31])
+- ![Bugfix][badge-bugfix] `TerminalPager.drop_preference!` should not expect the preference
+  value, only its name.
+- ![Enhancement][badge-enhancement] The error handling algorithm was improved to provide a
+  result closer to that of the default REPL mode. (Issue [#32][gh-issue-32])
+
 Version 0.5.0
 -------------
 
@@ -155,7 +164,9 @@ Version 0.0.1
 [gh-issue-17]: https://github.com/ronisbr/TerminalPager.jl/issues/17
 [gh-issue-25]: https://github.com/ronisbr/TerminalPager.jl/issues/25
 [gh-issue-29]: https://github.com/ronisbr/TerminalPager.jl/issues/29
+[gh-issue-32]: https://github.com/ronisbr/TerminalPager.jl/issues/32
 
 [gh-pr-22]: https://github.com/ronisbr/TerminalPager.jl/pull/22
 [gh-pr-24]: https://github.com/ronisbr/TerminalPager.jl/pull/24
 [gh-pr-28]: https://github.com/ronisbr/TerminalPager.jl/pull/28
+[gh-pr-31]: https://github.com/ronisbr/TerminalPager.jl/pull/31
