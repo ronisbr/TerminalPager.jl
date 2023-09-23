@@ -15,7 +15,6 @@ PrecompileTools.@setup_workload begin
     old_stdout = Base.stdout
     redirect_stdout()
 
-    old_stdin = Base.stdin
     stdin_rd, stdin_wr = redirect_stdin()
 
     PrecompileTools.@compile_workload begin
@@ -66,6 +65,5 @@ PrecompileTools.@setup_workload begin
         write(stdin_wr, "q")
     end
 
-    Base.stdin  = old_stdin
-    Base.stdout = old_stdout
+    redirect_stdout(old_stdout)
 end
