@@ -231,6 +231,9 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Variable to assemble the command, which can have multiple lines.
         cmd = ""
 
+        # Variable to indicate that we have an error while evaluating the expression.
+        is_error = false
+
         # Loop through the lines.
         @inbounds for i in 1:length(lines)
             cmd *= lines[i] * "\n"
@@ -239,21 +242,30 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             # If the command is incomplete, we need to wait for another line.
             ast !== nothing && ast.head == :incomplete && continue
 
-            # Evaluate the input.
-            result = Core.eval(Main, ast)
+            # We will use `REPL.eval_with_backend` to evaluate the expression. This function
+            # returns two values: the object returned by the expression, and a boolean value
+            # indicating if we got an error.
+            val, is_error = REPL.eval_with_backend(ast, REPL.backend(repl))
 
-            # Make `ans` be the last evaluated expression.
-            #
-            # This code was copied from the function `eval_user_input` in REPL stdlib.
-            ccall(:jl_set_global, Cvoid, (Any, Any, Any), Main, :ans, result)
+            # If we have an error, print the information and stop the processing.
+            if is_error
+                @static if VERSION >= v"1.9"
+                    val = Base.scrub_repl_backtrace(val)
+                    Base.istrivialerror(val) || setglobal!(Main, :err, val)
+                    Base.invokelatest(Base.display_error, repl.t.err_stream, val)
+                    break
+                else
+                    Base.invokelatest(Base.display_error, repl.t.err_stream, val)
+                end
+            end
 
-            # If the user added `;` at the end of the command, then we should not show the
+            # If the user added `;` at the end of the command, we should not show the
             # output.
             if !REPL.ends_with_semicolon(cmd)
                 # If the output is not `nothing`, call `show` with `MIME("text/plain")` to
                 # render the object.
-                if result !== nothing
-                    Base.invokelatest(show, stdout, MIME("text/plain"), result)
+                if val !== nothing
+                    Base.invokelatest(show, stdout, MIME("text/plain"), val)
                     write(stdout, '\n')
                 end
             end
@@ -265,14 +277,16 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Restore the old stdout.
         Base.eval(:(stdout = $old_stdout))
 
-        # Check if we need to use the alternate screen.
-        use_alternate_screen_buffer = _get_preference(
-            "always_use_alternate_screen_buffer_in_repl_mode"
-        )
+        if !is_error
+            # Check if we need to use the alternate screen.
+            use_alternate_screen_buffer = _get_preference(
+                "always_use_alternate_screen_buffer_in_repl_mode"
+            )
 
-        # Take everything and display in the pager using `auto` mode. In this case, the
-        # pager will only be called if there is not space in the display to show everything.
-        pager(String(take!(buf)); auto = true, use_alternate_screen_buffer)
+            # Take everything and display in the pager using `auto` mode. In this case, the
+            # pager will only be called if there is not space in the display to show everything.
+            pager(String(take!(buf)); auto = true, use_alternate_screen_buffer)
+        end
 
         close(io)
 
