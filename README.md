@@ -5,6 +5,7 @@ TerminalPager.jl
 [![](https://img.shields.io/badge/docs-stable-blue.svg)][docs-stable-url]
 [![](https://img.shields.io/badge/docs-dev-blue.svg)][docs-dev-url]
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
+[![DOI](https://zenodo.org/badge/359231614.svg)](https://zenodo.org/badge/latestdoi/359231614)
 
 This package contains a pager written 100% in Julia. It can be used to scroll through
 content that does not fit in the screen. It was developed based on the Linux command `less`.
