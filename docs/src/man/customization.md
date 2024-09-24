@@ -1,5 +1,4 @@
-Customization
-=============
+# Customization
 
 The user can customize some preferences in **TerminalPager.jl**. We handle those
 customization using [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl).

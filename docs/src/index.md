@@ -1,5 +1,4 @@
-TerminalPager.jl
-================
+# TerminalPager.jl
 
 ```@meta
 CurrentModule = TerminalPager

@@ -1,5 +1,4 @@
-Usage
-=====
+# Usage
 
 ## Getting started
 
