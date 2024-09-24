@@ -1,6 +1,11 @@
 TerminalPager.jl
 ================
 
+Version 0.5.2
+-------------
+
+- ![Info][badge-info] Bump StringManipulation.jl version.
+
 Version 0.5.1
 -------------
 
