@@ -12,7 +12,7 @@ export @help, @stdout_to_pager, @out2pr
 """
     @help(f)
 
-Open the documentation of the function `f` in pager.
+Open the documentation of the function, macro or other object `f` in pager.
 
 # Examples
 
@@ -21,7 +21,9 @@ julia> @help write
 ```
 """
 macro help(f)
-    local f_str = string(f)
+    # When calling @help for a macro, the argument `f` will get prefixed with a block comment.
+    # We remove that comment and just keep the macro name.
+    local f_str = chopprefix(string(f), r"#= .+ =# ")
     ex_out = quote
         # We do not need to verify if we are in a interactive environment because this mode is
         # only accessible through pager mode, which already checks it.

@@ -25,7 +25,8 @@ The following macros are available to help calling the pager.
 
 ### `@help`
 
-This macro calls the help of any function and redirects it to the `pager`:
+This macro calls the help of any function, macro, or other object and redirects it to the
+`pager`:
 
 ```julia-repl
 julia> @help write
