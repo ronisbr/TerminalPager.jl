@@ -1,14 +1,11 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## Description #############################################################################
 #
-# Description
-# ==========================================================================================
+# Functions related to the pager.
 #
-#   Functions related to the pager.
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+############################################################################################
 
 ############################################################################################
-#                          Functions Related to `Pager` Structure
+#                          Functions Related to `Pager` Structure                          #
 ############################################################################################
 
 # Get the display size of the pager `p`.
@@ -38,7 +35,7 @@ function _update_display_size!(p::Pager)
 end
 
 ############################################################################################
-#                              Functions Related to the Pager
+#                              Functions Related to the Pager                              #
 ############################################################################################
 
 # Initialize the pager with the string `str`.
@@ -145,8 +142,7 @@ function _pager!(
         title_rows     = title_rows
     )
 
-    # Application Main Loop
-    # ======================================================================================
+    # == Application Main Loop =============================================================
 
     while true
         # Check if the display size was changed.
@@ -644,7 +640,9 @@ function _pager_event_process!(pagerd::Pager)
 
             num_yanked_lines = length(yanked_lines)
 
-            buf = IOBuffer(sizehint = floor(Int, sum(sizeof.(yanked_lines)) + num_yanked_lines))
+            buf = IOBuffer(
+                sizehint = floor(Int, sum(sizeof.(yanked_lines)) + num_yanked_lines)
+            )
 
             for l in yanked_lines
                 write(buf, pagerd.lines[l] |> remove_decorations, '\n')
@@ -664,11 +662,9 @@ end
 
 # Redraw the screen of pager `pagerd`.
 function _redraw!(pagerd::Pager)
-    buf              = pagerd.buf
-    term             = pagerd.term
-    display_size     = _get_pager_display_size(pagerd)
-    visual_mode      = pagerd.visual_mode
-    visual_mode_line = pagerd.visual_mode_line
+    buf          = pagerd.buf
+    term         = pagerd.term
+    display_size = _get_pager_display_size(pagerd)
 
     # We will split the lines to make sure that every line is cleaned. We will not use the
     # ANSI escape sequence `\e[2J` because it adds new lines to the screen.

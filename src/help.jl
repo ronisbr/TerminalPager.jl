@@ -1,11 +1,8 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## Description #############################################################################
 #
-# Description
-# ==========================================================================================
+# Functions related to help screen.
 #
-#   Functions related to help screen.
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+############################################################################################
 
 """
     _help!(pargerd::Pager) -> Nothing
@@ -15,7 +12,6 @@ Open a new pager with the help.
 function _help!(pagerd::Pager)
     # Unpack values.
     term = pagerd.term
-    buf  = pagerd.buf
 
     if get(term.out_stream, :color, true)::Bool
         _b  = _CRAYON_B
@@ -199,7 +195,7 @@ $(_c)    Keybindings: $(kb_yank)$(_d)
 end
 
 ############################################################################################
-#                                    Private Functions
+#                                    Private Functions                                     #
 ############################################################################################
 
 function _getkb(action::Symbol)

@@ -1,24 +1,17 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## Description #############################################################################
 #
-# Description
-# ==========================================================================================
+# Functions to create the REPL mode `pager`.
 #
-#   Functions to create the REPL mode `pager`.
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#
-# References
-# ==========================================================================================
+## References ##############################################################################
 #
 #   This code was adapted from the Pkg.jl project.
 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+############################################################################################
 
 # Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must be the main
 # REPL mode (julia prompt).
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
-    # Prompt of the Pager Mode
-    # ======================================================================================
+    # == Prompt of the Pager Mode ==========================================================
 
     # In this case, we will use the same completion provider as the julia prompt.
     tp_mode = LineEdit.Prompt(
@@ -58,8 +51,7 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # Create the sub mode: pager help.
     tp_help_mode = _create_pager_help_repl_mode(repl, main, tp_mode)
 
-    # Key Mappings
-    # ======================================================================================
+    # == Key Mappings ======================================================================
 
     # We want to support all the default keymap prefixes.
     prefix_prompt, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
@@ -108,8 +100,7 @@ function _create_pager_help_repl_mode(
     main::LineEdit.Prompt,
     tp_mode::LineEdit.Prompt
 )
-    # Prompt of the Pager Help Mode
-    # ======================================================================================
+    # == Prompt of the Pager Help Mode =====================================================
 
     tp_help_mode = LineEdit.Prompt(
         _tp_help_mode_prompt;
@@ -132,8 +123,7 @@ function _create_pager_help_repl_mode(
         s.current_mode.sticky || REPL.transition(s, tp_mode)
     end
 
-    # Key Mappings
-    # ======================================================================================
+    # == Key Mappings ======================================================================
 
     hp = main.hist
     hp.mode_mapping[:pager_help] = tp_help_mode
@@ -198,10 +188,10 @@ function _init_pager_repl_mode(repl::AbstractREPL)
 end
 
 ############################################################################################
-#                           Command Treatment for the REPL Modes
+#                           Command Treatment for the REPL Modes                           #
 ############################################################################################
 
-# Execute the actions when a command has been received in the REPL mode `pager`.  `repl`
+# Execute the actions when a command has been received in the REPL mode `pager`. `repl`
 # must be the active REPL, and `input` is a string with the command.
 function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     if !isinteractive() && !PRINTED_REPL_WARNING[]
@@ -338,7 +328,7 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
 end
 
 ############################################################################################
-#                                         Prompts
+#                                         Prompts                                          #
 ############################################################################################
 
 _tp_mode_prompt() = "pager> "

@@ -1,11 +1,8 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## Description #############################################################################
 #
-# Description
-# ==========================================================================================
+# Functions related with the command line.
 #
-#   Functions related with the command line.
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+############################################################################################
 
 # Print the message `msg` in the command line of pager `pagerd`. The string formatting can
 # be selected using the keyword `crayon`.
@@ -100,8 +97,7 @@ function _redraw_cmd_line!(pagerd::Pager)
     return nothing
 end
 
-# Read a command in the pager `pagerd`.
-# This function returns a string with the command.
+# Read a command in the pager `pagerd`. This function returns a string with the command.
 function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
     term         = pagerd.term

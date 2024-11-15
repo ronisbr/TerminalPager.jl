@@ -10,21 +10,20 @@ using StringManipulation
 
 import Base: convert, string
 
-# The performance of TerminalPager.jl does not increase by a lot of
-# optimizations that is performed by the compiler. Hence, we disable then to
-# improve compile time.
+# The performance of TerminalPager.jl does not increase by a lot of optimizations that is
+# performed by the compiler. Hence, we disable then to improve compile time.
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optlevel"))
     @eval Base.Experimental.@optlevel 1
 end
 
 ############################################################################################
-#                                          Types
+#                                          Types                                           #
 ############################################################################################
 
 include("./types.jl")
 
 ############################################################################################
-#                                        Constants
+#                                        Constants                                         #
 ############################################################################################
 
 const CSI = "\x1b["
@@ -40,7 +39,7 @@ const _CRAYON_RESET = string(Crayon(reset = true))
 const _CRAYON_Y     = string(crayon"yellow bold")
 
 ############################################################################################
-#                                         Includes
+#                                         Includes                                         #
 ############################################################################################
 
 include("./command_line.jl")
@@ -148,7 +147,7 @@ function __init__()
 end
 
 ############################################################################################
-#                                      Precompilation
+#                                      Precompilation                                      #
 ############################################################################################
 
 include("precompilation.jl")

@@ -1,5 +1,4 @@
-TerminalPager.jl
-================
+# TerminalPager.jl
 
 [![CI](https://github.com/ronisbr/TerminalPager.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/ronisbr/TerminalPager.jl/actions/workflows/ci.yml)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)][docs-stable-url]

@@ -1,11 +1,8 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## Description #############################################################################
 #
-# Description
-# ==========================================================================================
+# This file contains functions related to key bindings.
 #
-#   This file contains functions related to key bindings.
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+############################################################################################
 
 # Dictionary with the default bindings.
 const _DEFAULT_KEYBINDINGS = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}(
