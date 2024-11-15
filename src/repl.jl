@@ -225,12 +225,12 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         is_error = false
 
         # Loop through the lines.
-        @inbounds for i in 1:length(lines)
+        @inbounds for i in eachindex(lines)
             cmd *= lines[i] * "\n"
             ast = Base.parse_input_line(cmd)
 
             # If the command is incomplete, we need to wait for another line.
-            ast !== nothing && ast.head == :incomplete && continue
+            !isnothing(ast) && ast.head == :incomplete && continue
 
             # We will use `REPL.eval_with_backend` to evaluate the expression. This function
             # returns two values: the object returned by the expression, and a boolean value

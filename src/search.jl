@@ -7,13 +7,10 @@
 # Change the active matches in `pagerd`. If `forward` is `true`, the search is performed
 # forward. Otherwise, it is performed backwards.
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
-    search_matches         = pagerd.search_matches
     active_search_match_id = pagerd.active_search_match_id
     num_matches            = pagerd.num_matches
 
-    if num_matches == 0
-        active_number_match = 0
-    else
+    if num_matches != 0
         # Activate the next match according to the user preference.
         if forward
             active_search_match_id += 1

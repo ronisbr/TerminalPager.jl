@@ -15,7 +15,6 @@ function _view!(pagerd::Pager)
     frozen_columns         = pagerd.frozen_columns
     frozen_rows            = pagerd.frozen_rows
     lines                  = pagerd.lines
-    num_lines              = pagerd.num_lines
     search_matches         = pagerd.search_matches
     show_ruler             = pagerd.show_ruler
     start_column           = pagerd.start_column

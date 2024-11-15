@@ -181,7 +181,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     visual_mode      = pagerd.visual_mode
     visual_mode_line = pagerd.visual_mode_line
 
-    redraw = false
     event = nothing
     key = (k.value, k.alt, k.ctrl, k.shift)
     action = get(_KEYBINDINGS, key, nothing)
@@ -486,7 +485,6 @@ end
 # Process the event in `pagerd`. If this function return `false`, the application must exit.
 function _pager_event_process!(pagerd::Pager)
     event = pagerd.event
-    lines = pagerd.lines
 
     # For EOT (^D), we will implement two types of "quit" action. If we are in searching
     # mode, exit it. If not, quit the pager.
@@ -536,7 +534,7 @@ function _pager_event_process!(pagerd::Pager)
         )
         frozen_rows = tryparse(Int, cmd_input; base = 10)
 
-        if (frozen_rows == nothing) && !isempty(cmd_input)
+        if isnothing(frozen_rows) && !isempty(cmd_input)
             _print_cmd_message!(
                 pagerd,
                 "Invalid data!";
@@ -544,7 +542,7 @@ function _pager_event_process!(pagerd::Pager)
             )
             _jlgetch(pagerd.term.in_stream)
         else
-            if frozen_rows != nothing
+            if !isnothing(frozen_rows)
                 pagerd.frozen_rows = max(0, frozen_rows)
                 pagerd.start_row = max(pagerd.start_row, frozen_rows + 1)
                 pagerd.visual_mode_line = 1
@@ -556,14 +554,14 @@ function _pager_event_process!(pagerd::Pager)
             )
             frozen_columns = tryparse(Int, cmd_input; base = 10)
 
-            if (frozen_columns == nothing) && !isempty(cmd_input)
+            if isnothing(frozen_columns) && !isempty(cmd_input)
                 _print_cmd_message!(
                     pagerd, "Invalid data!";
                     crayon = crayon"red bold"
                 )
                 _jlgetch(pagerd.term.in_stream)
 
-            elseif frozen_columns != nothing
+            elseif !isnothing(frozen_columns)
                 pagerd.frozen_columns = max(0, frozen_columns)
                 pagerd.start_column = max(pagerd.start_column, frozen_columns + 1)
             end
@@ -578,15 +576,15 @@ function _pager_event_process!(pagerd::Pager)
         )
         title_rows = tryparse(Int, cmd_input; base = 10)
 
-        if (title_rows == nothing) && !isempty(cmd_input)
+        if isnothing(title_rows) && !isempty(cmd_input)
             _print_cmd_message!(
                 pagerd,
                 "Invalid data!";
                 crayon = crayon"red bold"
             )
             _jlgetch(pagerd.term.in_stream)
-        else
-            title_rows != nothing && (pagerd.title_rows = max(0, title_rows))
+        elseif !isnothing(title_rows)
+            pagerd.title_rows = max(0, title_rows)
         end
 
         _request_redraw!(pagerd)

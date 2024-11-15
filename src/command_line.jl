@@ -58,7 +58,6 @@ function _redraw_cmd_line!(pagerd::Pager)
 
     elseif mode == :searching
         active_search_match_id = pagerd.active_search_match_id
-        search_matches         = pagerd.search_matches
         num_matches            = pagerd.num_matches
 
         # Check if there are matches.
