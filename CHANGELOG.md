@@ -1,6 +1,13 @@
 TerminalPager.jl
 ================
 
+Version 0.6.0
+-------------
+
+- ![Enhancement][badge-enhancement] We can use the `@help` command on TerminalPager.jl for
+  macros. (PR [#39][gh-pr-39])
+- ![Deprecation][badge-deprecation] Drop support for Julia 1.6.
+
 Version 0.5.2
 -------------
 
@@ -175,3 +182,4 @@ Version 0.0.1
 [gh-pr-24]: https://github.com/ronisbr/TerminalPager.jl/pull/24
 [gh-pr-28]: https://github.com/ronisbr/TerminalPager.jl/pull/28
 [gh-pr-31]: https://github.com/ronisbr/TerminalPager.jl/pull/31
+[gh-pr-39]: https://github.com/ronisbr/TerminalPager.jl/pull/39
