@@ -1,7 +1,7 @@
 name = "TerminalPager"
 uuid = "0c614874-6106-40ed-a7c2-2f1cd0bff883"
 license = "MIT"
-desc = "Pure Julia implementation of the command less"
+desc = "Pure Julia implementation of a terminal pager"
 authors = ["Ronan Arraes Jardim Chagas <ronisbr@gmail.com>"]
 version = "0.5.2"
 
