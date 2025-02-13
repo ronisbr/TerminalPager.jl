@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.1
+-------------
+
+- ![Bugfix][badge-bugfix] We now bypass all calls to pager when we are in `pager>` REPL
+  mode, avoiding freezing the REPL section (Issue [#40][gh-issue-40])
+
 Version 0.6.0
 -------------
 
@@ -177,6 +183,7 @@ Version 0.0.1
 [gh-issue-25]: https://github.com/ronisbr/TerminalPager.jl/issues/25
 [gh-issue-29]: https://github.com/ronisbr/TerminalPager.jl/issues/29
 [gh-issue-32]: https://github.com/ronisbr/TerminalPager.jl/issues/32
+[gh-issue-40]: https://github.com/ronisbr/TerminalPager.jl/issues/40
 
 [gh-pr-22]: https://github.com/ronisbr/TerminalPager.jl/pull/22
 [gh-pr-24]: https://github.com/ronisbr/TerminalPager.jl/pull/24
