@@ -118,7 +118,20 @@ function pager(obj::Any; kwargs...)
     return pager(str; kwargs...)
 end
 
-pager(obj::AbstractString; kwargs...) = return _pager(obj; kwargs...)
+function pager(obj::AbstractString; kwargs...)
+    # If we have a context key called `bypass_pager` with the value `true`, we must not call
+    # the pager because we are in the pager> REPL mode. Hence, we we call the pager, it
+    # locks the screen until the user types CTRL-D. For more information, see:
+    #
+    #   https://github.com/ronisbr/TerminalPager.jl/issues/40
+    #
+    if get(stdout, :bypass_pager, false)
+        print(obj)
+        return nothing
+    end
+
+    return _pager(obj; kwargs...)
+end
 
 const less = pager
 

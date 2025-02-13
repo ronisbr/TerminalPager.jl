@@ -204,12 +204,19 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     old_stdout = stdout
 
     try
-        # Create a buffer that will replace `stdout`.
+        # Create a buffer that will replace `stdout`. Notice that we add a context key
+        # called `bypass_pager` with value `true`. All the commands we call in this mode
+        # will have its output handled to the pager. Hence, if a command also calls a pager,
+        # we must only return the object. Otherwise, the section freezes until the user
+        # press CTRL-D. For more information, see:
+        #
+        #   https://github.com/ronisbr/TerminalPager.jl/issues/40
         buf = IOBuffer()
-        io = IOContext(
+        io  = IOContext(
             IOContext(buf, stdout),
-            :displaysize => displaysize(stdout),
-            :limit => false,
+            :bypass_pager => true,
+            :displaysize  => displaysize(stdout),
+            :limit        => false,
         )
 
         # Redirect `stdout` to the new buffer.
