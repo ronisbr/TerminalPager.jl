@@ -25,7 +25,7 @@ macro help(f)
         # We do not need to verify if we are in a interactive environment because this mode is
         # only accessible through pager mode, which already checks it.
         try
-            pager(TerminalPager._get_help($f_str); use_alternate_screen_buffer = true)
+            $TerminalPager.pager($TerminalPager._get_help($f_str); use_alternate_screen_buffer = true)
         catch err
             Base.display_error(stderr, err, Base.catch_backtrace())
         end
