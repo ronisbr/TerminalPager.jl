@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.2
+-------------
+
+- ![Enhancement][badge-enhancement] The macro `@help` now correctly interpolates symbols if
+  the user does not import all the symbols in TerminalPager.jl. (PR [#41][gh-pr-41])
+
 Version 0.6.1
 -------------
 
@@ -190,3 +196,4 @@ Version 0.0.1
 [gh-pr-28]: https://github.com/ronisbr/TerminalPager.jl/pull/28
 [gh-pr-31]: https://github.com/ronisbr/TerminalPager.jl/pull/31
 [gh-pr-39]: https://github.com/ronisbr/TerminalPager.jl/pull/39
+[gh-pr-41]: https://github.com/ronisbr/TerminalPager.jl/pull/41
