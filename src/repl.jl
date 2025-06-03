@@ -246,14 +246,10 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
 
             # If we have an error, print the information and stop the processing.
             if is_error
-                @static if VERSION >= v"1.9"
-                    val = Base.scrub_repl_backtrace(val)
-                    Base.istrivialerror(val) || setglobal!(Main, :err, val)
-                    Base.invokelatest(Base.display_error, repl.t.err_stream, val)
-                    break
-                else
-                    Base.invokelatest(Base.display_error, repl.t.err_stream, val)
-                end
+                val = Base.scrub_repl_backtrace(val)
+                Base.istrivialerror(val) || setglobal!(Base.MainInclude, :err, val)
+                Base.invokelatest(Base.display_error, repl.t.err_stream, val)
+                break
             end
 
             # If the user added `;` at the end of the command, we should not show the
