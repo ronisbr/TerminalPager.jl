@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.3
+-------------
+
+- ![Enhancement][badge-enhancement] Use the correct module for the `err` variable for
+  v1.10+. (PR [#44][gh-pr-44])
+
 Version 0.6.2
 -------------
 
@@ -197,3 +203,4 @@ Version 0.0.1
 [gh-pr-31]: https://github.com/ronisbr/TerminalPager.jl/pull/31
 [gh-pr-39]: https://github.com/ronisbr/TerminalPager.jl/pull/39
 [gh-pr-41]: https://github.com/ronisbr/TerminalPager.jl/pull/41
+[gh-pr-44]: https://github.com/ronisbr/TerminalPager.jl/pull/44
