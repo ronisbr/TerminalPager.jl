@@ -239,10 +239,14 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             # If the command is incomplete, we need to wait for another line.
             !isnothing(ast) && ast.head == :incomplete && continue
 
-            # We will use `REPL.eval_with_backend` to evaluate the expression. This function
-            # returns two values: the object returned by the expression, and a boolean value
-            # indicating if we got an error.
-            val, is_error = REPL.eval_with_backend(ast, REPL.backend(repl))
+	    # We will use `REPL.eval_on_backend` (called `REPL.eval_with_backend` pre-1.12)
+	    # to evaluate the expression. This function returns two values: the object
+	    # returned by the expression, and a boolean value indicating if we got an error.
+	    @static if VERSION >= v"1.12-beta4"
+		    val, is_error = REPL.eval_on_backend(ast, REPL.backend(repl))
+	    else
+		    val, is_error = REPL.eval_with_backend(ast, REPL.backend(repl))
+	    end
 
             # If we have an error, print the information and stop the processing.
             if is_error
