@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.4
+-------------
+
+- ![Bugfix][badge-bugfix] The REPL.jl interface to evaluate expressions was changed in Julia
+  v1.11.6. We updated the code to handle the new interface. (Issue [#46][gh-issue-46])
+
 Version 0.6.3
 -------------
 
@@ -196,6 +202,7 @@ Version 0.0.1
 [gh-issue-29]: https://github.com/ronisbr/TerminalPager.jl/issues/29
 [gh-issue-32]: https://github.com/ronisbr/TerminalPager.jl/issues/32
 [gh-issue-40]: https://github.com/ronisbr/TerminalPager.jl/issues/40
+[gh-issue-46]: https://github.com/ronisbr/TerminalPager.jl/issues/46
 
 [gh-pr-22]: https://github.com/ronisbr/TerminalPager.jl/pull/22
 [gh-pr-24]: https://github.com/ronisbr/TerminalPager.jl/pull/24
