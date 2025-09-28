@@ -22,7 +22,7 @@ PrecompileTools.@setup_workload begin
         mock_repl = REPL.LineEditREPL(REPL.Terminals.TTYTerminal("", stdin, stdout, stderr), true)
         mock_repl.interface = REPL.setup_interface(mock_repl)
         _init_pager_repl_mode(mock_repl)
-        register_help_shortcuts(mock_repl)
+        _register_help_shortcuts(mock_repl)
 
         a = vcat(fill(0.1986, 100)', rand(100, 100))
         @async pager(a)

@@ -5,13 +5,19 @@
 #
 ############################################################################################
 
-function execute_help(s, _, _)
+"""
+    _execute_help(s, _, _) -> Symbol
+
+Execute the help command for the identifier under the cursor in the REPL.
+"""
+function _execute_help(s, _, _)
     # The following accesses private identifier. This is not ideal, but REPL does not seem
     # to provide a public API for this.
-    input = LineEdit.input_string(s)
+    input           = LineEdit.input_string(s)
     cursor_position = LineEdit.buffer(s).ptr
-    identifier = extract_identifier(input, cursor_position)
-    identifier |> isempty && return :ok
+    identifier      = _extract_identifier(input, cursor_position)
+
+    isempty(identifier) && return :ok
 
     # Execute @help macro which will temporarily take over terminal control.
     @eval(@help $identifier)
@@ -23,7 +29,7 @@ function execute_help(s, _, _)
 end
 
 """
-    extract_identifier(input::AbstractString, cursor_pos::Integer) -> String
+    _extract_identifier(input::AbstractString, cursor_pos::Integer) -> String
 
 Extract identifier from the input line using the cursor position.
 
@@ -40,15 +46,13 @@ Extraction works even for invalid (i.e. incomplete) input.
 
 It returns an empty string otherwise.
 """
-function extract_identifier(input::AbstractString, cursor_pos::Integer)::String
-    tryparsestmt(x) = parsestmt(SyntaxNode, x, ignore_errors = true, ignore_warnings = true)
-    range(x::SyntaxNode) = Base.range(x.data.position, length = x.data.raw.span)
-    string(x::SyntaxNode) = kind(x) == K"." ? input[range(x)] : Base.string(x)
+function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
+    isempty(strip(input)) && return ""
 
-    input |> strip |> isempty && return ""
+    _to_string(x::SyntaxNode) = kind(x) == K"." ? input[_range(x)] : Base.string(x)
 
     # Get the syntax node the cursor is on.
-    node = find_cursor_node(input |> tryparsestmt, cursor_pos)
+    node = _find_cursor_node(_tryparsestmt(input), cursor_pos)
 
     # If cursor is on an identifier, macro name or literal, return it. If cursor is on a
     # part of a qualified identifier, return the full qualified identifier. The literals are
@@ -72,12 +76,12 @@ function extract_identifier(input::AbstractString, cursor_pos::Integer)::String
         K"Char",
         K"CmdString"
     )
-        return string(node)
+        return _to_string(node)
     end
 
     # If cursor is in argument/parameter list, return the callable
     if kind(node) in (K"call", K"curly", K"macrocall")
-        return string(node.children[1])
+        return _to_string(node.children[1])
     end
 
     # If cursor is on an error node (incomplete expression), check if its parent is a callable
@@ -86,14 +90,20 @@ function extract_identifier(input::AbstractString, cursor_pos::Integer)::String
         (node.parent !== nothing) &&
         kind(node.parent) in (K"call", K"curly", K"macrocall")
     )
-        return string(node.parent[1])
+        return _to_string(node.parent[1])
     end
 
     return ""
 end
 
 # Find the most specific node containing the cursor.
-function find_cursor_node(node, cursor_pos::Integer)
+"""
+    _find_cursor_node(node, cursor_pos::Integer) -> SyntaxNode
+
+Recursively find the most specific syntax node in `node` containing the cursor position
+`cursor_pos`.
+"""
+function _find_cursor_node(node, cursor_pos::Integer)
     # Return the parent node if the current node is part of a qualified identifier, as it
     # was too specific.
     node.parent !== nothing && kind(node.parent) == K"." && return node.parent
@@ -103,13 +113,23 @@ function find_cursor_node(node, cursor_pos::Integer)
 
     # If a child contains the cursor, return the most specific descendant, otherwise return
     # the current node.
-    findfirstx(f, xs) = (i = findfirst(f, xs); i === nothing ? nothing : xs[i])
-    child = findfirstx(c -> 0 <= cursor_pos - c.data.position <= c.data.raw.span, node.children)
-    return child === nothing ? node : find_cursor_node(child, cursor_pos)
+    id = findfirst(
+        c -> 0 <= cursor_pos - c.data.position <= c.data.raw.span,
+        node.children
+    )
+
+    isnothing(id) && return node
+
+    return _find_cursor_node(node.children[id], cursor_pos)
 end
 
-# When the REPL initializes, register the <alt>+<h> and <F1> shortcuts for showing help.
-function register_help_shortcuts(repl)
+"""
+    _register_help_shortcuts(repl) -> Nothing
+
+Register the `<Alt> + h` and `<F1>` shortcuts in the REPL to show help for the identifier
+under the cursor.
+"""
+function _register_help_shortcuts(repl)
     # When atreplinit is called, repl.interface is still an undefined reference. So use
     # @async, to first finish initialization.
     @async begin
@@ -121,6 +141,31 @@ function register_help_shortcuts(repl)
             sleep(0.1)
         end
         escapes = repl.interface.modes[1].keymap_dict['\e']
-        escapes['h'] = escapes['O']['P'] = execute_help # <alt>+<h> and <F1>
+        escapes['h'] = escapes['O']['P'] = _execute_help # <alt>+<h> and <F1>
+
+        return nothing
     end
 end
+
+############################################################################################
+#                                   Auxiliary Functions                                    #
+############################################################################################
+
+"""
+    _range(x::SyntaxNode) -> UnitRange{Int}
+
+Get the range of the input string corresponding to the syntax node `x`.
+"""
+function _range(x::SyntaxNode)
+    return Base.range(x.data.position, length = x.data.raw.span)
+end
+
+"""
+_tryparsestmt(x) -> SyntaxNode
+
+Try to parse `x` into a `SyntaxNode`. If there are errors or warnings, they are ignored.
+"""
+function _tryparsestmt(x)
+    return parsestmt(SyntaxNode, x, ignore_errors = true, ignore_warnings = true)
+end
+

@@ -147,7 +147,7 @@ function __init__()
 
     if isdefined(Base, :active_repl)
         _init_pager_repl_mode(Base.active_repl)
-        register_help_shortcuts(Base.active_repl)
+        _register_help_shortcuts(Base.active_repl)
     else
         atreplinit() do repl
             if isinteractive() && repl isa REPL.LineEditREPL
@@ -158,7 +158,7 @@ function __init__()
                 _init_pager_repl_mode(repl)
             end
 
-            register_help_shortcuts(repl)
+            _register_help_shortcuts(repl)
         end
     end
 
