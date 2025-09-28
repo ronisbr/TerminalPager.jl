@@ -15,6 +15,9 @@ PrecompileTools.@setup_workload begin
     stdin_rd, stdin_wr = redirect_stdin()
 
     PrecompileTools.@compile_workload begin
+        # Precompile everything called in __init__.
+        __init__()
+
         a = vcat(fill(0.1986, 100)', rand(100, 100))
         @async pager(a)
 
