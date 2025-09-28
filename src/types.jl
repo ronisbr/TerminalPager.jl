@@ -34,7 +34,7 @@ Base.@kwdef mutable struct Pager
 end
 
 """
-    struct Keystorke
+    struct Keystroke
 
 Structure that defines a keystroke.
 
