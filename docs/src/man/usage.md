@@ -66,5 +66,5 @@ of the REPL command line. If the mode is load correctly, the prompt `julia>` is 
 
 In pager mode, you can also type `?` at the beginning of the command line to access the pager
 help mode. In this case, the prompt is changed to `pager?>`. Any docstring accessed in this
-mode is rendered inside a pager. By the default, we use the alternate screen buffer,
+mode is rendered inside a pager. By default, we use the alternate screen buffer,
 allowing to keep the screen content after exiting the pager.
