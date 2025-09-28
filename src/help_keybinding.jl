@@ -6,29 +6,6 @@
 ############################################################################################
 
 """
-    _execute_help(s, _, _) -> Symbol
-
-Execute the help command for the identifier under the cursor in the REPL.
-"""
-function _execute_help(s, _, _)
-    # The following accesses private identifier. This is not ideal, but REPL does not seem
-    # to provide a public API for this.
-    input           = LineEdit.input_string(s)
-    cursor_position = LineEdit.buffer(s).ptr
-    identifier      = _extract_identifier(input, cursor_position)
-
-    isempty(identifier) && return :ok
-
-    # Execute @help macro which will temporarily take over terminal control.
-    @eval(@help $identifier)
-
-    # After pager exits, put REPL back in raw mode.
-    REPL.Terminals.raw!(Base.active_repl.t, true)
-
-    return :ok
-end
-
-"""
     _extract_identifier(input::AbstractString, cursor_pos::Integer) -> String
 
 Extract identifier from the input line using the cursor position.
@@ -141,10 +118,60 @@ function _register_help_shortcuts(repl)
             sleep(0.1)
         end
         escapes = repl.interface.modes[1].keymap_dict['\e']
-        escapes['h'] = escapes['O']['P'] = _execute_help # <alt>+<h> and <F1>
+        escapes['O']['P'] = _show_pager_help          # <F1>
+        escapes['h']      = _show_pager_help          # <Alt> + h
+        escapes['H']      = _show_pager_extended_help # <Alt> + H
 
         return nothing
     end
+end
+
+"""
+    _show_pager_help(s, _, _) -> Symbol
+
+Show the pager help for the identifier under the cursor in the REPL.
+"""
+function _show_pager_help(s, _, _)
+    # The following accesses private identifier. This is not ideal, but REPL does not seem
+    # to provide a public API for this.
+    input           = LineEdit.input_string(s)
+    cursor_position = LineEdit.buffer(s).ptr
+    identifier      = _extract_identifier(input, cursor_position)
+
+    isempty(identifier) && return :ok
+
+    # Execute @help macro which will temporarily take over terminal control.
+    @eval(@help $identifier)
+
+    # After pager exits, put REPL back in raw mode.
+    REPL.Terminals.raw!(Base.active_repl.t, true)
+
+    return :ok
+end
+
+"""
+    _show_pager_extended_help(s, _, _) -> Symbol
+
+Show the pager extended help for the identifier under the cursor in the REPL.
+"""
+function _show_pager_extended_help(s, _, _)
+    # The following accesses private identifier. This is not ideal, but REPL does not seem
+    # to provide a public API for this.
+    input           = LineEdit.input_string(s)
+    cursor_position = LineEdit.buffer(s).ptr
+    identifier      = _extract_identifier(input, cursor_position)
+
+    isempty(identifier) && return :ok
+
+    ext_identifier = "?" * identifier
+
+    # Execute @help macro which will temporarily take over terminal control.
+    @eval(@help $ext_identifier)
+
+    # After pager exits, put REPL back in raw mode.
+    REPL.Terminals.raw!(Base.active_repl.t, true)
+
+    return :ok
 end
 
 ############################################################################################
