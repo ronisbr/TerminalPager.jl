@@ -25,3 +25,4 @@ end
 include("./internals/key_bindings.jl")
 include("./internals/key_processing.jl")
 include("./internals/view.jl")
+include("./internals/help_key_binding.jl")
