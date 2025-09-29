@@ -34,11 +34,14 @@ julia> @help write
 
 ![](../assets/dpr_01.png)
 
-You can hit <Alt>+<H> (alternatively <F1>) on any REPL input to get help about the
+You can hit `<Alt> + h` (alternatively `<F1>`) on any REPL input to get help about the
 identifier the cursor currently is above. After you ended the `pager`, you are back
 with the REPL input you have already written. If you are in a new argument of a
 method call, the pager will print help about the function instead to help you complete
 the method's argument list.
+
+You can hit `<Alt> + <Shift> + h` to perform the same action but showing the extended help
+instead.
 
 ### `@stdout_to_pager`
 
