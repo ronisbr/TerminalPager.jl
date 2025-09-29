@@ -26,7 +26,7 @@ It returns an empty string otherwise.
 function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
     isempty(strip(input)) && return ""
 
-    _to_string(x::SyntaxNode) = kind(x) == K"." ? input[_range(x)] : Base.string(x)
+    _to_string(x::SyntaxNode) = kind(x) == K"." ? input[_range(x)] : string(x)
 
     # Get the syntax node the cursor is on.
     node = _find_cursor_node(_tryparsestmt(input), cursor_pos)
@@ -189,7 +189,7 @@ function _range(x::SyntaxNode)
 end
 
 """
-_tryparsestmt(x) -> SyntaxNode
+    _tryparsestmt(x) -> SyntaxNode
 
 Try to parse `x` into a `SyntaxNode`. If there are errors or warnings, they are ignored.
 """
