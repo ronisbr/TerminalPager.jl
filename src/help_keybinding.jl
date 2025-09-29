@@ -42,6 +42,7 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
         K".",
         K"Identifier",
         K"MacroName",
+        K"StringMacroName",
         @static(VERSION < v"1.12-" ? K"." : K"Bool"),
         K"Integer",
         K"BinInt",
@@ -85,6 +86,15 @@ function _find_cursor_node(node, cursor_pos::Integer)
     # Return the parent node if the current node is part of a qualified identifier, as it
     # was too specific.
     node.parent !== nothing && kind(node.parent) == K"." && return node.parent
+
+    # Return the uncle node if the current node is part of a non-standard string literal,
+    # as it was too specific.
+    kind(node) == K"String" && (parent = node.parent) !== nothing &&
+        _is_non_standard_string_literal(parent) && return parent.parent.children[1]
+
+    # Return the brother node if the current node is a different part of a non-standard
+    # string literal, as it was both too specific and too generic.
+    kind(node) == K"string" && _is_non_standard_string_literal(node) && return node.parent.children[1]
 
     # Return the node if it does not have children, as it is then most specific.
     node.children === nothing && return node
@@ -197,3 +207,11 @@ function _tryparsestmt(x)
     return parsestmt(SyntaxNode, x, ignore_errors = true, ignore_warnings = true)
 end
 
+"""
+    _is_non_standard_string_literal(x::SyntaxNode) -> Bool
+
+Check if `x` is a non-standard string literal like `r"abc"` or `raw"abc"`.
+"""
+function _is_non_standard_string_literal(x::SyntaxNode)
+    return kind(x) == K"string" && x.parent !== nothing && kind(x.parent) == K"macrocall"
+end
