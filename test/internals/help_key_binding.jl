@@ -71,4 +71,14 @@ using TerminalPager: _extract_identifier
     @test _extract_identifier("Base.@time", 6) == "Base.@time" # cursor on '@time'
 
     @test _extract_identifier("InteractiveUtils.@code_lowered(debuginfo=:none, ", 48) == "InteractiveUtils.@code_lowered"
+
+    # == Non-Standard String Literals ======================================================
+
+    @test _extract_identifier("r\"abc\"", 1)  == "@r_str" # cursor on 'r'
+    @test _extract_identifier("r\"abc\"", 2)  == "@r_str" # cursor on first '"'
+    @test _extract_identifier("r\"abc\"", 3)  == "@r_str" # cursor on 'a'
+    @test _extract_identifier("r\"abc\"", 4)  == "@r_str" # cursor on 'b'
+    @test _extract_identifier("r\"abc\"", 5)  == "@r_str" # cursor on 'c'
+    @test _extract_identifier("r\"abc\"", 6)  == "@r_str" # cursor on second '"'
+    @test _extract_identifier("r\"abc\" ", 7) == "@r_str" # cursor after non-standard string literal
 end
