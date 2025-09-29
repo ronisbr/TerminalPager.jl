@@ -56,12 +56,13 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
         return _to_string(node)
     end
 
-    # If cursor is in argument/parameter list, return the callable
+    # If cursor is in argument/parameter list, return the callable.
     if kind(node) in (K"call", K"curly", K"macrocall")
         return _to_string(node.children[1])
     end
 
-    # If cursor is on an error node (incomplete expression), check if its parent is a callable
+    # If cursor is on an error node (incomplete expression), check if its parent is a
+    # callable.
     if (
         (kind(node) == K"error") &&
         (node.parent !== nothing) &&
