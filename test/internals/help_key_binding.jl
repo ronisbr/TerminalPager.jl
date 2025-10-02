@@ -54,7 +54,10 @@ end
 
     # == Test Qualified Identifiers in Module Expressions ==================================
 
-    test("Base.Core.stdout")
+    # AST changed between 1.11 and 1.12, i.e. this is only supported 1.12 onwards.
+    @static if VERSION >= v"1.12-"
+        test("Base.Core.stdout")
+    end
 
     # Base.JuliaSyntax.byte_range
 
