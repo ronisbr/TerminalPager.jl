@@ -6,79 +6,127 @@
 
 using TerminalPager: _extract_identifier
 
+const Mapping = Pair{String, String}
+
+# Per defined test, we should check multiple cursor positions. This automates the tests.
+test(input, i::Integer, result) = @eval @test _extract_identifier($input, $i) == $result
+test(input, range::AbstractRange, result) = [test(input, i, result) for i in range]
+test(x::Mapping) = [test(x.first, i, x.second) for i in 1 : length(x.first)+1]
+test(x::String) = test(x => x)
+
+function test(input::AbstractString, mappings::Vector{Mapping})
+    r = 1:1
+    for m in mappings
+        r = findnext(m.first, input, r[end])
+        r === nothing && error("Incorrect test definition: Could not find $m in $input.")
+        test(input, r, m.second)
+    end
+end
+
+
 @testset "Extract identifier" begin
     # == Empty Input =======================================================================
 
-    @test _extract_identifier("", 1)    == ""
-    @test _extract_identifier("   ", 1) == ""
+    test("", 1, "")
+    test("   " => "")
 
     # == Single Identifier =================================================================
 
-    @test _extract_identifier("sin", 1)   == "sin"
-    @test _extract_identifier("sin", 2)   == "sin"
-    @test _extract_identifier("sin", 3)   == "sin"
-    @test _extract_identifier("sin(", 4)  == "sin"
-    @test _extract_identifier("sin( ", 5) == "sin"
+    test("sin(" => "sin")
+    test("αβγ " => "αβγ")
 
     # == Basic Macro Calls =================================================================
 
-    @test _extract_identifier("@time", 1)  == "@time" # cursor on '@'
-    @test _extract_identifier("@time", 2)  == "@time" # cursor on 't'
-    @test _extract_identifier("@time", 5)  == "@time" # cursor on 'e'
-    @test _extract_identifier("@time ", 6) == "@time" # cursor after 'e'
+    test("@time " => "@time")
+    test("@time(" => "@time")
 
-    # == Test Case 1: Incomplete Function Call =============================================
+    # == Incomplete Function Call ==========================================================
 
-    @test _extract_identifier("sin(cos", 1) == "sin" # cursor on 'sin'
-    @test _extract_identifier("sin(cos", 7) == "cos" # cursor on 'cos'
+    test("atand(cos, ", ["atand(" => "atand", "cos" => "cos", ", " => "atand"])
 
-    # == Test Case 2: Type With Parameters =================================================
+    # == Type With Parameters ==============================================================
 
-    @test _extract_identifier("Array{Int64, }", 1)  == "Array" # cursor on 'Array'
-    @test _extract_identifier("Array{Int64, }", 7)  == "Int64" # cursor on 'Int64'
-    @test _extract_identifier("Array{Int64, }", 14) == "Array" # cursor after comma -> callable
+    test("Array{Int64, }", ["Array{" => "Array", "Int64" => "Int64", ", " => "Array"])
 
-    # == Test Case 3: Nested Function Call With Comma ======================================
+    # == Nested Function Call With Comma ===================================================
 
-    @test _extract_identifier("myfun(sin(x), ", 1)  == "myfun" # cursor on 'myfun'
-    @test _extract_identifier("myfun(sin(x), ", 7)  == "sin"   # cursor on 'sin'
-    @test _extract_identifier("myfun(sin(x), ", 11) == "x"     # cursor on 'x'
-    @test _extract_identifier("myfun(sin(x), ", 15) == "myfun" # cursor after comma -> callable
+    test("fun(sin(x), ", ["fun(" => "fun", "sin(" => "sin", "x" => "x", ", " => "fun"])
 
     # == Test Qualified Identifiers in Module Expressions ==================================
 
-    @test _extract_identifier("Base.Core.stdout", 1)   == "Base.Core.stdout" # cursor on Base
-    @test _extract_identifier("Base.Core.stdout", 5)   == "Base.Core.stdout" # cursor on first .
-    @test _extract_identifier("Base.Core.stdout", 8)   == "Base.Core.stdout" # cursor on Core
-    @test _extract_identifier("Base.Core.stdout", 10)  == "Base.Core.stdout" # cursor on second .
-    @test _extract_identifier("Base.Core.stdout", 11)  == "Base.Core.stdout" # cursor on stdout
-    @test _extract_identifier("Base.Core.stdout ", 17) == "Base.Core.stdout" # cursor after identifier
+    test("Base.Core.stdout")
+
+    # Base.JuliaSyntax.byte_range
 
     # == Macro With Arguments ==============================================================
 
-    @test _extract_identifier("@time sin(x)", 1) == "@time" # cursor on '@time'
-    @test _extract_identifier("@time ", 7)       == "@time" # cursor on space after @time without content
-    @test _extract_identifier("@time sin(x)", 7) == "sin"   # cursor on space after @time with content
-    @test _extract_identifier("@time sin(x)", 8) == "sin"   # cursor on 'sin'
-
-    # == Incomplete Macro Call =============================================================
-
-    @test _extract_identifier("@time(", 7) == "@time" # cursor after opening paren
+    test("@time sin(x)", ["@time " => "@time", "sin(" => "sin", "x" => "x"])
 
     # == Module Qualified Macros ===========================================================
 
-    @test _extract_identifier("Base.@time", 1) == "Base.@time" # cursor on 'Base'
-    @test _extract_identifier("Base.@time", 6) == "Base.@time" # cursor on '@time'
+    test("Base.@time")
 
-    @test _extract_identifier("InteractiveUtils.@code_lowered(debuginfo=:none, ", 48) == "InteractiveUtils.@code_lowered"
+    test(
+        "InteractiveUtils.@code_lowered(debuginfo=:none, ", [
+            "InteractiveUtils.@code_lowered(" => "InteractiveUtils.@code_lowered",
+            ", " => "InteractiveUtils.@code_lowered"
+        ]
+    )
 
     # == Non-Standard String Literals ======================================================
 
-    @test _extract_identifier("r\"abc\"", 1)  == "@r_str" # cursor on 'r'
-    @test _extract_identifier("r\"abc\"", 2)  == "@r_str" # cursor on first '"'
-    @test _extract_identifier("r\"abc\"", 3)  == "@r_str" # cursor on 'a'
-    @test _extract_identifier("r\"abc\"", 4)  == "@r_str" # cursor on 'b'
-    @test _extract_identifier("r\"abc\"", 5)  == "@r_str" # cursor on 'c'
-    @test _extract_identifier("r\"abc\"", 6)  == "@r_str" # cursor on second '"'
-    @test _extract_identifier("r\"abc\" ", 7) == "@r_str" # cursor after non-standard string literal
+    test("r\"abc\"" => "@r_str")
+
+    # == Keywords ==========================================================================
+
+    test("baremodule")
+    test("begin")
+    test("break")
+    test("const")
+    test("continue")
+    test("do")
+    test("export")
+    test("for")
+    test("function")
+    test("global")
+    test("if")
+    test("import")
+    test("let")
+    test("local")
+    test("macro")
+    test("module")
+    test("quote")
+    test("return")
+    test("struct")
+    test("try")
+    test("using")
+    test("while")
+    test("catch")
+    test("finally")
+    test("else")
+    test("elseif")
+    test("end")
+    test("abstract")
+    test("as")
+    test("doc")
+    test("mutable")
+    test("outer")
+    test("primitive")
+    test("public")
+    test("type")
+    test("var")
+
+    # == Literals ==========================================================================
+
+    test("42")
+    test("0b101010" => "0x2a")
+    test("0o52" => "0x2a")
+    test("0x2a")
+    test("42.42")
+    test("-42.0f0")
+    test("\"42\"" => "String")
+    test("'c'" => "Char")
+    test("`ls`" => "@cmd")
+    test("true")
+    test("false")
 end

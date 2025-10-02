@@ -1,11 +1,18 @@
 module TerminalPager
 
+# The code implementing the inline help triggered by a shortcut accesses the following
+# private identifiers in addition to various field accesses. This is not ideal, but
+# neither JuliaSyntax nor REPL.LineEdit seem to provide a public API for this. This means
+# `TerminalPager.jl` is strongly coupled with `JuliaSyntax.jl` and `REPL.jl`.
+using Base.JuliaSyntax
+using Base.JuliaSyntax: is_keyword, @KSet_str, sourcetext, span
+
 using REPL
 using REPL.LineEdit
+using REPL.LineEdit: buffer, input_string
 
 using Crayons
 using InteractiveUtils
-using Base.JuliaSyntax
 using Preferences
 using StringManipulation
 
