@@ -8,6 +8,8 @@ Version 0.6.5
   of the current identifier on the cursor. The extended help can be shown by hitting `Alt +
   Shift + h`. (PRs [#49][gh-pr-49], [#50][gh-pr-50], [#51][gh-pr-51], [#52][gh-pr-52],
   [#53][gh-pr-53], and [#55][gh-pr-55])
+- ![Bugfix][badge-bugfix] Fix a bug when creating the expression for `@help`. (Issue
+  [#54][gh-issue-54])
 
 Version 0.6.4
 -------------
@@ -211,6 +213,7 @@ Version 0.0.1
 [gh-issue-32]: https://github.com/ronisbr/TerminalPager.jl/issues/32
 [gh-issue-40]: https://github.com/ronisbr/TerminalPager.jl/issues/40
 [gh-issue-46]: https://github.com/ronisbr/TerminalPager.jl/issues/46
+[gh-issue-54]: https://github.com/ronisbr/TerminalPager.jl/issues/54
 
 [gh-pr-22]: https://github.com/ronisbr/TerminalPager.jl/pull/22
 [gh-pr-24]: https://github.com/ronisbr/TerminalPager.jl/pull/24
