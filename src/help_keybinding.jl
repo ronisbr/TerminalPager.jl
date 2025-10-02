@@ -10,105 +10,112 @@
 
 Extract identifier from the input line using the cursor position.
 
-Identifiers are functions, operators, constructors, modules, closures, macros, types consts
-and literals. If the cursor is on a identifier (including module hierarchy like A.B.C) or on
-the character behind it, return that identifier.
-
-Callables are functions, operators, constructors, callable objects (functors) including
-modules, closures, macros and type parameters of a constructor. If the cursor is not on a
-identifier, but in the argument/parameter list of a valid callable, return the callable
-name. However, if the callable is a value.
+If the cursor is on an identifier (including module hierarchy like A.B.C) or on
+the character behind it, return that identifier. If the cursor is not on an identifier,
+but in the argument/parameter list of a valid callable, return the callable name.
 
 Extraction works even for invalid (i.e. incomplete) input.
-
-It returns an empty string otherwise.
 """
 function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
     isempty(strip(input)) && return ""
 
-    _to_string(x::SyntaxNode) = kind(x) == K"." ? input[_range(x)] : string(x)
+    # Parse the input string into an AST.
+    head = _tryparsestmt(input)
 
-    # Get the syntax node the cursor is on.
-    node = _find_cursor_node(_tryparsestmt(input), cursor_pos)
+    # Use the cursor position to find the byte index in the input string to search for.
+    # This might virtually shift the cursor position to match the intended identifier.
+    # This collaterates (moving sideways) the AST or enters a branch if out-of-tree.
+    search_index = _collaterate(input, cursor_pos)
 
-    # If cursor is on an identifier, macro name or literal, return it. If cursor is on a
-    # part of a qualified identifier, return the full qualified identifier. The literals are
-    # taken from
-    #
-    #   https://github.com/JuliaLang/JuliaSyntax.jl/blob/99e975a726a82994de3f8e961e6fa8d39aed0d37/src/julia/kinds.jl#L253.
-    #
-    # `K"Bool"` is only supported since Julia 1.12.
-    if kind(node) in (
-        K".",
-        K"Identifier",
-        K"MacroName",
-        K"StringMacroName",
-        @static(VERSION < v"1.12-" ? K"." : K"Bool"),
-        K"Integer",
-        K"BinInt",
-        K"HexInt",
-        K"OctInt",
-        K"Float",
-        K"Float32",
-        K"String",
-        K"Char",
-        K"CmdString"
-    )
-        return _to_string(node)
-    end
+    # Find the most specific syntax node containing the search_index.
+    # This descents the AST.
+    descendant = _descend(head, search_index)
 
-    # If cursor is in argument/parameter list, return the callable.
-    if kind(node) in (K"call", K"curly", K"macrocall")
-        return _to_string(node.children[1])
-    end
+    # Find the least generic syntax node containing all the information needed for `@help`.
+    # This ascends the AST.
+    ascendant = _ascend(descendant)
 
-    # If cursor is on an error node (incomplete expression), check if its parent is a
-    # callable.
-    if (
-        (kind(node) == K"error") &&
-        (node.parent !== nothing) &&
-        kind(node.parent) in (K"call", K"curly", K"macrocall")
-    )
-        return _to_string(node.parent[1])
-    end
-
-    return ""
+    # Extract the string from the syntax node to be provided for `@help`.
+    # This can go downwards into a *different branch* of the AST.
+    return _helpstring(ascendant)
 end
 
-# Find the most specific node containing the cursor.
 """
-    _find_cursor_node(node, cursor_pos::Integer) -> SyntaxNode
+    _collaterate(input::AbstractString, cursor_pos::Integer) -> Integer
 
-Recursively find the most specific syntax node in `node` containing the cursor position
-`cursor_pos`.
+Based on cursor position, collaterate (branch) to the intended token's index.
 """
-function _find_cursor_node(node, cursor_pos::Integer)
-    # Return the parent node if the current node is part of a qualified identifier, as it
-    # was too specific.
-    node.parent !== nothing && kind(node.parent) == K"." && return node.parent
+function _collaterate(input::AbstractString, cursor_pos::Integer)
+    # Convert character cursor position to byte index to cover multi-byte code points.
+    search_index = nextind(input, 0, cursor_pos)
 
-    # Return the uncle node if the current node is part of a non-standard string literal,
-    # as it was too specific.
-    kind(node) == K"String" && (parent = node.parent) !== nothing &&
-        _is_non_standard_string_literal(parent) && return parent.parent.children[1]
+    # Some operations seem to be easier to do them on the character level than on the AST,
+    # so do them here.
 
-    # Return the brother node if the current node is a different part of a non-standard
-    # string literal, as it was both too specific and too generic.
-    kind(node) == K"string" && _is_non_standard_string_literal(node) && return node.parent.children[1]
+    # If the cursor is at the end of the input, the REPL provides a position one beyond
+    # the last character, thus move it one position to the left.
+    search_index = min(search_index, ncodeunits(input))
 
+    # Get the syntax node the cursor is on or which is trivially to the cursor's left.
+    while search_index > 1 && isspace(input[search_index])
+        search_index = prevind(input, search_index)
+    end
+
+    return search_index
+end
+
+"""
+    _descend(node::SyntaxNode, search_index::Integer) -> SyntaxNode
+
+Descend to the most specific syntax node containing `search_index`.
+"""
+function _descend(node::SyntaxNode, search_index::Integer)
     # Return the node if it does not have children, as it is then most specific.
     node.children === nothing && return node
 
-    # If a child contains the cursor, return the most specific descendant, otherwise return
-    # the current node.
-    id = findfirst(
-        c -> 0 <= cursor_pos - c.data.position <= c.data.raw.span,
-        node.children
+    # Return the current node or the most specific descendant containing the cursor.
+    # Start searching from the last child, as it is more likely that the cursor is there.
+    id = findlast(c -> 0 <= search_index - c.data.position < span(c), node.children)
+    return isnothing(id) ? node : _descend(node[id], search_index)
+end
+
+"""
+    _ascend(node::SyntaxNode) -> SyntaxNode
+
+Ascend to the most specific SyntaxNode containing all the information needed for `@help`.
+"""
+function _ascend(node::SyntaxNode)
+    # Now that we have the most specific descendant containing the cursor, we need to find
+    # the most specific ascendant (ancestor) which contains all the needed information.
+    # The K"…" type is described here:
+    # https://github.com/JuliaLang/JuliaSyntax.jl/blob/main/src/julia/kinds.jl
+    # This is wider than 92 characters, but it is more readable this way.
+    while (parent = node.parent) !== nothing && (
+        kind(node) == K"error" ||                                  # incomplete expression
+        kind(node) == K"MacroName" ||                              # MacroName does not contain the @
+        kind(node) == K"String" && kind(parent) == K"string" ||    # string part of non-standard string literal
+        kind(node) == K"string" && kind(parent) == K"macrocall" || # string-r part of non-standard string literal
+        kind(parent) == K"."                                       # part of a qualified identifier
     )
+        node = parent
+    end
 
-    isnothing(id) && return node
+    return node
+end
 
-    return _find_cursor_node(node.children[id], cursor_pos)
+"""
+    _helpstring(x::SyntaxNode) -> String
+
+Extract the string from syntax node `x` to be provided for `@help`.
+"""
+function _helpstring(x::SyntaxNode)
+    kind(x) in KSet"call curly macrocall" && return x[1] |> _helpstring # First child is callable.
+    kind(x) in KSet". module block error" && return x |> sourcetext     # Use plain text.
+    kind(x) in KSet"string String" && return "String"                   # String literals are special in `help?>`.
+    kind(x) in KSet"char Char" && return "Char"                         # Avoid converting Char literal to String.
+    kind(x) in KSet"cmdstring CmdString" && return "@cmd"               # Unclear what to show for `cmd`.
+    is_keyword(x) && return x |> kind |> untokenize                     # Extract keyword as string.
+    return x |> string                                                  # Fallback: Convert to string.
 end
 
 """
@@ -129,8 +136,8 @@ function _register_help_shortcuts(repl)
             sleep(0.1)
         end
         escapes = repl.interface.modes[1].keymap_dict['\e']
-        escapes['O']['P'] = _show_pager_help          # <F1>
-        escapes['h']      = _show_pager_help          # <Alt> + h
+        escapes['O']['P'] = _show_pager_regular_help  # <F1>
+        escapes['h']      = _show_pager_regular_help  # <Alt> + h
         escapes['H']      = _show_pager_extended_help # <Alt> + H
 
         return nothing
@@ -138,43 +145,33 @@ function _register_help_shortcuts(repl)
 end
 
 """
-    _show_pager_help(s, _, _) -> Symbol
+    _show_pager_regular_help(s, _, _) -> Symbol
 
 Show the pager help for the identifier under the cursor in the REPL.
 """
-function _show_pager_help(s, _, _)
-    # The following accesses private identifier. This is not ideal, but REPL does not seem
-    # to provide a public API for this.
-    input           = LineEdit.input_string(s)
-    cursor_position = LineEdit.buffer(s).ptr
-    identifier      = _extract_identifier(input, cursor_position)
-
-    isempty(identifier) && return :ok
-
-    # Execute @help macro which will temporarily take over terminal control.
-    @eval(@help $identifier)
-
-    # After pager exits, put REPL back in raw mode.
-    REPL.Terminals.raw!(Base.active_repl.t, true)
-
-    return :ok
-end
+_show_pager_regular_help(s, _, _) = _show_pager_help(s)
 
 """
     _show_pager_extended_help(s, _, _) -> Symbol
 
 Show the pager extended help for the identifier under the cursor in the REPL.
 """
-function _show_pager_extended_help(s, _, _)
-    # The following accesses private identifier. This is not ideal, but REPL does not seem
-    # to provide a public API for this.
-    input           = LineEdit.input_string(s)
-    cursor_position = LineEdit.buffer(s).ptr
+_show_pager_extended_help(s, _, _) = _show_pager_help(s, extended = true)
+
+"""
+    _show_pager_help(s, extended) -> Symbol
+
+Show either the regular or the extended pager help for the identifier under the cursor.
+"""
+function _show_pager_help(s; extended = false)
+    input           = input_string(s)
+    cursor_position = buffer(s).ptr
     identifier      = _extract_identifier(input, cursor_position)
 
     isempty(identifier) && return :ok
 
-    ext_identifier = "?" * identifier
+    # Switch between regular and extended help.
+    ext_identifier = extended ? "?" * identifier : identifier
 
     # Execute @help macro which will temporarily take over terminal control.
     @eval(@help $ext_identifier)
@@ -190,28 +187,10 @@ end
 ############################################################################################
 
 """
-    _range(x::SyntaxNode) -> UnitRange{Int}
-
-Get the range of the input string corresponding to the syntax node `x`.
-"""
-function _range(x::SyntaxNode)
-    return Base.range(x.data.position, length = x.data.raw.span)
-end
-
-"""
     _tryparsestmt(x) -> SyntaxNode
 
 Try to parse `x` into a `SyntaxNode`. If there are errors or warnings, they are ignored.
 """
 function _tryparsestmt(x)
     return parsestmt(SyntaxNode, x, ignore_errors = true, ignore_warnings = true)
-end
-
-"""
-    _is_non_standard_string_literal(x::SyntaxNode) -> Bool
-
-Check if `x` is a non-standard string literal like `r"abc"` or `raw"abc"`.
-"""
-function _is_non_standard_string_literal(x::SyntaxNode)
-    return kind(x) == K"string" && x.parent !== nothing && kind(x.parent) == K"macrocall"
 end
