@@ -18,9 +18,17 @@ julia> @help write
 ```
 """
 macro help(f)
+    # Get the string representation of `f`. Notice that we need to remove the quotes added
+    # buy `sprint` when `f` is a string.
+    local f_str
+    f_str = sprint(show, f)
+    f_str = chopprefix(f_str, "\"")
+    f_str = chopsuffix(f_str, "\"")
+
     # When calling @help for a macro, the argument `f` will get prefixed with a block comment.
     # We remove that comment and just keep the macro name.
-    local f_str = chopprefix(string(f), r"#= .+ =# ")
+    f_str = chopprefix(f_str, r"#= .+ =# ")
+
     ex_out = quote
         # We do not need to verify if we are in a interactive environment because this mode is
         # only accessible through pager mode, which already checks it.
