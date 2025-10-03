@@ -107,13 +107,13 @@ end
 Extract the string from syntax node `x` to be provided for `@help`.
 """
 function _helpstring(x::SyntaxNode)
-    kind(x) in KSet"call curly macrocall" && return x[1] |> _helpstring # First child is callable.
-    kind(x) in KSet". module block error" && return x |> sourcetext     # Use plain text.
-    kind(x) in KSet"string String" && return "String"                   # String literals are special in `help?>`.
-    kind(x) in KSet"char Char" && return "Char"                         # Avoid converting Char literal to String.
-    kind(x) in KSet"cmdstring CmdString" && return "@cmd"               # Unclear what to show for `cmd`.
-    is_keyword(x) && return x |> kind |> untokenize                     # Extract keyword as string.
-    return x |> string                                                  # Fallback: Convert to string.
+    kind(x) in KSet"call curly macrocall" && return x[1] |> _helpstring    # First child is callable.
+    kind(x) in KSet". module block error" && return x |> sourcetext        # Use plain text.
+    kind(x) in KSet"string String" && return "String"                      # String literals are special in `help?>`.
+    kind(x) in KSet"char Char" && return "Char"                            # Avoid converting Char literal to String.
+    kind(x) in KSet"cmdstring CmdString" && return "@cmd"                  # Unclear what to show for `cmd`.
+    (kind(x) == K"->" || is_keyword(x) ) && return x |> kind |> untokenize # Extract as string.
+    return x |> string                                                     # Fallback: Convert to string.
 end
 
 """
