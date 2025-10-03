@@ -19,7 +19,7 @@ julia> @help write
 """
 macro help(f)
     # Get the string representation of `f`. Notice that we need to remove the quotes added
-    # buy `sprint` when `f` is a string.
+    # by `sprint` when `f` is a string.
     local f_str
     f_str = sprint(show, f)
     f_str = chopprefix(f_str, "\"")
