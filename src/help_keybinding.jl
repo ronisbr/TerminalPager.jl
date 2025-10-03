@@ -46,15 +46,13 @@ end
 Based on cursor position, collaterate (branch) to the intended token's index.
 """
 function _collaterate(input::AbstractString, cursor_pos::Integer)
-    # Convert character cursor position to byte index to cover multi-byte code points.
-    search_index = nextind(input, 0, cursor_pos)
-
-    # Some operations seem to be easier to do them on the character level than on the AST,
+    # Some operations seem to be easier to do on the character level than on the AST,
     # so do them here.
-
-    # If the cursor is at the end of the input, the REPL provides a position one beyond
-    # the last character, thus move it one position to the left.
-    search_index = min(search_index, ncodeunits(input))
+    # Convert character cursor position to byte index to cover multi-byte code points.
+    # If the cursor is at the end of the input, the REPL provides a position one code point
+    # beyond the number of code points in `input` (i.e. its length). Thus, guarantee the
+    # search index is always within `input` by cropping it to `input`'s length.
+    search_index = nextind(input, 0, min(cursor_pos, length(input)))
 
     # Get the syntax node the cursor is on or which is trivially to the cursor's left.
     while search_index > 1 && isspace(input[search_index])
