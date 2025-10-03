@@ -10,16 +10,21 @@ const Mapping = Pair{String, String}
 
 # Per defined test, we should check multiple cursor positions. This automates the tests.
 test(input, i::Integer, result) = @eval @test _extract_identifier($input, $i) == $result
-test(input, range::AbstractRange, result) = [test(input, i, result) for i in range]
 test(x::Mapping) = [test(x.first, i, x.second) for i in 1 : length(x.first)+1]
 test(x::String) = test(x => x)
 
 function test(input::AbstractString, mappings::Vector{Mapping})
+    # Create a lookup table to convert code unit indices to code point indices.
+    Mem = @static(VERSION >= v"1.11-" ? Memory : Array)
+    to_code_point_index = Mem{Int}(undef, ncodeunits(input))
+    to_code_point_index[input |> eachindex |> collect] .= 1:length(input)
+
     r = 1:1
     for m in mappings
         r = findnext(m.first, input, r[end])
         r === nothing && error("Incorrect test definition: Could not find $m in $input.")
-        test(input, r, m.second)
+        # Test mapping for all its code point indices.
+        [test(input, to_code_point_index[i], m.second) for i in r if isvalid(input, i)]
     end
 end
 
@@ -221,4 +226,7 @@ end
     test("⋡")
     test("⫸")
 
+    # == UTF8-operator inside Expression ===================================================
+
+    test("15 ⫸ x", ["15 " => "15", "⫸ " => "⫸", "x" => "x"])
 end
