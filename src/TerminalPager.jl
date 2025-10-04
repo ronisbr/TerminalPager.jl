@@ -52,7 +52,6 @@ const _CRAYON_Y     = string(crayon"yellow bold")
 
 include("./command_line.jl")
 include("./debug.jl")
-include("./deprecations.jl")
 include("./help.jl")
 include("./helpers.jl")
 include("./pager.jl")
