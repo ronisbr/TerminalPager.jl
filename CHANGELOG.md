@@ -1,6 +1,16 @@
 TerminalPager.jl
 ================
 
+Version 0.6.6
+-------------
+
+- ![Bugfix][badge-bugfix] The help keybinding now works properly with Unicode characters.
+  (PR [#57][gh-pr-57])
+- ![Feature][badge-feature] We now support lambda operator in help keybinding. (PR
+  [#59][gh-pr-59])
+- ![Enhancement][badge-enhancement] We improved the performance, reducing the time to show
+  the pager for the first time.
+
 Version 0.6.5
 -------------
 
@@ -228,3 +238,5 @@ Version 0.0.1
 [gh-pr-52]: https://github.com/ronisbr/TerminalPager.jl/pull/52
 [gh-pr-53]: https://github.com/ronisbr/TerminalPager.jl/pull/53
 [gh-pr-55]: https://github.com/ronisbr/TerminalPager.jl/pull/55
+[gh-pr-57]: https://github.com/ronisbr/TerminalPager.jl/pull/57
+[gh-pr-59]: https://github.com/ronisbr/TerminalPager.jl/pull/59
