@@ -17,15 +17,16 @@ but in the argument/parameter list of a valid callable, return the callable name
 Extraction works even for invalid (i.e. incomplete) input.
 """
 function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
-    isempty(strip(input)) && return ""
+    input_str = string(input)
+    isempty(strip(input_str)) && return ""
 
     # Parse the input string into an AST.
-    head = _tryparsestmt(input)
+    head = _tryparsestmt(input_str)
 
     # Use the cursor position to find the byte index in the input string to search for.
     # This might virtually shift the cursor position to match the intended identifier.
     # This collaterates (moving sideways) the AST or enters a branch if out-of-tree.
-    search_index = _collaterate(input, cursor_pos)
+    search_index = _collaterate(input_str, cursor_pos)
 
     # Find the most specific syntax node containing the search_index.
     # This descents the AST.
@@ -41,11 +42,11 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
 end
 
 """
-    _collaterate(input::AbstractString, cursor_pos::Integer) -> Integer
+    _collaterate(input::String, cursor_pos::Integer) -> Integer
 
 Based on cursor position, collaterate (branch) to the intended token's index.
 """
-function _collaterate(input::AbstractString, cursor_pos::Integer)
+function _collaterate(input::String, cursor_pos::Integer)
     # Some operations seem to be easier to do on the character level than on the AST,
     # so do them here.
     # Convert character cursor position to byte index to cover multi-byte code points.
@@ -185,10 +186,10 @@ end
 ############################################################################################
 
 """
-    _tryparsestmt(x) -> SyntaxNode
+    _tryparsestmt(x::String) -> SyntaxNode
 
 Try to parse `x` into a `SyntaxNode`. If there are errors or warnings, they are ignored.
 """
-function _tryparsestmt(x)
-    return parsestmt(SyntaxNode, x, ignore_errors = true, ignore_warnings = true)
+function _tryparsestmt(x::String)
+    return parsestmt(SyntaxNode, x; ignore_errors = true, ignore_warnings = true)
 end

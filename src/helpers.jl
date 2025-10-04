@@ -93,7 +93,7 @@ end
 ############################################################################################
 
 # Return the rendered help string of the function `f`.
-function _get_help(f)
+function _get_help(f::AbstractString)
     # Create a buffer that will replace `stdout`.
     buf = IOBuffer()
     io = IOContext(
