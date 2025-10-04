@@ -69,6 +69,16 @@ PrecompileTools.@setup_workload begin
         write(stdin_wr, Char(27))
         # Exit pager.
         write(stdin_wr, "q")
+
+        @async pager(a; use_alternate_screen = true)
+        write(stdin_wr, "q")
+
+        # == Internal Functions ============================================================
+
+        TerminalPager._get_help("read")
+        f = "read read read"
+        TerminalPager._get_help(@view f[1:4])
+        TerminalPager._extract_identifier("while true break end", 10)
     end
 
     redirect_stdout(old_stdout)

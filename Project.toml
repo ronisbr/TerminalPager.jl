@@ -8,6 +8,7 @@ version = "0.6.5"
 [deps]
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
@@ -15,6 +16,7 @@ StringManipulation = "892a3eda-7b42-436c-8928-eab12a02cf0e"
 
 [compat]
 Crayons = "4.0"
+Markdown = "1.10"
 PrecompileTools = "1"
 Preferences = "1"
 StringManipulation = "0.3.2, 0.4"

@@ -106,7 +106,23 @@ function _get_help(f::AbstractString)
     ast = Base.invokelatest(TerminalPager.REPL.helpmode, io, f)
 
     # Evaluate the AST, which returns a Markdown object.
-    response = Core.eval(Main, ast)
+    #
+    # If we are precompiling, just return a sample markdown.
+    response = if ccall(:jl_generating_output, Cint, ()) == 1
+        md"""
+        # Header
+
+        This is a paragraph.
+
+        ```julia
+        a = 1 + 2
+        ```
+
+        ---
+        """
+    else
+        Core.eval(Main, ast)
+    end
 
     # Render the output.
     show(io, MIME("text/plain"), response)

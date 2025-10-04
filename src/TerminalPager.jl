@@ -13,6 +13,7 @@ using REPL.LineEdit: buffer, input_string
 
 using Crayons
 using InteractiveUtils
+using Markdown
 using Preferences
 using StringManipulation
 
