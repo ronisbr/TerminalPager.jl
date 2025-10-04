@@ -57,7 +57,7 @@ end
 # Initialize the pager with the string `str` using the terminal `term`. The user must ensure
 # that `term` is in raw mode.
 function _pager!(
-    term::REPL.Terminals.TTYTerminal,
+    @nospecialize(term::REPL.Terminals.TTYTerminal),
     str::String;
     auto::Bool = false,
     change_freeze::Bool = true,

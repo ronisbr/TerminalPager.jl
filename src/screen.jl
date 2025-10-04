@@ -7,7 +7,7 @@
 # Clear the screen `io`. If `newlines` is false, then the display lines will be overwritten.
 # Otherwise, a new screen page will be printed, preserving the history. At the end, the
 # cursor position is `(0, 0)`.
-function _clear_screen(io::IO; newlines::Bool = false)
+function _clear_screen(@nospecialize(io::IO); newlines::Bool = false)
     if newlines
         write(io, "$(CSI)2J")
 
@@ -26,31 +26,31 @@ function _clear_screen(io::IO; newlines::Bool = false)
 end
 
 # Move the cursor `i` characters back.
-_cursor_back(io::IO, i::Int = 1) = write(io, "$(CSI)$(i)D")
+_cursor_back(@nospecialize(io::IO), i::Int = 1) = write(io, "$(CSI)$(i)D")
 
 # Move the cursor `i` characters forward.
-_cursor_forward(io::IO, i::Int = 1) = write(io, "$(CSI)$(i)C")
+_cursor_forward(@nospecialize(io::IO), i::Int = 1) = write(io, "$(CSI)$(i)C")
 
 # Clear from the cursor to the end of the line.
-_clear_to_eol(io::IO) = write(io, "$(CSI)0K")
+_clear_to_eol(@nospecialize(io::IO)) = write(io, "$(CSI)0K")
 
 # Hide cursor.
-_hide_cursor(io::IO) = write(io, "$(CSI)?25l")
+_hide_cursor(@nospecialize(io::IO)) = write(io, "$(CSI)?25l")
 
 # Move the cursor of the screen `io` to the position `(i, j)`.
-_move_cursor(io::IO, i::Int, j::Int) = write(io, "$(CSI)$(i);$(j)H")
+_move_cursor(@nospecialize(io::IO), i::Int, j::Int) = write(io, "$(CSI)$(i);$(j)H")
 
 # Restore the cursor position in screen `io`.
-_restore_cursor(io::IO) = write(io, "$(CSI)u")
+_restore_cursor(@nospecialize(io::IO)) = write(io, "$(CSI)u")
 
 # Save the cursor position in screen `io`.
-_save_cursor(io::IO) = write(io, "$(CSI)s")
+_save_cursor(@nospecialize(io::IO)) = write(io, "$(CSI)s")
 
 # Show cursor.
-_show_cursor(io::IO) = write(io, "$(CSI)?25h")
+_show_cursor(@nospecialize(io::IO)) = write(io, "$(CSI)?25h")
 
 # Turn on the alternate screen buffer in `io`, clearing it first.
-_turn_on_alternate_screen_buffer(io::IO) = write(io, "$(CSI)?1049h")
+_turn_on_alternate_screen_buffer(@nospecialize(io::IO)) = write(io, "$(CSI)?1049h")
 
 # Turn off the alternate screen buffer in `io`, restoring the old buffer.
-_turn_off_alternate_screen_buffer(io::IO) = write(io, "$(CSI)?1049l")
+_turn_off_alternate_screen_buffer(@nospecialize(io::IO)) = write(io, "$(CSI)?1049l")
