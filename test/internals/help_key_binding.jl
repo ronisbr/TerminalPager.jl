@@ -70,6 +70,11 @@ end
 
     test("@time sin(x)", ["@time " => "@time", "sin(" => "sin", "x" => "x"])
 
+    # Test that the cursor after the macro argument provides help about the macro.
+    let s = "@code_native syntax=:intel "
+        test(s, length(s)+1, "@code_native")
+    end
+
     # == Module Qualified Macros ===========================================================
 
     test("Base.@time")

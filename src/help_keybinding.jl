@@ -50,13 +50,15 @@ function _collaterate(input::String, cursor_pos::Integer)
     # Some operations seem to be easier to do on the character level than on the AST,
     # so do them here.
     # Convert character cursor position to byte index to cover multi-byte code points.
-    # If the cursor is at the end of the input, the REPL provides a position one code point
-    # beyond the number of code points in `input` (i.e. its length). Thus, guarantee the
-    # search index is always within `input` by cropping it to `input`'s length.
-    search_index = nextind(input, 0, min(cursor_pos, length(input)))
+    search_index = nextind(input, 0, cursor_pos)
 
     # Get the syntax node the cursor is on or which is trivially to the cursor's left.
-    while search_index > 1 && isspace(input[search_index])
+    # If the cursor is at the end of the input, the REPL provides a position one code point
+    # beyond the number of code points in `input` (i.e. its length). In this case the
+    # search index is deliberately left outside `input` to support the correct help on
+    # macro calls without parentheses to get help about the macro even if the cursor is
+    # after a newly written macro argument.
+    while 1 < search_index <= ncodeunits(input) && isspace(input[search_index])
         search_index = prevind(input, search_index)
     end
 
