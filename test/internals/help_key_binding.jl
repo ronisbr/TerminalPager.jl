@@ -139,7 +139,10 @@ end
     test("-42.0f0")
     test("\"42\"" => "String")
     test("'c'" => "Char")
-    test("`ls`" => "@cmd")
+    # AST changed between 1.11 and 1.12, i.e. this is only supported 1.12 onwards.
+    @static if VERSION >= v"1.12-"
+        test("`ls`" => "@cmd")
+    end
     test("true")
     test("false")
 
