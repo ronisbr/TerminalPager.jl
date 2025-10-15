@@ -10,6 +10,7 @@ const Mapping = Pair{String, String}
 
 # Per defined test, we should check multiple cursor positions. This automates the tests.
 test(input, i::Integer, result) = @eval @test _extract_identifier($input, $i) == $result
+test(x, result) = test(x, length(x)+1, result) # test at end of input
 test(x::Mapping) = [test(x.first, i, x.second) for i in 1 : length(x.first)+1]
 test(x::String) = test(x => x)
 
@@ -71,9 +72,7 @@ end
     test("@time sin(x)", ["@time " => "@time", "sin(" => "sin", "x" => "x"])
 
     # Test that the cursor after the macro argument provides help about the macro.
-    let s = "@code_native syntax=:intel "
-        test(s, length(s)+1, "@code_native")
-    end
+    test("@code_native syntax=:intel ", "@code_native")
 
     # == Module Qualified Macros ===========================================================
 
@@ -250,4 +249,8 @@ end
             "⫸" => "⫸"
         ]
     )
+
+    # == Real World Examples ===============================================================
+
+    test("cl.platform().id |> unsafe_string", "unsafe_string")
 end

@@ -62,7 +62,13 @@ function _collaterate(input::String, cursor_pos::Integer)
         search_index = prevind(input, search_index)
     end
 
-    return search_index
+    # If the cursor is at the end of the input without trailing space, refer to the last
+    # identifier.
+    if search_index == ncodeunits(input) + 1 && !isspace(input[end])
+        return search_index - 1
+    else
+        return search_index
+    end
 end
 
 """
