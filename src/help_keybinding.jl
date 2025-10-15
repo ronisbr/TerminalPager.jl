@@ -92,6 +92,13 @@ end
 Ascend to the most specific SyntaxNode containing all the information needed for `@help`.
 """
 function _ascend(node::SyntaxNode)
+    # Depending on Julia version, macros are handled differently in JuliaSyntax.jl.
+    is_macro_part(n) = @static if VERSION >= v"1.13-"
+        kind(n) == K"Identifier" && n.parent !== nothing && kind(n.parent) == K"macro_name"
+    else
+        kind(n) == K"MacroName"
+    end
+
     # Now that we have the most specific descendant containing the cursor, we need to find
     # the most specific ascendant (ancestor) which contains all the needed information.
     # The K"…" type is described here:
@@ -99,7 +106,7 @@ function _ascend(node::SyntaxNode)
     # This is wider than 92 characters, but it is more readable this way.
     while (parent = node.parent) !== nothing && (
         kind(node) == K"error" ||                                  # incomplete expression
-        kind(node) == K"MacroName" ||                              # MacroName does not contain the @
+        is_macro_part(node) ||                                     # MacroName/macro_name does not contain the @
         kind(node) == K"String" && kind(parent) == K"string" ||    # string part of non-standard string literal
         kind(node) == K"string" && kind(parent) == K"macrocall" || # string-r part of non-standard string literal
         kind(parent) == K"."                                       # part of a qualified identifier
@@ -118,6 +125,7 @@ Extract the string from syntax node `x` to be provided for `@help`.
 function _helpstring(x::SyntaxNode)
     kind(x) in KSet"call curly macrocall" && return x[1] |> _helpstring    # First child is callable.
     kind(x) in KSet". module block error" && return x |> sourcetext        # Use plain text.
+    @static VERSION >= v"1.13-" && kind(x) == K"macro_name" && return x |> sourcetext
     kind(x) in KSet"string String" && return "String"                      # String literals are special in `help?>`.
     kind(x) in KSet"char Char" && return "Char"                            # Avoid converting Char literal to String.
     kind(x) in KSet"cmdstring CmdString" && return "@cmd"                  # Unclear what to show for `cmd`.
