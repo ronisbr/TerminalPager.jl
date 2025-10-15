@@ -18,16 +18,10 @@ julia> @help write
 ```
 """
 macro help(f)
-    # Get the string representation of `f`. Notice that we need to remove the quotes added
-    # by `sprint` when `f` is a string.
-    local f_str
-    f_str = sprint(show, f)
-    f_str = chopprefix(f_str, "\"")
-    f_str = chopsuffix(f_str, "\"")
-
-    # When calling @help for a macro, the argument `f` will get prefixed with a block comment.
-    # We remove that comment and just keep the macro name.
-    f_str = chopprefix(f_str, r"#= .+ =# ")
+    # Get the string representation of `f`.
+    # When calling @help for a macro, the resulting `Expr` contains a `LineNumberNode`
+    # jumbling the resulting string, so use the `Symbol` instead.
+    f_str = string(Meta.isexpr(f, :macrocall) ? f.args[1] : f)
 
     ex_out = quote
         # We do not need to verify if we are in a interactive environment because this mode is
