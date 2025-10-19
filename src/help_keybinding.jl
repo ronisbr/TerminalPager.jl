@@ -143,9 +143,8 @@ function _register_help_shortcuts(repl)
             sleep(0.1)
         end
         escapes = repl.interface.modes[1].keymap_dict['\e']
-        escapes['O']['P'] = _show_pager_regular_help  # <F1>
-        escapes['h']      = _show_pager_regular_help  # <Alt> + h
-        escapes['H']      = _show_pager_extended_help # <Alt> + H
+        escapes['O']['P'] = _show_pager_extended_help  # <F1>
+        escapes['h']      = _show_pager_extended_help  # <Alt> + h
 
         return nothing
     end
