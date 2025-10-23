@@ -150,9 +150,14 @@ function _register_help_shortcuts(repl)
         while !isdefined(repl, :interface)
             sleep(0.1)
         end
-        escapes = repl.interface.modes[1].keymap_dict['\e']
-        escapes['O']['P'] = _show_pager_extended_help  # <F1>
-        escapes['h']      = _show_pager_extended_help  # <Alt> + h
+
+        # Register the keybindings both in the regular REPL mode (always the first one)
+        # and in the pager mode (which is the last one, as we just added it).
+        for m in (repl.interface.modes[1], repl.interface.modes[end])
+            escapes = m.keymap_dict['\e']
+            escapes['O']['P'] = _show_pager_extended_help  # <F1>
+            escapes['h']      = _show_pager_extended_help  # <Alt> + h
+        end
 
         return nothing
     end
