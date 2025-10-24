@@ -96,7 +96,7 @@ end
     test("break")
     test("const")
     test("continue")
-    test("do")
+    @static VERSION <= v"1.13-" && test("do") # Deactivate test until https://github.com/JuliaLang/JuliaSyntax.jl/issues/599 is fixed.
     test("export")
     test("for")
     test("function")
