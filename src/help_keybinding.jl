@@ -153,7 +153,7 @@ function _register_help_shortcuts(repl)
 
         # Register the keybindings both in the regular REPL mode (always the first one)
         # and in the pager mode (which is the last one, as we just added it).
-        for m in (repl.interface.modes[1], repl.interface.modes[end])
+        for m in repl.interface.modes |> Ref .|> (first, last)
             escapes = m.keymap_dict['\e']
             escapes['O']['P'] = _show_pager_extended_help  # <F1>
             escapes['h']      = _show_pager_extended_help  # <Alt> + h
