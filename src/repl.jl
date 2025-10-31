@@ -57,7 +57,11 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     prefix_prompt, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
 
     # We also want to support reverse searching.
-    search_promt, skeymap = LineEdit.setup_search_keymap(hp)
+    skeymap = @static if VERSION >= v"1.13-"
+        LineEdit.history_keymap
+    else
+        LineEdit.setup_search_keymap(hp)[2]
+    end
 
     # Key mappings used in the pager mode:
     mk = REPL.mode_keymap(main)
@@ -133,7 +137,11 @@ function _create_pager_help_repl_mode(
     prefix_prompt, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
 
     # We also want to support reverse searching.
-    search_promt, skeymap = LineEdit.setup_search_keymap(hp)
+    skeymap = @static if VERSION >= v"1.13-"
+        LineEdit.history_keymap
+    else
+        LineEdit.setup_search_keymap(hp)[2]
+    end
 
     # Key mappings used in the pager mode:
     mk = REPL.mode_keymap(main)
