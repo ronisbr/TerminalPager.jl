@@ -1,6 +1,18 @@
 TerminalPager.jl
 ================
 
+Version 0.6.7
+-------------
+
+- ![Bugfix][badge-bugfix] Fix function names in `@help`. (PR [#64][gh-pr-64])
+- ![Bugfix][badge-bugfix] Fix macro handling in Julia 1.13. (PR [#67][gh-pr-67])
+- ![Bugfix][badge-bugfix] Fix loading in Julia 1.14. (PR [#73][gh-pr-73])
+- ![Enhancement][badge-enhancement] Improve smart help algorithm. (PRs [#60][gh-pr-60], and
+  [#65][gh-pr-65])
+- ![Enhancement][badge-enhancement] Use extended help as default in smart help. (PR
+  [#66][gh-pr-66])
+- ![Feature][badge-feature] Add inline help to pager mode. (PR [#68][gh-pr-68])
+
 Version 0.6.6
 -------------
 
@@ -240,3 +252,10 @@ Version 0.0.1
 [gh-pr-55]: https://github.com/ronisbr/TerminalPager.jl/pull/55
 [gh-pr-57]: https://github.com/ronisbr/TerminalPager.jl/pull/57
 [gh-pr-59]: https://github.com/ronisbr/TerminalPager.jl/pull/59
+[gh-pr-60]: https://github.com/ronisbr/TerminalPager.jl/pull/60
+[gh-pr-64]: https://github.com/ronisbr/TerminalPager.jl/pull/64
+[gh-pr-65]: https://github.com/ronisbr/TerminalPager.jl/pull/65
+[gh-pr-66]: https://github.com/ronisbr/TerminalPager.jl/pull/66
+[gh-pr-67]: https://github.com/ronisbr/TerminalPager.jl/pull/67
+[gh-pr-68]: https://github.com/ronisbr/TerminalPager.jl/pull/68
+[gh-pr-73]: https://github.com/ronisbr/TerminalPager.jl/pull/73
