@@ -14,7 +14,14 @@ Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 StringManipulation = "892a3eda-7b42-436c-8928-eab12a02cf0e"
 
+[weakdeps]
+About = "69d22d85-9f48-4c46-bbbe-7ad8341ff72a"
+
+[extensions]
+TerminalPagerAboutExt = "About"
+
 [compat]
+About = "1"
 Crayons = "4.0"
 Markdown = "1.10"
 PrecompileTools = "1"
