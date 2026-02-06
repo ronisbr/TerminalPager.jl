@@ -140,6 +140,18 @@ Register the `<Alt> + h` and `<F1>` shortcuts in the REPL to show help for the i
 under the cursor.
 """
 function _register_help_shortcuts(repl)
+    _register_shortcuts(repl) do escapes
+        escapes['O']['P'] = _show_pager_help  # <F1>
+        escapes['h']      = _show_pager_help  # <Alt> + h
+    end
+end
+
+"""
+    _register_shortcuts(f, repl) -> Nothing
+
+Register escape shortcuts in the REPL by calling `f(escapes)` to register them.
+"""
+function _register_shortcuts(f, repl)
     # When atreplinit is called, repl.interface is still an undefined reference. So use
     # @async, to first finish initialization.
     @async begin
@@ -154,9 +166,7 @@ function _register_help_shortcuts(repl)
         # Register the keybindings both in the regular REPL mode (always the first one)
         # and in the pager mode (which is the last one, as we just added it).
         for m in repl.interface.modes |> Ref .|> (first, last)
-            escapes = m.keymap_dict['\e']
-            escapes['O']['P'] = _show_pager_extended_help  # <F1>
-            escapes['h']      = _show_pager_extended_help  # <Alt> + h
+            m.keymap_dict['\e'] |> f
         end
 
         return nothing
@@ -164,36 +174,35 @@ function _register_help_shortcuts(repl)
 end
 
 """
-    _show_pager_regular_help(s, _, _) -> Symbol
+    _show_pager_help(s, _, _) -> Symbol
 
-Show the pager help for the identifier under the cursor in the REPL.
+Show the extended inline help for the identifier under the cursor in the REPL.
 """
-_show_pager_regular_help(s, _, _) = _show_pager_help(s)
+function _show_pager_help(s, _, _)
+    _show_pager_cursor(s) do identifier
+        # Use extended help.
+        ext_identifier = "?" * identifier
+
+        # Execute @help macro which will temporarily take over terminal control.
+        @eval(@help $ext_identifier)
+    end
+end
+
 
 """
-    _show_pager_extended_help(s, _, _) -> Symbol
+    _show_pager_cursor(f, s) -> Symbol
 
-Show the pager extended help for the identifier under the cursor in the REPL.
+Show information about the identifier under the cursor in the REPL by calling `f`.
 """
-_show_pager_extended_help(s, _, _) = _show_pager_help(s, extended = true)
-
-"""
-    _show_pager_help(s, extended) -> Symbol
-
-Show either the regular or the extended pager help for the identifier under the cursor.
-"""
-function _show_pager_help(s; extended = false)
+function _show_pager_cursor(f, s)
     input           = input_string(s)
     cursor_position = buffer(s).ptr
     identifier      = _extract_identifier(input, cursor_position)
 
     isempty(identifier) && return :ok
 
-    # Switch between regular and extended help.
-    ext_identifier = extended ? "?" * identifier : identifier
-
-    # Execute @help macro which will temporarily take over terminal control.
-    @eval(@help $ext_identifier)
+    # Call the provided functionality with the identifier under the cursor.
+    f(identifier)
 
     # After pager exits, put REPL back in raw mode.
     REPL.Terminals.raw!(Base.active_repl.t, true)
