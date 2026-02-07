@@ -1,6 +1,14 @@
 TerminalPager.jl
 ================
 
+Version 0.6.8
+-------------
+
+- ![Bugfix][badge-bugfix] Fix input reading that was causing the pager to not process
+  `<ESC>` correctly.
+- ![Feature][badge-feature] Add About.jl package extension with inline `about`
+  functionality.  (PR [#79][gh-pr-79])
+
 Version 0.6.7
 -------------
 
@@ -259,3 +267,4 @@ Version 0.0.1
 [gh-pr-67]: https://github.com/ronisbr/TerminalPager.jl/pull/67
 [gh-pr-68]: https://github.com/ronisbr/TerminalPager.jl/pull/68
 [gh-pr-73]: https://github.com/ronisbr/TerminalPager.jl/pull/73
+[gh-pr-79]: https://github.com/ronisbr/TerminalPager.jl/pull/79
