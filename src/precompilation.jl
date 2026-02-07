@@ -10,8 +10,9 @@ PrecompileTools.@setup_workload begin
     # We will redirect the `stdout` and `stdin` so that we can execute the pager and input
     # some commands without making visible changes to the user.
     old_stdout = Base.stdout
-    redirect_stdout()
+    old_stdin  = Base.stdin
 
+    redirect_stdout(devnull)
     stdin_rd, stdin_wr = redirect_stdin()
 
     PrecompileTools.@compile_workload begin
@@ -25,7 +26,7 @@ PrecompileTools.@setup_workload begin
         _register_help_shortcuts(mock_repl)
 
         a = vcat(fill(0.1986, 100)', rand(100, 100))
-        @async pager(a)
+        t = @async pager(a)
 
         # Ruler.
         write(stdin_wr, "r")
@@ -70,8 +71,18 @@ PrecompileTools.@setup_workload begin
         # Exit pager.
         write(stdin_wr, "q")
 
-        @async pager(a; use_alternate_screen = true)
+        wait(t)
+
+        # Pager with the alternate screen buffer.
+        t = @async pager(a; use_alternate_screen_buffer = true)
         write(stdin_wr, "q")
+        wait(t)
+
+        # Pager with auto mode, which exercises the `printable_textwidth` code path. This
+        # is important because the REPL mode always uses `auto = true`.
+        t = @async pager(a; auto = true)
+        write(stdin_wr, "q")
+        wait(t)
 
         # == Internal Functions ============================================================
 
@@ -81,5 +92,14 @@ PrecompileTools.@setup_workload begin
         TerminalPager._extract_identifier("while true break end", 10)
     end
 
+    close(stdin_wr)
+    close(stdin_rd)
+
     redirect_stdout(old_stdout)
+
+    if isopen(old_stdin)
+        redirect_stdin(old_stdin)
+    else
+        redirect_stdin(devnull)
+    end
 end
