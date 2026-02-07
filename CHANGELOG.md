@@ -1,6 +1,11 @@
 TerminalPager.jl
 ================
 
+Version 0.6.9
+-------------
+
+- ![Enhancement][badge-enhancement] Improve precompilation.
+
 Version 0.6.8
 -------------
 
