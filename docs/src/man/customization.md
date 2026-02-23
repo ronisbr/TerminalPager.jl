@@ -35,6 +35,9 @@ The list of available properties are:
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
     the terminal is not compatible with XTerm. (**Default** = `false`)
+- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, when the pager is exited in REPL
+    mode, the output will be copied to the clipboard. Notice that the decorations (ANSI
+    sequences) will be removed. (**Default** = `false`)
 - `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
     (**Default** = "default")
