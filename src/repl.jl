@@ -51,6 +51,8 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # Create the sub mode: pager help.
     tp_help_mode = _create_pager_help_repl_mode(repl, main, tp_mode)
 
+    jl_prompt_regex = Regex("^In \\[[0-9]+\\]: |^(?:\\(.+\\) )?$(REPL.JULIA_PROMPT)")
+
     # == Key Mappings ======================================================================
 
     # We want to support all the default keymap prefixes.
@@ -79,7 +81,62 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
             else
                 LineEdit.edit_insert(s, '?')
             end
-        end
+        end,
+
+        "\e[200~" => (s::REPL.MIState, o...) -> begin
+            input   = LineEdit.bracketed_paste(s)
+            sbuffer = LineEdit.buffer(s)
+            curspos = position(sbuffer)
+
+            current_prompt   = ""
+            prompt_beginning = true
+
+            lines = split(input, '\n', keepempty = true)
+
+            for (i, line) in enumerate(lines)
+                # Remove the prompt prefix.
+                line_prompt = chopprefix(line, jl_prompt_regex)
+
+                empty_line = isempty(strip(line_prompt))
+
+                # We need to ignore empty lines if this is the beginning of the prompt.
+                (prompt_beginning && empty_line) && continue
+
+                current_prompt *= line_prompt * "\n"
+
+                empty_line && continue
+
+                ast = Meta.parse(current_prompt; raise = false, depwarn = false)
+
+                if (isa(ast, Expr) && (ast.head === :error || ast.head === :incomplete))
+                    continue
+                end
+
+                LineEdit.replace_line(s, chomp(current_prompt))
+
+                if i == lastindex(lines)
+                    LineEdit.refresh_line(s)
+                    return nothing
+                end
+
+                # We need to set the option `always_show_pager_in_repl_mode` to `true` to
+                # make sure the pager is always shown between the commands.
+                always_show_pager = _get_preference("always_show_pager_in_repl_mode")
+                set_preference!("always_show_pager_in_repl_mode", true)
+
+                LineEdit.commit_line(s)
+
+                terminal = LineEdit.terminal(s) # This is slightly ugly but ok for now
+                REPL.raw!(terminal, false) && REPL.disable_bracketed_paste(terminal)
+                @invokelatest LineEdit.mode(s).on_done(s, LineEdit.buffer(s), true)
+                REPL.raw!(terminal, true) && REPL.enable_bracketed_paste(terminal)
+                LineEdit.push_undo(s) # when the last line is incomplete
+
+                set_preference!("always_show_pager_in_repl_mode", always_show_pager)
+
+                current_prompt = ""
+            end
+        end,
     )
 
     tp_mode_keymaps = Dict{Any, Any}[
@@ -239,13 +296,16 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Variable to indicate that we have an error while evaluating the expression.
         is_error = false
 
+        # Variable to store if the current prompt output must be suppressed.
+        suppress_output = true
+
         # Loop through the lines.
         @inbounds for i in eachindex(lines)
             cmd *= lines[i] * "\n"
-            ast = Base.parse_input_line(cmd)
+            ast = Meta.parse(cmd)
 
             # If the command is incomplete, we need to wait for another line.
-            !isnothing(ast) && ast.head == :incomplete && continue
+            (isnothing(ast) || ast.head == :incomplete) && continue
 
             # We will use `REPL.eval_on_backend` to evaluate the expression. This function
             # returns two values: the object returned by the expression, and a boolean value
@@ -273,10 +333,10 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                     Base.invokelatest(show, stdout, MIME("text/plain"), val)
                     write(stdout, '\n')
                 end
-            end
 
-            # Clear the current command to receive the next one.
-            cmd = ""
+                suppress_output = false
+                break
+            end
         end
 
         # Restore the old stdout.
@@ -288,9 +348,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 "always_use_alternate_screen_buffer_in_repl_mode"
             )
 
+            auto = !_get_preference("always_show_pager_in_repl_mode") || suppress_output
+
             # Take everything and display in the pager using `auto` mode. In this case, the
             # pager will only be called if there is not space in the display to show everything.
-            pager(String(take!(buf)); auto = true, use_alternate_screen_buffer)
+            pager(String(take!(buf)); auto = auto, use_alternate_screen_buffer)
         end
 
         close(io)
