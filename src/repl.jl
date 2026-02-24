@@ -88,31 +88,44 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
             sbuffer = LineEdit.buffer(s)
             curspos = position(sbuffer)
 
-            current_prompt   = ""
+            current_cmd   = ""
             prompt_beginning = true
+            has_prompt = false
+            dump_lines = false
 
             lines = split(input, '\n', keepempty = true)
 
             for (i, line) in enumerate(lines)
-                # Remove the prompt prefix.
-                line_prompt = chopprefix(line, jl_prompt_regex)
+                line_has_prompt = startswith(line, jl_prompt_regex)
 
-                empty_line = isempty(strip(line_prompt))
+                (dump_lines && !line_has_prompt) && continue
+                dump_lines = false
+
+                # Check for prefix. Notice that the prefix is verifed only in the first
+                # non-empty line.
+                if prompt_beginning && line_has_prompt
+                    has_prompt = true
+                    line = chopprefix(line, jl_prompt_regex)
+                end
+
+                empty_line = isempty(strip(line))
 
                 # We need to ignore empty lines if this is the beginning of the prompt.
                 (prompt_beginning && empty_line) && continue
+                prompt_beginning = false
 
-                current_prompt *= line_prompt * "\n"
-
+                # If we are not at the beginning of the prompt, we should not ignore empty
+                # lines, since they can be in the middle of the command.
+                current_cmd *= line * "\n"
                 empty_line && continue
 
-                ast = Meta.parse(current_prompt; raise = false, depwarn = false)
-
+                # Check if the expression is complete.
+                ast = Meta.parse(current_cmd; raise = false, depwarn = false)
                 if (isa(ast, Expr) && (ast.head === :error || ast.head === :incomplete))
                     continue
                 end
 
-                LineEdit.replace_line(s, chomp(current_prompt))
+                LineEdit.replace_line(s, chomp(current_cmd))
 
                 if i == lastindex(lines)
                     LineEdit.refresh_line(s)
@@ -134,7 +147,11 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
 
                 set_preference!("always_show_pager_in_repl_mode", always_show_pager)
 
-                current_prompt = ""
+                current_cmd = ""
+                prompt_beginning = true
+
+                # If we have the prompt, we need to dump all lines until the next prompt.
+                dump_lines = has_prompt
             end
         end,
     )
@@ -284,6 +301,8 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             :limit        => false,
         )
 
+        has_color = get(stdout, :color, false)
+
         # Redirect `stdout` to the new buffer.
         Base.eval(:(stdout = $io))
 
@@ -296,32 +315,51 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Variable to indicate that we have an error while evaluating the expression.
         is_error = false
 
+        # Indentation for the lines.
+        ind = " "^length(_tp_mode_prompt())
+
         # Variable to store if the current prompt output must be suppressed.
         suppress_output = true
 
+        echo_cmd = _get_preference("echo_command_in_repl_mode")
+
+        num_lines_in_cmd = 0
+
         # Loop through the lines.
         @inbounds for i in eachindex(lines)
-            cmd *= lines[i] * "\n"
+            pad = i == firstindex(lines) ? "" : ind
+            cmd *= pad * lines[i] * "\n"
+            num_lines_in_cmd += 1
             ast = Meta.parse(cmd)
 
             # If the command is incomplete, we need to wait for another line.
-            (isnothing(ast) || ast.head == :incomplete) && continue
+            (isnothing(ast) || (ast isa Expr && ast.head == :incomplete)) && continue
 
             # We will use `REPL.eval_on_backend` to evaluate the expression. This function
             # returns two values: the object returned by the expression, and a boolean value
             # indicating if we got an error.
-            val, is_error = @static if VERSION >= v"1.11.6"
+            response = @static if VERSION >= v"1.11.6"
                 REPL.eval_on_backend(ast, REPL.backend(repl))
             else
                 REPL.eval_with_backend(ast, REPL.backend(repl))
             end
 
             # If we have an error, print the information and stop the processing.
+            val, is_error = response
             if is_error
-                val = Base.scrub_repl_backtrace(val)
-                Base.istrivialerror(val) || setglobal!(Base.MainInclude, :err, val)
-                Base.invokelatest(Base.display_error, repl.t.err_stream, val)
-                break
+                repl.waserror = true
+
+                REPL.with_repl_linfo(repl) do io
+                    io = IOContext(io, :module => Base.active_module(repl)::Module)
+                    REPL.print_response(
+                        io,
+                        response,
+                        REPL.backend(repl),
+                        true,
+                        has_color,
+                        REPL.specialdisplay(repl)
+                    )
+                end
             end
 
             # If the user added `;` at the end of the command, we should not show the
@@ -330,6 +368,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 # If the output is not `nothing`, call `show` with `MIME("text/plain")` to
                 # render the object.
                 if val !== nothing
+                    if echo_cmd
+                        printstyled(io, "julia> "; bold = true, color = :green)
+                        write(io, cmd)
+                    end
+
                     Base.invokelatest(show, stdout, MIME("text/plain"), val)
                     write(stdout, '\n')
                 end
@@ -352,11 +395,18 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 "copy_stdout_to_clipboard_in_repl_mode"
             )
 
+            auto = !_get_preference("always_show_pager_in_repl_mode") || suppress_output
+
             # Take everything and display in the pager using `auto` mode. In this case, the
             # pager will only be called if there is not space in the display to show
             # everything.
             str = String(take!(buf))
-            pager(str; auto = true, use_alternate_screen_buffer)
+            pager(
+                str;
+                auto = auto,
+                suppressed_lines_when_not_using_pager = num_lines_in_cmd,
+                use_alternate_screen_buffer
+            )
 
             copy_to_clipboard && clipboard(remove_decorations(str))
         end

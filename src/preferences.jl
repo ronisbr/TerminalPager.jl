@@ -15,6 +15,7 @@ const _AVAILABLE_PREFERENCES = Dict{String, Any}(
     "always_use_alternate_screen_buffer_in_repl_mode" => false,
     "block_alternate_screen_buffer" => false,
     "copy_stdout_to_clipboard_in_repl_mode" => false,
+    "echo_command_in_repl_mode" => true,
     "pager_mode" => "default",
     "visual_mode_line_background" => "100",
     "visual_mode_active_line_background" => "44"

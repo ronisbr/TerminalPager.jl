@@ -67,7 +67,8 @@ function _pager!(
     hashelp::Bool = true,
     has_visual_mode::Bool = true,
     show_ruler::Bool = false,
-    use_alternate_screen_buffer::Bool = false
+    use_alternate_screen_buffer::Bool = false,
+    suppressed_lines_when_not_using_pager::Int = 0
 )
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
@@ -102,6 +103,11 @@ function _pager!(
         end
 
         if !use_pager
+            if suppressed_lines_when_not_using_pager > 0
+                suppressed_lines = min(suppressed_lines_when_not_using_pager, num_tokens)
+                str = join(tokens[1:(end - suppressed_lines)], '\n')
+            end
+
             print(str)
             return nothing
         end
