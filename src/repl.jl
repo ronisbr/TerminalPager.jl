@@ -348,15 +348,20 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 "always_use_alternate_screen_buffer_in_repl_mode"
             )
 
-            auto = !_get_preference("always_show_pager_in_repl_mode") || suppress_output
+            copy_to_clipboard = _get_preference(
+                "copy_stdout_to_clipboard_in_repl_mode"
+            )
 
             # Take everything and display in the pager using `auto` mode. In this case, the
-            # pager will only be called if there is not space in the display to show everything.
-            pager(String(take!(buf)); auto = auto, use_alternate_screen_buffer)
+            # pager will only be called if there is not space in the display to show
+            # everything.
+            str = String(take!(buf))
+            pager(str; auto = true, use_alternate_screen_buffer)
+
+            copy_to_clipboard && clipboard(remove_decorations(str))
         end
 
         close(io)
-
     catch err
         Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())
 

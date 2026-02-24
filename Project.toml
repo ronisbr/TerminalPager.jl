@@ -3,7 +3,7 @@ uuid = "0c614874-6106-40ed-a7c2-2f1cd0bff883"
 license = "MIT"
 desc = "Pure Julia implementation of a terminal pager"
 authors = ["Ronan Arraes Jardim Chagas <ronisbr@gmail.com>"]
-version = "0.6.9"
+version = "0.6.10"
 
 [deps]
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"

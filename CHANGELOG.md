@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.10
+--------------
+
+- ![Enhancement][badge-enhancement] Add option to copy all outputs to clipboard in pager
+  mode when exiting the pager.
+
 Version 0.6.9
 -------------
 
