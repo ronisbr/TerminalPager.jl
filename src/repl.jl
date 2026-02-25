@@ -354,16 +354,28 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             if is_error
                 repl.waserror = true
 
-                REPL.with_repl_linfo(repl) do io
-                    io = IOContext(io, :module => Base.active_module(repl)::Module)
-                    REPL.print_response(
-                        io,
-                        response,
-                        REPL.backend(repl),
-                        true,
-                        has_color,
-                        REPL.specialdisplay(repl)
-                    )
+                @static if VERSION >= v"1.11.0"
+                    REPL.with_repl_linfo(repl) do io
+                        io = IOContext(io, :module => Base.active_module(repl)::Module)
+                        REPL.print_response(
+                            io,
+                            response,
+                            REPL.backend(repl),
+                            true,
+                            has_color,
+                            REPL.specialdisplay(repl)
+                        )
+                    end
+                else
+                    REPL.with_repl_linfo(repl) do io
+                        io = IOContext(io, :module => REPL.active_module(repl)::Module)
+                        REPL.print_response(
+                            io,
+                            response,
+                            true,
+                            has_color
+                        )
+                    end
                 end
             end
 
