@@ -8,7 +8,12 @@
 #                          Functions Related to `Pager` Structure                          #
 ############################################################################################
 
-# Get the display size of the pager `p`.
+"""
+    _get_pager_display_size(p::Pager) -> Tuple{Int, Int}
+
+Get the available display size (rows, cols) for the pager `p`, accounting for the command
+line.
+"""
 function _get_pager_display_size(p::Pager)
     rows, cols = p.display_size
 
@@ -18,10 +23,22 @@ function _get_pager_display_size(p::Pager)
     return rows, cols
 end
 
-# Request a redraw of pager `p`.
-_request_redraw!(p::Pager) = (p.redraw = true)
+"""
+    _request_redraw!(p::Pager) -> Nothing.
 
-# Update the display size information in the pager `p`.
+Request a redraw of the pager `p` by setting the redraw flag to `true`.
+"""
+function _request_redraw!(p::Pager)
+    p.redraw = true
+    return nothing
+end
+
+"""
+    _update_display_size!(p::Pager) -> Nothing
+
+Update the display size of the pager `p` and request a redraw if the terminal size has
+changed.
+"""
 function _update_display_size!(p::Pager)
     # If the terminal size has changed, then we need to redraw the view.
     newdsize::Tuple{Int, Int} = displaysize(p.term.out_stream)
@@ -38,8 +55,26 @@ end
 #                              Functions Related to the Pager                              #
 ############################################################################################
 
-# Initialize the pager with the string `str`.
-function _pager(str::String; kwargs...)
+"""
+    _pager(str::String; kwargs...) -> Nothing
+
+Initialize and display an interactive terminal pager for viewing the text in `str`. The
+keywords are the same as described in the function [`pager`](@ref).
+"""
+function _pager(
+    str::String;
+    auto::Bool = false,
+    change_freeze::Bool = true,
+    frozen_columns::Int = -1,
+    frozen_rows::Int = -1,
+    has_visual_mode::Bool = true,
+    hashelp::Bool = true,
+    preamble::String = "",
+    show_ruler::Bool = false,
+    suppress_preamble_when_not_using_pager::Bool = true,
+    title_rows::Int = -1,
+    use_alternate_screen_buffer::Bool = false,
+)
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
@@ -47,15 +82,37 @@ function _pager(str::String; kwargs...)
     # us instead of waiting for <return>.
     REPL.Terminals.raw!(term, true)
 
-    _pager!(term, str; kwargs...)
+    _pager!(
+        term,
+        str;
+        auto,
+        change_freeze,
+        frozen_columns,
+        frozen_rows,
+        has_visual_mode,
+        hashelp,
+        preamble,
+        show_ruler,
+        suppress_preamble_when_not_using_pager,
+        title_rows,
+        use_alternate_screen_buffer
+    )
 
     REPL.Terminals.raw!(term, false)
 
     return nothing
 end
 
-# Initialize the pager with the string `str` using the terminal `term`. The user must ensure
-# that `term` is in raw mode.
+"""
+    _pager!(term::REPL.Terminals.TTYTerminal, str::String; kwargs...) -> Nothing
+
+Initialize and display an interactive terminal pager for viewing the text in `str` using the
+terminal `term`. The keywords are the same as described in the function [`pager`](@ref).
+
+!!! warning
+
+    The user must ensure that `term` is in raw mode before calling this function.
+"""
 function _pager!(
     @nospecialize(term::REPL.Terminals.TTYTerminal),
     content::String;
@@ -71,7 +128,8 @@ function _pager!(
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false,
 )
-    str = preamble * "\n" * content
+    preamble_empty = isempty(preamble)
+    str = preamble_empty ? content : preamble * "\n" * content
 
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
@@ -131,7 +189,7 @@ function _pager!(
     hashelp && push!(features, :help)
     has_visual_mode && push!(features, :visual_mode)
 
-    if (title_rows == -1) && (frozen_rows == -1) && !isempty(preamble)
+    if (title_rows == -1) && (frozen_rows == -1) && !preamble_empty
         num_lines_in_preamble = length(split(preamble, '\n'))
 
         title_rows  = num_lines_in_preamble
@@ -182,7 +240,12 @@ function _pager!(
     return nothing
 end
 
-# Process the keystroke `k` in pager `pagerd`.
+"""
+    _pager_key_process!(pagerd::Pager, k::Keystroke) -> Nothing
+
+Process the keystroke input `k` for the pager instance `pagerd` and update its state
+accordingly.
+"""
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
     cropped_columns  = pagerd.cropped_columns
@@ -498,7 +561,11 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     return nothing
 end
 
-# Process the event in `pagerd`. If this function return `false`, the application must exit.
+"""
+    _pager_event_process!(pagerd::Pager) -> Nothing
+
+Process events for the pager instance `pagerd`.
+"""
 function _pager_event_process!(pagerd::Pager)
     event = pagerd.event
 
@@ -674,7 +741,12 @@ function _pager_event_process!(pagerd::Pager)
     return true
 end
 
-# Redraw the screen of pager `pagerd`.
+"""
+    _redraw!(pagerd::Pager) -> Nothing
+
+Redraw the pager display in the pager instance `pagerd`, updating the current view to
+reflect any changes in state or content.
+"""
 function _redraw!(pagerd::Pager)
     buf          = pagerd.buf
     term         = pagerd.term

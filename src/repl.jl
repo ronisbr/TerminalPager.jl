@@ -8,8 +8,12 @@
 #
 ############################################################################################
 
-# Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must be the main
-# REPL mode (julia prompt).
+"""
+    _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt) -> LineEdit.Prompt
+
+Create a new REPL mode in `repl` for the pager functionality, where `main` is the main
+prompt of the REPL (julia prompt).
+"""
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # == Prompt of the Pager Mode ==========================================================
 
@@ -176,8 +180,12 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     return tp_mode
 end
 
-# Create the REPL mode `pager help`. `repl` must be the active REPL, `main` must be the main
-# REPL mode (julia prompt), and `tp_mode` must be the REPL mode `pager`.
+"""
+    _create_pager_help_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt, tp_mode::LineEdit.Prompt) -> LineEdit.Prompt
+
+Create and configure a help REPL mode in `repl`. `main` is the main prompt of the REPL
+(julia prompt), and `tp_mode` is the pager mode created with `_create_pager_repl_mode`.
+"""
 function _create_pager_help_repl_mode(
     repl::REPL.AbstractREPL,
     main::LineEdit.Prompt,
@@ -241,7 +249,11 @@ function _create_pager_help_repl_mode(
     return tp_help_mode
 end
 
-# Initialize the pager mode in the `repl`.
+"""
+    _init_pager_repl_mode(repl::AbstractREPL) -> Nothing
+
+Initialize the pager REPL mode for the given REPL instance `repl`.
+"""
 function _init_pager_repl_mode(repl::AbstractREPL)
     # Get the main REPL mode (julia prompt).
     main_mode = repl.interface.modes[1]
@@ -278,8 +290,11 @@ end
 #                           Command Treatment for the REPL Modes                           #
 ############################################################################################
 
-# Execute the actions when a command has been received in the REPL mode `pager`. `repl`
-# must be the active REPL, and `input` is a string with the command.
+"""
+    _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String) -> Nothing
+
+Handle and execute the command in `input` in the pager mode. `repl` must be the active REPL.
+"""
 function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     if !isinteractive() && !PRINTED_REPL_WARNING[]
         @warn "The parger mode is intended for interaction use only, and should not be used from scripts."
@@ -443,8 +458,12 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     return nothing
 end
 
-# Execute the actions when a command has been received in the REPL mode `pager help`. `repl`
-# must be the active REPL, and `input` is a string with the command.
+"""
+    _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String) -> Nothing
+
+Handle and execute the command in `input` in the help pager mode. `repl` must be the
+active REPL.
+"""
 function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     # We do not need to verify if we are in a interactive environment because this mode is
     # only accessible through pager mode, which already checks it.

@@ -56,7 +56,8 @@ julia> TerminalPager.drop_preference!("visual_mode_line_background")
 ```
 """
 function drop_preference!(pref::String)
-    pref ∉ keys(_AVAILABLE_PREFERENCES) && throw(ArgumentError("$pref is not a valid preference."))
+    pref ∉ keys(_AVAILABLE_PREFERENCES) &&
+        throw(ArgumentError("$pref is not a valid preference."))
     @delete_preferences!(pref)
     return nothing
 end
@@ -74,7 +75,8 @@ julia> TerminalPager.set_preference!("visual_mode_line_background", "44")
 ```
 """
 function set_preference!(pref::String, value)
-    pref ∉ keys(_AVAILABLE_PREFERENCES) && throw(ArgumentError("$pref is not a valid preference."))
+    pref ∉ keys(_AVAILABLE_PREFERENCES) &&
+        throw(ArgumentError("$pref is not a valid preference."))
     @set_preferences!(pref => value)
     return nothing
 end

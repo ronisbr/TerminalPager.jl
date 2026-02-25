@@ -6,7 +6,7 @@
 ############################################################################################
 
 """
-    _extract_identifier(input::AbstractString, cursor_pos::Integer) -> String
+    _extract_identifier(input::AbstractString, cursor_pos::Int) -> String
 
 Extract identifier from the input line using the cursor position.
 
@@ -16,7 +16,7 @@ but in the argument/parameter list of a valid callable, return the callable name
 
 Extraction works even for invalid (i.e. incomplete) input.
 """
-function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
+function _extract_identifier(input::AbstractString, cursor_pos::Int)
     input_str = string(input)
     isempty(strip(input_str)) && return ""
 
@@ -38,15 +38,15 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
 
     # Extract the string from the syntax node to be provided for `@help`.
     # This can go downwards into a *different branch* of the AST.
-    return _helpstring(ascendant)
+    return _helpstring(ascendant) |> String
 end
 
 """
-    _collaterate(input::String, cursor_pos::Integer) -> Integer
+    _collaterate(input::String, cursor_pos::Int) -> Int
 
 Based on cursor position, collaterate (branch) to the intended token's index.
 """
-function _collaterate(input::String, cursor_pos::Integer)
+function _collaterate(input::String, cursor_pos::Int)
     # Some operations seem to be easier to do on the character level than on the AST,
     # so do them here.
     # Convert character cursor position to byte index to cover multi-byte code points.
@@ -72,11 +72,11 @@ function _collaterate(input::String, cursor_pos::Integer)
 end
 
 """
-    _descend(node::SyntaxNode, search_index::Integer) -> SyntaxNode
+    _descend(node::SyntaxNode, search_index::Int) -> SyntaxNode
 
 Descend to the most specific syntax node containing `search_index`.
 """
-function _descend(node::SyntaxNode, search_index::Integer)
+function _descend(node::SyntaxNode, search_index::Int)
     # Return the node if it does not have children, as it is then most specific.
     node.children === nothing && return node
 

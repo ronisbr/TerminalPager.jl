@@ -5,6 +5,11 @@
 ############################################################################################
 
 # Write the view of pager `pagerd` to the view buffer.
+"""
+    _view!(pagerd::Pager) -> Nothing
+
+Write the view of the pager instante `pagerd` to the view buffer.
+"""
 function _view!(pagerd::Pager)
     # Get the available display size.
     rows, cols = _get_pager_display_size(pagerd)

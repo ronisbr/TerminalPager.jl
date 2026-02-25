@@ -4,8 +4,12 @@
 #
 ############################################################################################
 
-# Change the active matches in `pagerd`. If `forward` is `true`, the search is performed
-# forward. Otherwise, it is performed backwards.
+"""
+    _change_active_match!(pagerd::Pager, forward::Bool = true) -> Nothing
+
+Change the active match in `pagerd`. If `forward` is `true`, the next match is activated.
+Otherwise, the previous match is activated.
+"""
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     active_search_match_id = pagerd.active_search_match_id
     num_matches            = pagerd.num_matches
@@ -30,14 +34,18 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
     return nothing
 end
 
-# Find all matches of `regex` in the text of the pager `pager`. The vector with the matches
-# will be written to `pagerd`.
+"""
+    _find_matches!(pagerd::Pager, regex::Regex) -> Nothing
+
+Find all matches of `regex` in the text of the pager `pagerd`, writing the results to
+`pagerd`.
+"""
 function _find_matches!(pagerd::Pager, regex::Regex)
     pagerd.search_matches = string_search_per_line(pagerd.lines, regex)
 
     num_matches = 0
 
-    for (k, v) in pagerd.search_matches
+    for (_, v) in pagerd.search_matches
         num_matches += length(v)
     end
 
@@ -46,8 +54,11 @@ function _find_matches!(pagerd::Pager, regex::Regex)
     return nothing
 end
 
-# Move the view of the pager `pagerd` to ensure that the current highlighted match is inside
-# it.
+"""
+    _move_view_to_match!(pagerd::Pager) -> Nothing
+
+Move the view of the pager `pagerd` to ensure that the current highlighted match is visible.
+"""
 function _move_view_to_match!(pagerd::Pager)
     # Unpack.
     active_search_match_id = pagerd.active_search_match_id
@@ -129,7 +140,11 @@ function _move_view_to_match!(pagerd::Pager)
     return nothing
 end
 
-# Quit search mode of pager `pagerd`.
+"""
+    _quit_search!(pagerd::Pager) -> Nothing
+
+Quit search mode of the pager `pagerd`, clearing all search matches.
+"""
 function _quit_search!(pagerd::Pager)
     empty!(pagerd.search_matches)
     pagerd.active_search_match_id = 0

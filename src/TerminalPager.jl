@@ -150,12 +150,52 @@ The user can defined custom preferences using the function
 For more information, see: [`TerminalPager.set_preference!`](@ref),
 [`TerminalPager.drop_preference!`](@ref), and [`TerminalPager.drop_all_preferences!`](@ref).
 """
-function pager(obj::Any; kwargs...)
+function pager(
+    @nospecialize(obj::Any);
+    auto::Bool = false,
+    change_freeze::Bool = true,
+    frozen_columns::Int = -1,
+    frozen_rows::Int = -1,
+    has_visual_mode::Bool = true,
+    hashelp::Bool = true,
+    preamble::String = "",
+    show_ruler::Bool = false,
+    suppress_preamble_when_not_using_pager::Bool = true,
+    title_rows::Int = -1,
+    use_alternate_screen_buffer::Bool = false
+)
     str = sprint(show, MIME"text/plain"(), obj, context = :color => true)
-    return pager(str; kwargs...)
+
+    return pager(
+        str;
+        auto,
+        change_freeze,
+        frozen_columns,
+        frozen_rows,
+        has_visual_mode,
+        hashelp,
+        preamble,
+        show_ruler,
+        suppress_preamble_when_not_using_pager,
+        title_rows,
+        use_alternate_screen_buffer
+    )
 end
 
-function pager(obj::AbstractString; kwargs...)
+function pager(
+    obj::AbstractString;
+    auto::Bool = false,
+    change_freeze::Bool = true,
+    frozen_columns::Int = -1,
+    frozen_rows::Int = -1,
+    has_visual_mode::Bool = true,
+    hashelp::Bool = true,
+    preamble::String = "",
+    show_ruler::Bool = false,
+    suppress_preamble_when_not_using_pager::Bool = true,
+    title_rows::Int = -1,
+    use_alternate_screen_buffer::Bool = false
+)
     # If we have a context key called `bypass_pager` with the value `true`, we must not call
     # the pager because we are in the pager> REPL mode. Hence, we we call the pager, it
     # locks the screen until the user types CTRL-D. For more information, see:
@@ -167,7 +207,20 @@ function pager(obj::AbstractString; kwargs...)
         return nothing
     end
 
-    return _pager(obj; kwargs...)
+    return _pager(
+        obj;
+        auto,
+        change_freeze,
+        frozen_columns,
+        frozen_rows,
+        has_visual_mode,
+        hashelp,
+        preamble,
+        show_ruler,
+        suppress_preamble_when_not_using_pager,
+        title_rows,
+        use_alternate_screen_buffer
+    )
 end
 
 const less = pager

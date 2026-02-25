@@ -4,8 +4,16 @@
 #
 ############################################################################################
 
-# Print the message `msg` in the command line of pager `pagerd`. The string formatting can
-# be selected using the keyword `crayon`.
+"""
+    _print_cmd_message!(pagerd::Pager, msg::String; kwargs...) -> Nothing
+
+Print a styled message to the pager instance `pagerd`.
+
+# Keyword Arguments
+
+- `crayon::Crayon`: Crayon object for styling the message.
+    (**Default** = `Crayon()`)
+"""
 function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon())
     term         = pagerd.term
     display_size = pagerd.display_size
@@ -28,7 +36,11 @@ function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon
     return nothing
 end
 
-# Print the command line of pager `pagerd` to the display.
+"""
+    _redraw_cmd_line!(pagerd::Pager) -> Nothing
+
+Redraw the command line interface for the given pager instance `pagerd`.
+"""
 function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
     term          = pagerd.term
@@ -96,7 +108,16 @@ function _redraw_cmd_line!(pagerd::Pager)
     return nothing
 end
 
-# Read a command in the pager `pagerd`. This function returns a string with the command.
+"""
+    _read_cmd!(pagerd::Pager; kwargs...) -> Nothing
+
+Read and process a command from the pager input in the pager instance `pagerd`.
+
+# Keywords
+
+- `prefix::String`: The prefix string used for command prompts.
+    (**Default** = "/")
+"""
 function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
     term         = pagerd.term

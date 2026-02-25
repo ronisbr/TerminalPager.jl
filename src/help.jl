@@ -198,20 +198,35 @@ end
 #                                    Private Functions                                     #
 ############################################################################################
 
-function _getkb(action::Symbol)
-    kb = [_kbtostr(k) for (k, v) in _KEYBINDINGS if v == action]
-    num_kb = length(kb)
+"""
+    _getkb(action::Symbol) -> String
 
+Retrieve the keyboard binding associated with the specified `action`.
+"""
+function _getkb(action::Symbol)
     str = ""
 
-    @inbounds for i = 1:num_kb
-        str *= kb[i]
-        i != num_kb && (str *= ", ")
+    is_first = true
+
+    for (k, v) in _KEYBINDINGS
+        v == action || continue
+
+        if !is_first
+            str *= ", "
+        end
+
+        str *= _kbtostr(k)
+        is_first = false
     end
 
     return str
 end
 
+"""
+    _kbtostr(kb::Tuple{String, Bool, Bool, Bool})
+
+Convert a keyboard input `kb` to its string representation.
+"""
 function _kbtostr(kb::Tuple{String, Bool, Bool, Bool})
     str = kb[1] == " " ? "space" : string(kb[1])
 
