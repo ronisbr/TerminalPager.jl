@@ -419,7 +419,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 preamble =
                     Base.text_colors[:bold] *
                     Base.text_colors[:green] *
-                    "julia> " *
+                    REPL.JULIA_PROMPT *
                     Base.text_colors[:normal] *
                     chomp(cmd)
             end
