@@ -16,11 +16,7 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
 
     if num_matches != 0
         # Activate the next match according to the user preference.
-        if forward
-            active_search_match_id += 1
-        else
-            active_search_match_id -= 1
-        end
+        active_search_match_id += forward ? 1 : -1
 
         if active_search_match_id > num_matches
             active_search_match_id = 1
@@ -41,15 +37,9 @@ Find all matches of `regex` in the text of the pager `pagerd`, writing the resul
 `pagerd`.
 """
 function _find_matches!(pagerd::Pager, regex::Regex)
-    pagerd.search_matches = string_search_per_line(pagerd.lines, regex)
-
-    num_matches = 0
-
-    for (_, v) in pagerd.search_matches
-        num_matches += length(v)
-    end
-
-    pagerd.num_matches = num_matches
+    search_matches        = string_search_per_line(pagerd.lines, regex)
+    pagerd.search_matches = search_matches
+    pagerd.num_matches    = sum(length, values(search_matches))
 
     return nothing
 end
