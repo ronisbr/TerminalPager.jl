@@ -317,6 +317,9 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Variable to assemble the command, which can have multiple lines.
         cmd = ""
 
+        # Get the preference to know if we need to echo the command in the pager.
+        echo_cmd = _get_preference("echo_command_in_repl_mode")
+
         # Variable to indicate that we have an error while evaluating the expression.
         is_error = false
 
@@ -325,10 +328,6 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
 
         # Variable to store if the current prompt output must be suppressed.
         suppress_output = true
-
-        echo_cmd = _get_preference("echo_command_in_repl_mode")
-
-        num_lines_in_cmd = 0
 
         # Loop through the lines.
         @inbounds for i in eachindex(lines)

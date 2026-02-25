@@ -63,13 +63,13 @@ function _pager!(
     change_freeze::Bool = true,
     frozen_columns::Int = -1,
     frozen_rows::Int = -1,
-    title_rows::Int = -1,
-    hashelp::Bool = true,
     has_visual_mode::Bool = true,
-    show_ruler::Bool = false,
-    use_alternate_screen_buffer::Bool = false,
+    hashelp::Bool = true,
     preamble::String = "",
+    show_ruler::Bool = false,
     suppress_preamble_when_not_using_pager::Bool = true,
+    title_rows::Int = -1,
+    use_alternate_screen_buffer::Bool = false,
 )
     str = preamble * "\n" * content
 
