@@ -26,18 +26,29 @@ The list of available properties are:
 
 - `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     active search element. One can easily obtain this sequence by converting a `Crayon` to
-    string. (**Default** = `string(crayon"black bg:yellow")`)
+    string.
+    (**Default** = `string(crayon"black bg:yellow")`)
 - `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
-    string. (**Default** = `string(crayon"black bg:light_gray")`)
+    string.
+    (**Default** = `string(crayon"black bg:light_gray")`)
+- `"always_show_pager_in_repl_mode"`: If `true`, the pager will always be shown in REPL
+    mode, even if the output fits into the display.
+    (**Default** = `false`)
 - `"always_use_alternate_screen_buffer_in_repl_mode"`: If `true`, we will always use the
-    alternate screen buffer when showing the pager in REPL mode. (**Default** = false)
+    alternate screen buffer when showing the pager in REPL mode.
+    (**Default** = false)
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
-    the terminal is not compatible with XTerm. (**Default** = `false`)
-- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, when the pager is exited in REPL
-    mode, the output will be copied to the clipboard. Notice that the decorations (ANSI
-    sequences) will be removed. (**Default** = `false`)
+    the terminal is not compatible with XTerm.
+    (**Default** = `false`)
+- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, the command output in REPL mode will
+    be copied to the system clipboard after the pager is closed.
+    (**Default** = `false`)
+- `"echo_command_in_repl_mode"`: If `true`, the command that is being executed in REPL mode
+    will be shown in the pager. This option has no effect if the command output fits the
+    screen and `"always_show_pager_in_repl_mode"` is `false`.
+    (**Default** = `false`)
 - `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
     (**Default** = "default")

@@ -79,18 +79,31 @@ Call the pager to show the output of the object `obj`.
 !!! info
     Some of the default values shown here can be modified by user-defined preferences.
 
-- `auto::Bool`: If `true`, then the pager is only shown if the output does not fit into the
-    display. (**Default** = `false`)
-- `change_freeze::Bool`: If `true`, then the user can change the number of frozen rows and
-    columns inside the pager. (**Default** = `true`)
-- `frozen_columns::Int = 0`: Number of columns to be frozen at startup. (**Default** = 0)
-- `frozen_rows::Int = 0`: Number of rows to be frozen at startup. (**Default** = 0)
-- `hashelp::Bool = true`: If `true`, then the user can see the pager help.
+- `auto::Bool`: If `true`, the pager is only shown if the output does not fit into the
+    display.
+    (**Default** = `false`)
+- `change_freeze::Bool`: If `true`, the user can change the number of frozen rows and
+    columns inside the pager.
     (**Default** = `true`)
+- `frozen_columns::Int`: Number of columns to be frozen at startup.
+    (**Default** = -1)
+- `frozen_rows::Int`: Number of rows to be frozen at startup.
+    (**Default** = -1)
+- `hashelp::Bool = true`: If `true`, the user can see the pager help.
+    (**Default** = `true`)
+- `preamble::String`: A string to be shown at the top of the pager. Notice that if the
+    pager is not shown because of the `auto` keyword, this string will only be shown if
+    `suppress_preamble_when_not_using_pager` is `false`. Otherwise, it will be ignored. If
+    `title_rows` and `frozen_rows` are negative (default), the preamble will be shown
+    inside the title, frozen rows.
+    (**Default** = "")
 - `has_visual_mode::Bool = true`: If `true`, the user can use the visual mode.
     (**Default** = `true`)
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
     numbers. (**Default** = `false`)
+- `title_rows::Int`: Number of rows to be considered as title at startup. These rows will
+    not scroll horizontally.
+    (**Default** = -1)
 - `use_alternate_screen_buffer::Bool`: If `true`, the pager will use the alternate screen
     buffer, which keeps the current screen when exiting the pager. Notice, however, that we
     use the XTerm escape sequences here. Hence, if your terminal is different, this option
@@ -103,15 +116,29 @@ The user can defined custom preferences using the function
 
 - `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     active search element. One can easily obtain this sequence by converting a `Crayon` to
-    string. (**Default** = `string(crayon"black bg:yellow")`)
+    string.
+    (**Default** = `string(crayon"black bg:yellow")`)
 - `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
-    string. (**Default** = `string(crayon"black bg:light_gray")`)
+    string.
+    (**Default** = `string(crayon"black bg:light_gray")`)
+- `"always_show_pager_in_repl_mode"`: If `true`, the pager will always be shown in REPL
+    mode, even if the output fits into the display.
+    (**Default** = `false`)
 - `"always_use_alternate_screen_buffer_in_repl_mode"`: If `true`, we will always use the
-    alternate screen buffer when showing the pager in REPL mode. (**Default** = false)
+    alternate screen buffer when showing the pager in REPL mode.
+    (**Default** = false)
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
-    the terminal is not compatible with XTerm. (**Default** = `false`)
+    the terminal is not compatible with XTerm.
+    (**Default** = `false`)
+- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, the command output in REPL mode will
+    be copied to the system clipboard after the pager is closed.
+    (**Default** = `false`)
+- `"echo_command_in_repl_mode"`: If `true`, the command that is being executed in REPL mode
+    will be shown in the pager. This option has no effect if the command output fits the
+    screen and `"always_show_pager_in_repl_mode"` is `false`.
+    (**Default** = `false`)
 - `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
     (**Default** = "default")
