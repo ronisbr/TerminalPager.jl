@@ -153,6 +153,11 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
                 # If we have the prompt, we need to dump all lines until the next prompt.
                 dump_lines = has_prompt
             end
+
+            # If we reach this point, it means that we do not had a complete expression.
+            # Hence, just refresh the line so the user can edit it.
+            LineEdit.refresh_line(s)
+            return nothing
         end,
     )
 
@@ -368,11 +373,6 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 # If the output is not `nothing`, call `show` with `MIME("text/plain")` to
                 # render the object.
                 if val !== nothing
-                    if echo_cmd
-                        printstyled(io, "julia> "; bold = true, color = :green)
-                        write(io, cmd)
-                    end
-
                     Base.invokelatest(show, stdout, MIME("text/plain"), val)
                     write(stdout, '\n')
                 end
@@ -401,10 +401,21 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             # pager will only be called if there is not space in the display to show
             # everything.
             str = String(take!(buf))
+            preamble = ""
+
+            if echo_cmd
+                preamble =
+                    Base.text_colors[:bold] *
+                    Base.text_colors[:green] *
+                    "julia> " *
+                    Base.text_colors[:normal] *
+                    chomp(cmd)
+            end
+
             pager(
                 str;
                 auto = auto,
-                suppressed_lines_when_not_using_pager = num_lines_in_cmd,
+                preamble,
                 use_alternate_screen_buffer
             )
 

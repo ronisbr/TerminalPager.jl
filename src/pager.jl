@@ -58,18 +58,21 @@ end
 # that `term` is in raw mode.
 function _pager!(
     @nospecialize(term::REPL.Terminals.TTYTerminal),
-    str::String;
+    content::String;
     auto::Bool = false,
     change_freeze::Bool = true,
-    frozen_columns::Int = 0,
-    frozen_rows::Int = 0,
-    title_rows::Int = 0,
+    frozen_columns::Int = -1,
+    frozen_rows::Int = -1,
+    title_rows::Int = -1,
     hashelp::Bool = true,
     has_visual_mode::Bool = true,
     show_ruler::Bool = false,
     use_alternate_screen_buffer::Bool = false,
-    suppressed_lines_when_not_using_pager::Int = 0
+    preamble::String = "",
+    suppress_preamble_when_not_using_pager::Bool = true,
 )
+    str = preamble * "\n" * content
+
     # Get the tokens (lines) of the input.
     tokens = split(str, '\n')
     num_tokens = length(tokens)
@@ -103,12 +106,8 @@ function _pager!(
         end
 
         if !use_pager
-            if suppressed_lines_when_not_using_pager > 0
-                suppressed_lines = min(suppressed_lines_when_not_using_pager, num_tokens)
-                str = join(tokens[1:(end - suppressed_lines)], '\n')
-            end
-
-            print(str)
+            !suppress_preamble_when_not_using_pager && println(preamble)
+            print(content)
             return nothing
         end
     end
@@ -131,6 +130,17 @@ function _pager!(
     change_freeze && push!(features, :change_freeze)
     hashelp && push!(features, :help)
     has_visual_mode && push!(features, :visual_mode)
+
+    if (title_rows == -1) && (frozen_rows == -1) && !isempty(preamble)
+        num_lines_in_preamble = length(split(preamble, '\n'))
+
+        title_rows  = num_lines_in_preamble
+        frozen_rows = num_lines_in_preamble
+    end
+
+    frozen_columns = max(0, frozen_columns)
+    frozen_rows    = max(0, frozen_rows)
+    title_rows     = max(0, title_rows)
 
     # Initialize the pager structure.
     pagerd = Pager(
