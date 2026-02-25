@@ -333,7 +333,6 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         @inbounds for i in eachindex(lines)
             pad = i == firstindex(lines) ? "" : ind
             cmd *= pad * lines[i] * "\n"
-            num_lines_in_cmd += 1
             ast = Meta.parse(cmd)
 
             # If the command is incomplete, we need to wait for another line.
