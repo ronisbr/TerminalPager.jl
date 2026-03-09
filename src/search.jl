@@ -39,7 +39,7 @@ Find all matches of `regex` in the text of the pager `pagerd`, writing the resul
 function _find_matches!(pagerd::Pager, regex::Regex)
     search_matches        = string_search_per_line(pagerd.lines, regex)
     pagerd.search_matches = search_matches
-    pagerd.num_matches    = sum(length, values(search_matches))
+    pagerd.num_matches    = sum(length, values(search_matches); init = 0)
 
     return nothing
 end
