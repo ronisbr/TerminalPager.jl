@@ -69,9 +69,7 @@ function _pager(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
-    preamble::String = "",
     show_ruler::Bool = false,
-    suppress_preamble_when_not_using_pager::Bool = true,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false,
 )
@@ -91,9 +89,7 @@ function _pager(
         frozen_rows,
         has_visual_mode,
         hashelp,
-        preamble,
         show_ruler,
-        suppress_preamble_when_not_using_pager,
         title_rows,
         use_alternate_screen_buffer
     )
@@ -122,17 +118,12 @@ function _pager!(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
-    preamble::String = "",
     show_ruler::Bool = false,
-    suppress_preamble_when_not_using_pager::Bool = true,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false,
 )
-    preamble_empty = isempty(preamble)
-    str = preamble_empty ? content : preamble * "\n" * content
-
     # Get the tokens (lines) of the input.
-    tokens = split(str, '\n')
+    tokens = split(content, '\n')
     num_tokens = length(tokens)
 
     # Get the display size and make sure it is type stable.
@@ -164,7 +155,6 @@ function _pager!(
         end
 
         if !use_pager
-            !suppress_preamble_when_not_using_pager && println(preamble)
             print(content)
             return nothing
         end
@@ -188,13 +178,6 @@ function _pager!(
     change_freeze && push!(features, :change_freeze)
     hashelp && push!(features, :help)
     has_visual_mode && push!(features, :visual_mode)
-
-    if (title_rows == -1) && (frozen_rows == -1) && !preamble_empty
-        num_lines_in_preamble = length(split(preamble, '\n'))
-
-        title_rows  = num_lines_in_preamble
-        frozen_rows = num_lines_in_preamble
-    end
 
     frozen_columns = max(0, frozen_columns)
     frozen_rows    = max(0, frozen_rows)
@@ -527,6 +510,11 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             event = :change_title_rows
         end
 
+    elseif action == :toggle_title_rows
+        if :change_freeze ∈ features
+            event = :toggle_title_rows
+        end
+
     elseif action == :toggle_ruler
         event = :toggle_ruler
 
@@ -670,6 +658,10 @@ function _pager_event_process!(pagerd::Pager)
             pagerd.title_rows = max(0, title_rows)
         end
 
+        _request_redraw!(pagerd)
+
+    elseif event == :toggle_title_rows
+        pagerd.hide_title_rows = !pagerd.hide_title_rows
         _request_redraw!(pagerd)
 
     elseif event == :toggle_ruler

@@ -48,6 +48,7 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
     ("<eot>",      false, false, false) => :quit_eot,
     ("r",          false, false, false) => :toggle_ruler,
     ("t",          false, false, false) => :change_title_rows,
+    ("s",          false, false, false) => :toggle_title_rows,
     ("v",          false, false, false) => :toggle_visual_mode,
     ("m",          false, false, false) => :select_visual_mode_line,
     ("y",          false, false, false) => :yank

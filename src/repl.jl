@@ -426,21 +426,25 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             # pager will only be called if there is not space in the display to show
             # everything.
             str = String(take!(buf))
-            preamble = ""
+
+            title_rows = 0
 
             if echo_cmd
-                preamble =
+                title =
                     Base.text_colors[:bold] *
                     Base.text_colors[:green] *
                     REPL.JULIA_PROMPT *
                     Base.text_colors[:normal] *
-                    chomp(cmd)
+                    cmd
+
+                title_rows = count('\n', title)
+                str = title * str
             end
 
             pager(
                 str;
                 auto = auto,
-                preamble,
+                title_rows = title_rows,
                 use_alternate_screen_buffer
             )
 

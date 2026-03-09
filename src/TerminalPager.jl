@@ -91,12 +91,6 @@ Call the pager to show the output of the object `obj`.
     (**Default** = -1)
 - `hashelp::Bool = true`: If `true`, the user can see the pager help.
     (**Default** = `true`)
-- `preamble::String`: A string to be shown at the top of the pager. Notice that if the
-    pager is not shown because of the `auto` keyword, this string will only be shown if
-    `suppress_preamble_when_not_using_pager` is `false`. Otherwise, it will be ignored. If
-    `title_rows` and `frozen_rows` are negative (default), the preamble will be shown
-    inside the title, frozen rows.
-    (**Default** = "")
 - `has_visual_mode::Bool = true`: If `true`, the user can use the visual mode.
     (**Default** = `true`)
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
@@ -158,9 +152,7 @@ function pager(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
-    preamble::String = "",
     show_ruler::Bool = false,
-    suppress_preamble_when_not_using_pager::Bool = true,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false
 )
@@ -174,9 +166,7 @@ function pager(
         frozen_rows,
         has_visual_mode,
         hashelp,
-        preamble,
         show_ruler,
-        suppress_preamble_when_not_using_pager,
         title_rows,
         use_alternate_screen_buffer
     )
@@ -190,9 +180,7 @@ function pager(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
-    preamble::String = "",
     show_ruler::Bool = false,
-    suppress_preamble_when_not_using_pager::Bool = true,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false
 )
@@ -215,9 +203,7 @@ function pager(
         frozen_rows,
         has_visual_mode,
         hashelp,
-        preamble,
         show_ruler,
-        suppress_preamble_when_not_using_pager,
         title_rows,
         use_alternate_screen_buffer
     )

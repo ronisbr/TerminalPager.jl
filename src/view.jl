@@ -25,6 +25,7 @@ function _view!(pagerd::Pager)
     start_column           = pagerd.start_column
     start_row              = pagerd.start_row
     title_rows             = pagerd.title_rows
+    hide_title_rows        = pagerd.hide_title_rows
 
     # Make sure that the argument values are correct.
     start_row < 1 && (start_row = 1)
@@ -64,7 +65,8 @@ function _view!(pagerd::Pager)
         show_ruler                  = show_ruler,
         title_lines                 = title_rows,
         visual_lines                = visual_lines,
-        visual_line_backgrounds     = visual_line_backgrounds
+        visual_line_backgrounds     = visual_line_backgrounds,
+        hide_title_lines            = hide_title_rows
     )
 
     # Write the information to the structure.

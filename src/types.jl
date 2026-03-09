@@ -27,6 +27,7 @@ Base.@kwdef mutable struct Pager
     frozen_columns::Int = 0
     frozen_rows::Int = 0
     title_rows::Int = 0
+    hide_title_rows::Bool = false
     show_ruler::Bool = false
     visual_mode::Bool = false
     visual_mode_line::Int = 1
