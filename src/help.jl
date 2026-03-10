@@ -65,6 +65,7 @@ function _help!(pagerd::Pager)
     # Freezing data
     kb_change_freeze     = _getkb(:change_freeze)
     kb_change_title_rows = _getkb(:change_title_rows)
+    kb_toggle_title_rows = _getkb(:toggle_title_rows)
 
     # Visual mode
     kb_toggle_visual_mode      = _getkb(:toggle_visual_mode)
@@ -173,6 +174,9 @@ $(_y)  :change_title_rows$(_d)
     Define the number of rows within the frozen rows that will be considered as titles. In
     this case, these rows will not scroll horizontally.
 $(_c)    Keybindings: $(kb_change_title_rows)$(_d)
+$(_y)  :toggle_title_rows$(_d)
+    Hide / show the title rows.
+$(_c)    Keybindings: $(kb_toggle_title_rows)$(_d)
 
 $(_b)                                        Visual Mode$(_d)
 $(_g)  These actions requires the feature :visual_mode.

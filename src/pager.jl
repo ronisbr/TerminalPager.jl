@@ -69,6 +69,7 @@ function _pager(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
+    hide_title_rows_on_direct_print::Bool = false,
     show_ruler::Bool = false,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false,
@@ -89,6 +90,7 @@ function _pager(
         frozen_rows,
         has_visual_mode,
         hashelp,
+        hide_title_rows_on_direct_print,
         show_ruler,
         title_rows,
         use_alternate_screen_buffer
@@ -118,6 +120,7 @@ function _pager!(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
+    hide_title_rows_on_direct_print::Bool = false,
     show_ruler::Bool = false,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false,
@@ -149,12 +152,23 @@ function _pager!(
                     break
                 end
             end
-
         else
             use_pager = true
         end
 
         if !use_pager
+            if hide_title_rows_on_direct_print && title_rows > 0
+                first_print = true
+
+                for i in (title_rows + 1):num_tokens
+                    !first_print && print('\n')
+                    print(tokens[i + begin - 1])
+                    first_print = false
+                end
+
+                return nothing
+            end
+
             print(content)
             return nothing
         end
@@ -179,9 +193,9 @@ function _pager!(
     hashelp && push!(features, :help)
     has_visual_mode && push!(features, :visual_mode)
 
-    frozen_columns = max(0, frozen_columns)
-    frozen_rows    = max(0, frozen_rows)
     title_rows     = max(0, title_rows)
+    frozen_rows    = max(title_rows, frozen_rows)
+    frozen_columns = max(0, frozen_columns)
 
     # Initialize the pager structure.
     pagerd = Pager(

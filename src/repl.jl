@@ -444,6 +444,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             pager(
                 str;
                 auto = auto,
+                hide_title_rows_on_direct_print = echo_cmd,
                 title_rows = title_rows,
                 use_alternate_screen_buffer
             )

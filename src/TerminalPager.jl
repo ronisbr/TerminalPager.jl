@@ -93,6 +93,10 @@ Call the pager to show the output of the object `obj`.
     (**Default** = `true`)
 - `has_visual_mode::Bool = true`: If `true`, the user can use the visual mode.
     (**Default** = `true`)
+- `hide_title_rows_on_direct_print::Bool`: If `true`, the title rows (defined by
+    `title_rows`) are hidden when the output is printed directly without invoking the pager.
+    Notice that this condition only happes if `auto` is `true`.
+    (**Default** = `false`)
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
     numbers. (**Default** = `false`)
 - `title_rows::Int`: Number of rows to be considered as title at startup. These rows will
@@ -152,6 +156,7 @@ function pager(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
+    hide_title_rows_on_direct_print::Bool = false,
     show_ruler::Bool = false,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false
@@ -166,6 +171,7 @@ function pager(
         frozen_rows,
         has_visual_mode,
         hashelp,
+        hide_title_rows_on_direct_print,
         show_ruler,
         title_rows,
         use_alternate_screen_buffer
@@ -180,6 +186,7 @@ function pager(
     frozen_rows::Int = -1,
     has_visual_mode::Bool = true,
     hashelp::Bool = true,
+    hide_title_rows_on_direct_print::Bool = false,
     show_ruler::Bool = false,
     title_rows::Int = -1,
     use_alternate_screen_buffer::Bool = false
@@ -203,6 +210,7 @@ function pager(
         frozen_rows,
         has_visual_mode,
         hashelp,
+        hide_title_rows_on_direct_print,
         show_ruler,
         title_rows,
         use_alternate_screen_buffer
