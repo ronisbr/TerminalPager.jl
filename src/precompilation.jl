@@ -25,7 +25,7 @@ PrecompileTools.@setup_workload begin
         _init_pager_repl_mode(mock_repl)
         _register_help_shortcuts(mock_repl)
 
-        a = vcat(fill(0.1986, 100)', rand(100, 100))
+        a = vcat(reshape(fill(0.1986, 100), 1, :), zeros(100, 100))
         t = @async pager(a)
 
         # Ruler.
