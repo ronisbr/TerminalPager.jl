@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.11
+--------------
+
+- ![Bugfix][badge-bugfix] Do not use functions in pre-compilation that are not in Base. (PR
+  [#81][gh-pr-81])
+
 Version 0.6.10
 --------------
 
@@ -279,3 +285,4 @@ Version 0.0.1
 [gh-pr-68]: https://github.com/ronisbr/TerminalPager.jl/pull/68
 [gh-pr-73]: https://github.com/ronisbr/TerminalPager.jl/pull/73
 [gh-pr-79]: https://github.com/ronisbr/TerminalPager.jl/pull/79
+[gh-pr-81]: https://github.com/ronisbr/TerminalPager.jl/pull/81
