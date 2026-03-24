@@ -158,11 +158,16 @@ function __init__()
     else
         atreplinit() do repl
             if isinteractive() && repl isa REPL.LineEditREPL
-                if !isdefined(repl, :interface)
-                    repl.interface = REPL.setup_interface(repl)
+                # Do not call `REPL.setup_interface` here. It will be called
+                # later by `run_frontend`, which respects user options such as
+                # `auto_insert_closing_bracket`. Calling it early would bypass
+                # any options set by other `atreplinit` hooks.
+                @async begin
+                    while !isdefined(repl, :interface)
+                        sleep(0.1)
+                    end
+                    _init_pager_repl_mode(repl)
                 end
-
-                _init_pager_repl_mode(repl)
             end
 
             _register_help_shortcuts(repl)
