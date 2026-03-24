@@ -1,6 +1,13 @@
 TerminalPager.jl
 ================
 
+Version 0.6.12
+--------------
+
+- ![Bugfix][badge-bugfix] The REPL initialization was removed from the package because it is
+  called in `run_frontend`. Hence, the user options are now respected if TerminalPager.jl is
+  loaded in `startup.jl`. (Issue [#82][gh-issue-82], PR [#83][gh-pr-83])
+
 Version 0.6.11
 --------------
 
@@ -261,6 +268,7 @@ Version 0.0.1
 [gh-issue-40]: https://github.com/ronisbr/TerminalPager.jl/issues/40
 [gh-issue-46]: https://github.com/ronisbr/TerminalPager.jl/issues/46
 [gh-issue-54]: https://github.com/ronisbr/TerminalPager.jl/issues/54
+[gh-issue-82]: https://github.com/ronisbr/TerminalPager.jl/issues/82
 
 [gh-pr-22]: https://github.com/ronisbr/TerminalPager.jl/pull/22
 [gh-pr-24]: https://github.com/ronisbr/TerminalPager.jl/pull/24
@@ -286,3 +294,4 @@ Version 0.0.1
 [gh-pr-73]: https://github.com/ronisbr/TerminalPager.jl/pull/73
 [gh-pr-79]: https://github.com/ronisbr/TerminalPager.jl/pull/79
 [gh-pr-81]: https://github.com/ronisbr/TerminalPager.jl/pull/81
+[gh-pr-83]: https://github.com/ronisbr/TerminalPager.jl/pull/83
