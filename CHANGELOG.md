@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.13
+--------------
+
+- ![Bugfix][badge-bugfix] The macro `@help` does not throw exceptions anymore when used in
+  non-existing module names. (Issue [#89][gh-issue-89], PR [#91][gh-pr-91])
+
 Version 0.6.12
 --------------
 
@@ -269,6 +275,7 @@ Version 0.0.1
 [gh-issue-46]: https://github.com/ronisbr/TerminalPager.jl/issues/46
 [gh-issue-54]: https://github.com/ronisbr/TerminalPager.jl/issues/54
 [gh-issue-82]: https://github.com/ronisbr/TerminalPager.jl/issues/82
+[gh-issue-89]: https://github.com/ronisbr/TerminalPager.jl/issues/89
 
 [gh-pr-22]: https://github.com/ronisbr/TerminalPager.jl/pull/22
 [gh-pr-24]: https://github.com/ronisbr/TerminalPager.jl/pull/24
@@ -295,3 +302,4 @@ Version 0.0.1
 [gh-pr-79]: https://github.com/ronisbr/TerminalPager.jl/pull/79
 [gh-pr-81]: https://github.com/ronisbr/TerminalPager.jl/pull/81
 [gh-pr-83]: https://github.com/ronisbr/TerminalPager.jl/pull/83
+[gh-pr-91]: https://github.com/ronisbr/TerminalPager.jl/pull/91
