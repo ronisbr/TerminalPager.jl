@@ -126,7 +126,28 @@ function _get_help(f::AbstractString)
         ---
         """
     else
-        Core.eval(Main, ast)
+        # println("ast starting")
+        # println(ast)
+        # println(dump(ast))
+        # println("ast ending")
+        try
+            Core.eval(Main, ast)
+        catch err
+            # Evaluating the help AST can fail, for example, when the user asks for help
+            # on a qualified name whose module does not exist (e.g. `@help Foo.bar` where
+            # `Foo` is not defined). In those cases, return a Markdown object that mimics
+            # REPL's own "no documentation found" output instead of propagating the error.
+            # We don't want to just forward to `?help`, as this also throws an error in
+            # this case.
+            if err isa UndefVarError
+                @show typeof(f)
+                Markdown.parse(
+                    "No documentation found.\n\nBinding `$(lstrip(f, '?'))` does not exist."
+                )
+            else
+                rethrow()
+            end
+        end
     end
 
     # Render the output.
