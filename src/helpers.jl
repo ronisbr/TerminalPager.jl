@@ -126,10 +126,6 @@ function _get_help(f::AbstractString)
         ---
         """
     else
-        # println("ast starting")
-        # println(ast)
-        # println(dump(ast))
-        # println("ast ending")
         try
             Core.eval(Main, ast)
         catch err
@@ -140,7 +136,6 @@ function _get_help(f::AbstractString)
             # We don't want to just forward to `?help`, as this also throws an error in
             # this case.
             if err isa UndefVarError
-                @show typeof(f)
                 Markdown.parse(
                     "No documentation found.\n\nBinding `$(lstrip(f, '?'))` does not exist."
                 )
