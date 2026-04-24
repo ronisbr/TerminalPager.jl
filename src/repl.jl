@@ -318,30 +318,9 @@ function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     # We do not need to verify if we are in a interactive environment because this mode is
     # only accessible through pager mode, which already checks it.
     try
-        # Create a buffer that will replace `stdout`.
-        buf = IOBuffer()
-        io = IOContext(
-            IOContext(buf, stdout),
-            :displaysize => displaysize(stdout),
-            :limit => false,
-        )
-
-        # Get the AST that generates the help.
-        ast = Base.invokelatest(REPL.helpmode, io, input)
-
-        # Evaluate the AST, which returns a Markdown object.
-        response = Core.eval(Main, ast)
-
-        # Render the output.
-        show(io, MIME("text/plain"), response)
-        write(io, '\n')
-
         # Take everything and display in the pager using the alternate screen buffer to
         # avoid modifying the current screen state.
-        pager(String(take!(buf)); use_alternate_screen_buffer = true)
-
-        close(io)
-
+        pager(_get_help(input); use_alternate_screen_buffer = true)
     catch err
         Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())
     end

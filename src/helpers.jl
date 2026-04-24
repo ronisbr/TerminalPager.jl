@@ -98,7 +98,10 @@ end
 ############################################################################################
 
 # Return the rendered help string of the function `f`.
-function _get_help(f::AbstractString)
+#
+# The help expression is evaluated in the REPL's active module by default, falling back to
+# `Main` if the binding is not found there. See issue #90.
+function _get_help(f::AbstractString, mod::Module = Base.active_module())
     # Create a buffer that will replace `stdout`.
     buf = IOBuffer()
     io = IOContext(
@@ -107,13 +110,16 @@ function _get_help(f::AbstractString)
         :limit => false,
     )
 
-    # Get the AST that generates the help.
-    ast = Base.invokelatest(TerminalPager.REPL.helpmode, io, f)
-
     # Evaluate the AST, which returns a Markdown object.
-    #
-    # If we are precompiling, just return a sample markdown.
     response = if ccall(:jl_generating_output, Cint, ()) == 1
+        # If we are precompiling, just return a sample markdown. We still invoke
+        # `REPL.helpmode` so that it gets precompiled via the precompile workload, but
+        # skip `Core.eval` because evaluating the resulting AST into a module during
+        # precompilation is not desirable. The `mod` argument does not affect which method
+        # instance is compiled (`Module` is a concrete type), so we simply let `helpmode`
+        # use its default.
+        Base.invokelatest(TerminalPager.REPL.helpmode, io, f)
+
         md"""
         # Header
 
@@ -126,21 +132,39 @@ function _get_help(f::AbstractString)
         ---
         """
     else
+        # Try the REPL's active module first. If the binding cannot be resolved there,
+        # fall back to `Main`, matching what the plain REPL would do. `REPL.helpmode`
+        # behaves differently for the two "missing binding" cases we care about:
+        #
+        #   - Unqualified bindings missing in `mod` (e.g. `foo` when `foo` only exists in
+        #     `Main`): it does **not** throw, but returns a "No documentation found"
+        #     Markdown. We detect this and retry with `Main`.
+        #   - Qualified bindings referencing a non-existing module (e.g. `Foo.bar` when
+        #     `Foo` is undefined): it throws `UndefVarError`, which we catch and retry
+        #     with `Main`.
+        #
+        # In both cases, if `Main` also cannot resolve the binding, we return a Markdown
+        # object mimicking the REPL's "no documentation found" output instead of
+        # propagating any error.
         try
-            Core.eval(Main, ast)
+            response = _eval_helpmode(io, f, mod)
+            if mod !== Main && _is_not_found_response(response)
+                try
+                    response = _eval_helpmode(io, f, Main)
+                catch err
+                    err isa UndefVarError || rethrow()
+                end
+            end
+            response
         catch err
-            # Evaluating the help AST can fail, for example, when the user asks for help
-            # on a qualified name whose module does not exist (e.g. `@help Foo.bar` where
-            # `Foo` is not defined). In those cases, return a Markdown object that mimics
-            # REPL's own "no documentation found" output instead of propagating the error.
-            # We don't want to just forward to `?help`, as this also throws an error in
-            # this case.
-            if err isa UndefVarError
+            err isa UndefVarError || rethrow()
+            try
+                mod === Main ? rethrow() : _eval_helpmode(io, f, Main)
+            catch err2
+                err2 isa UndefVarError || rethrow()
                 Markdown.parse(
                     "No documentation found.\n\nBinding `$(lstrip(f, '?'))` does not exist."
                 )
-            else
-                rethrow()
             end
         end
     end
@@ -154,4 +178,19 @@ function _get_help(f::AbstractString)
     close(io)
 
     return str
+end
+
+# Run `REPL.helpmode` for `f` in `mod` and evaluate the resulting AST in `mod`.
+function _eval_helpmode(io::IO, f::AbstractString, mod::Module)
+    ast = Base.invokelatest(TerminalPager.REPL.helpmode, io, f, mod)
+    return Core.eval(mod, ast)
+end
+
+# Return `true` if `response` is the "No documentation found" Markdown object produced by
+# `REPL.helpmode` when the queried binding does not exist in the evaluated module.
+function _is_not_found_response(response)
+    response isa Markdown.MD && !isempty(response.content) || return false
+    first = response.content[1]
+    first isa Markdown.Paragraph || return false
+    return first.content == ["No documentation found."]
 end
