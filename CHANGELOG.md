@@ -1,6 +1,12 @@
 TerminalPager.jl
 ================
 
+Version 0.6.14
+--------------
+
+- ![Enhancement][badge-enhancement] Help system now can provide help for bindings of REPL's
+  active module instead of only `Main`. (PR [#92][gh-pr-92])
+
 Version 0.6.13
 --------------
 
@@ -303,3 +309,4 @@ Version 0.0.1
 [gh-pr-81]: https://github.com/ronisbr/TerminalPager.jl/pull/81
 [gh-pr-83]: https://github.com/ronisbr/TerminalPager.jl/pull/83
 [gh-pr-91]: https://github.com/ronisbr/TerminalPager.jl/pull/91
+[gh-pr-92]: https://github.com/ronisbr/TerminalPager.jl/pull/92
