@@ -169,6 +169,13 @@ function _get_help(f::AbstractString, mod::Module = Base.active_module())
         end
     end
 
+    # The Markdown terminal renderer wraps prose paragraphs to the display width but prints
+    # code blocks (e.g., the function signature) verbatim, which makes the pager truncate
+    # long lines. Wrap the block-level code so it matches the rest of the help.
+    if response isa Markdown.MD
+        _wrap_help_code_blocks!(response, displaysize(io)[2])
+    end
+
     # Render the output.
     show(io, MIME("text/plain"), response)
     write(io, '\n')
@@ -193,4 +200,59 @@ function _is_not_found_response(response)
     first = response.content[1]
     first isa Markdown.Paragraph || return false
     return first.content == ["No documentation found."]
+end
+
+# Wrap the block-level code in the rendered help (e.g., the function signature) so long
+# lines are wrapped to the display `columns` instead of being truncated by the pager.
+# Julia's Markdown terminal renderer wraps prose paragraphs but prints code blocks
+# verbatim. We only descend into block containers (`MD` and `Admonition`) so that inline
+# code, which is also represented by `Markdown.Code`, is left untouched.
+function _wrap_help_code_blocks!(md::Union{Markdown.MD, Markdown.Admonition}, columns::Integer)
+    for (i, element) in enumerate(md.content)
+        if element isa Markdown.Code
+            md.content[i] = Markdown.Code(element.language, _wrap_code(element.code, columns))
+        elseif element isa Markdown.MD || element isa Markdown.Admonition
+            _wrap_help_code_blocks!(element, columns)
+        end
+    end
+
+    return md
+end
+
+# Wrap each line in `code` to at most `columns - 2 * Markdown.margin` display columns. This
+# is the same width used to wrap prose paragraphs, accounting for the left margin that the
+# Markdown renderer adds when printing code blocks. The wrapping is implemented locally
+# (instead of using `Markdown.wraplines`) both so it works across all supported Julia
+# versions and so we can hard-break at the column limit.
+function _wrap_code(code::AbstractString, columns::Integer)
+    width = max(1, columns - 2 * Markdown.margin)
+    buf = IOBuffer()
+
+    code_lines = split(code, '\n')
+    for (i, line) in enumerate(code_lines)
+        _wrap_line!(buf, line, width)
+        i < length(code_lines) && print(buf, '\n')
+    end
+
+    return String(take!(buf))
+end
+
+# Hard-wrap `line` to at most `width` display columns and write the result to `buf`,
+# breaking exactly at the column limit regardless of word boundaries (mirroring how the
+# REPL's `help?>` mode wraps at the terminal edge). This guarantees every emitted line
+# fits, even tokens that contain no whitespace.
+function _wrap_line!(buf::IO, line::AbstractString, width::Integer)
+    col = 0
+
+    for c in line
+        w = textwidth(c)
+        if col + w > width && col > 0
+            print(buf, '\n')
+            col = 0
+        end
+        print(buf, c)
+        col += w
+    end
+
+    return nothing
 end

@@ -89,3 +89,58 @@ main_only_documented_function() = 1
     str = _get_help("binding_that_does_not_exist_anywhere", HelpModuleTest)
     @test occursin("No documentation found", str)
 end
+
+# Tests for wrapping long code blocks (e.g. function signatures) in the rendered help. The
+# Markdown terminal renderer wraps prose but prints code blocks verbatim, which previously
+# caused long signatures to be truncated by the pager instead of wrapped.
+@testset "Help code wrapping" begin
+    import TerminalPager: _wrap_code, _wrap_help_code_blocks!
+    import Markdown
+
+    # Available width for code is the display columns minus the left/right margin used for
+    # prose, matching the rest of the rendered help.
+    columns = 40
+    avail = columns - 2 * Markdown.margin
+
+    sig = "f(a::Int, b::Int, c::Int, d::Int, e::Int, g::Int, h::Int, i::Int)"
+
+    wrapped = _wrap_code(sig, columns)
+    lines = split(wrapped, '\n')
+
+    # The long line must be split into several lines, each fitting the available width.
+    @test length(lines) > 1
+    @test all(l -> textwidth(l) <= avail, lines)
+
+    # Wrapping must never lose or alter the actual content (only line breaks are added).
+    @test replace(wrapped, r"\s" => "") == replace(sig, r"\s" => "")
+
+    # A whitespace-free token wider than the limit must still be broken (hard wrap), so the
+    # pager never has to truncate it. This is the case word wrapping could not guarantee.
+    long_token = "x"^(2 * avail + 3)
+    token_lines = split(_wrap_code(long_token, columns), '\n')
+    @test length(token_lines) == 3
+    @test all(l -> textwidth(l) <= avail, token_lines)
+    @test join(token_lines) == long_token
+
+    # A line that fits is returned unchanged.
+    @test _wrap_code("short()", columns) == "short()"
+
+    # Existing newlines inside a code block are preserved.
+    @test _wrap_code("a()\nb()", columns) == "a()\nb()"
+
+    # A code block inside the Markdown AST is wrapped in place.
+    md = Markdown.parse("```julia\n$sig\n```")
+    @test _wrap_help_code_blocks!(md, columns) === md
+    code = md.content[1]
+    @test code isa Markdown.Code
+    @test occursin('\n', code.code)
+    @test all(l -> textwidth(l) <= avail, split(code.code, '\n'))
+
+    # Inline code must not be touched: it is also a `Markdown.Code`, but lives inside a
+    # paragraph rather than as a block-level element, so the long inline span stays intact.
+    md_inline = Markdown.parse("a `$sig` b")
+    _wrap_help_code_blocks!(md_inline, columns)
+    para = md_inline.content[1]
+    inline_code = para.content[findfirst(x -> x isa Markdown.Code, para.content)]
+    @test !occursin('\n', inline_code.code)
+end
