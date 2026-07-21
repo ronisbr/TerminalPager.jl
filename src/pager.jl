@@ -107,6 +107,8 @@ function _pager!(
         end
     end
 
+    _turn_on_cursor_key_mode(term.out_stream)
+
     # Clear the screen and position the cursor at the top.
     if use_alternate_screen_buffer
         _turn_on_alternate_screen_buffer(term.out_stream)
@@ -162,6 +164,8 @@ function _pager!(
     end
 
     use_alternate_screen_buffer && _turn_off_alternate_screen_buffer(term.out_stream)
+
+    _turn_off_cursor_key_mode(term.out_stream)
 
     return nothing
 end
