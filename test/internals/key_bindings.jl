@@ -4,7 +4,7 @@
 #
 ############################################################################################
 
-@testset "Key bindings" begin
+@testset "Key Bindings" begin
     pagerd = _create_pagerd("")
 
     TerminalPager.set_keybinding("L", :left)

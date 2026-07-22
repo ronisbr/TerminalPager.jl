@@ -8,7 +8,7 @@ using About
 
 module InlineHelpModule end
 
-@testset "Display configuration" begin
+@testset "Display Configuration" begin
     config = @inferred TerminalPager._display_config()
     @test config isa TerminalPager.DisplayConfig
     @test isconcretetype(typeof(config))
@@ -73,7 +73,7 @@ module InlineHelpModule end
     @test !occursin("_get_preference", view_source)
 end
 
-@testset "Ordered search navigation" begin
+@testset "Ordered Search Navigation" begin
     pagerd = _create_pagerd("zero\nα x x\nnone\nx")
     pagerd.display_size = (5, 8)
     pagerd.search_matches = TerminalPager.SearchMatches(
@@ -124,7 +124,7 @@ end
     @test pagerd.active_search_match_id == 0
 end
 
-@testset "Prepared layout lifecycle" begin
+@testset "Prepared Layout Lifecycle" begin
     pagerd = _create_pagerd("\e[31mrow α one\e[0m\nrow 界 two\nrow three")
     layout = pagerd.text_layout
     @test pagerd.num_lines == length(layout)
@@ -227,7 +227,7 @@ end
     @test String(take!(prepared_buffer)) == String(take!(raw_buffer))
 end
 
-@testset "Yank text assembly" begin
+@testset "Yank Text Assembly" begin
     lines = ["first", "\e[31mred\e[0m", "", "αβ"]
     layout = TerminalPager.TextViewLayout(lines)
     line_ids = [4, 2, 3, 2]
@@ -250,7 +250,7 @@ end
     @test_throws MethodError push!(layout, "new")
 end
 
-@testset "Inline-help wrappers" begin
+@testset "Inline-Help Wrappers" begin
     source_root = dirname(pathof(TerminalPager))
     help_source = read(joinpath(source_root, "help_keybinding.jl"), String)
     extension_source = read(

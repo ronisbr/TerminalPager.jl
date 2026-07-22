@@ -195,7 +195,7 @@ Return the decoded value and modifier fields of a keystroke.
 """
 key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
 
-@testset "Pure keystroke decoder" begin
+@testset "Pure Keystroke Decoder" begin
     for (code, expected) in TerminalPager.keycodes
         bytes = collect(codeunits(code))
         status, key, _ = TerminalPager._decode_keystroke(bytes)
@@ -283,7 +283,7 @@ key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
     @test first(TerminalPager._decode_keystroke(UInt8[0x1b, 0xe2])) == :incomplete
 end
 
-@testset "Controlled shared input" begin
+@testset "Controlled Shared Input" begin
     stream = ControlledInput("a"; advertised = 0)
     input = TerminalPager.PagerInput(stream)
     @test isnothing(TerminalPager._try_read_keystroke!(input))
@@ -515,7 +515,7 @@ function assert_sequential_equivalent(lines, display_size, start_row, start_colu
     return nothing
 end
 
-@testset "Navigation coalescing" begin
+@testset "Navigation Coalescing" begin
     stream = ControlledInput("jjqX"; advertised = 4)
     pagerd = _create_pagerd(join(fill("line", 100), '\n'))
     pagerd.input = TerminalPager.PagerInput(stream)
@@ -660,7 +660,7 @@ end
     assert_sequential_equivalent(fill("row α", 8), (20, 30), 8, 1, "jk")
 end
 
-@testset "Shared modal and nested input" begin
+@testset "Shared Modal and Nested Input" begin
     command_input = IOBuffer("query\n")
     command_output = IOBuffer()
     command_term = REPL.Terminals.TTYTerminal(
@@ -736,7 +736,7 @@ end
     )
 end
 
-@testset "Auto-fit and terminal restoration" begin
+@testset "Auto-Fit and Terminal Restoration" begin
     fit_lines = ["short", "α"]
     fit_layout = TerminalPager.TextViewLayout(fit_lines)
     @test @inferred(TerminalPager._pager_content_fits(fit_lines, (5, 20)))

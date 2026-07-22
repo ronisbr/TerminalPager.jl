@@ -59,7 +59,7 @@ Return one from a function defined in `Main`.
 """
 main_only_documented_function() = 1
 
-@testset "Module-specific help" begin
+@testset "Module-Specific Help" begin
     # Binding defined in the given module: should return its documentation.
     str = _get_help("local_documented_function", HelpModuleTest)
     @test occursin("function local to", str)

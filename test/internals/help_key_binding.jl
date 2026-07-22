@@ -88,7 +88,7 @@ function test(input::AbstractString, mappings::Vector{Mapping})
     return nothing
 end
 
-@testset "Extract identifier" begin
+@testset "Extract Identifier" begin
     # == Empty Input =======================================================================
 
     test("", 1, "")
