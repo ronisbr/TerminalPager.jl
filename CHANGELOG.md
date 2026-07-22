@@ -1,6 +1,11 @@
 TerminalPager.jl
 ================
 
+Version 0.6.15
+--------------
+
+- ![Enhancement][badge-enhancement] Enable cursor-key mode while the pager is active.
+
 Version 0.6.14
 --------------
 
@@ -253,12 +258,12 @@ Version 0.0.1
 
 - Initial version.
 
-[badge-breaking]: https://img.shields.io/badge/BREAKING-red.svg
-[badge-deprecation]: https://img.shields.io/badge/Deprecation-orange.svg
-[badge-feature]: https://img.shields.io/badge/Feature-green.svg
-[badge-enhancement]: https://img.shields.io/badge/Enhancement-blue.svg
-[badge-bugfix]: https://img.shields.io/badge/Bugfix-purple.svg
-[badge-info]: https://img.shields.io/badge/Info-gray.svg
+[badge-breaking]: https://img.shields.io/badge/Breaking-DC2626?style=flat-square
+[badge-deprecation]: https://img.shields.io/badge/Deprecation-D97706?style=flat-square
+[badge-feature]: https://img.shields.io/badge/Feature-16A34A?style=flat-square
+[badge-enhancement]: https://img.shields.io/badge/Enhancement-0284C7?style=flat-square
+[badge-bugfix]: https://img.shields.io/badge/Bugfix-DB2777?style=flat-square
+[badge-info]: https://img.shields.io/badge/Info-475569?style=flat-square
 
 [gh-issue-1]: https://github.com/ronisbr/TerminalPager.jl/issues/1
 [gh-issue-2]: https://github.com/ronisbr/TerminalPager.jl/issues/2

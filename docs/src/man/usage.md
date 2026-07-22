@@ -70,7 +70,7 @@ julia> @stdout_to_pager for i = 1:100
 
 **TerminalPager.jl** comes with a REPL mode that automatically renders the command output to
 a pager if it does not fit the screen. To access this mode, just type `|` at the beginning
-of the REPL command line. If the mode is load correctly, the prompt `julia>` is changed to
+of the REPL command line. If the mode is loaded correctly, the prompt `julia>` is changed to
 `pager>`.
 
 In pager mode, you can also type `?` at the beginning of the command line to access the pager

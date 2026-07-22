@@ -1,7 +1,7 @@
 # Customization
 
 The user can customize some preferences in **TerminalPager.jl**. We handle those
-customization using [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl).
+preferences using [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl).
 Thus, they persist between Julia sessions.
 
 To add a new `value` to a `preference`, use the function:
@@ -22,7 +22,7 @@ To drop all the customized values, use:
 TerminalPager.drop_all_preferences!()
 ```
 
-The list of available properties are:
+The available preferences are:
 
 - `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     active search element. One can easily obtain this sequence by converting a `Crayon` to
