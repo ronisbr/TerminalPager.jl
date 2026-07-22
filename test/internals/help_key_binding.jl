@@ -8,12 +8,70 @@ using TerminalPager: _extract_identifier
 
 const Mapping = Pair{String, String}
 
-# Per defined test, we should check multiple cursor positions. This automates the tests.
+"""
+    test(
+        input::AbstractString,
+        i::Integer,
+        result::AbstractString,
+    ) -> Test.Result
+
+Test identifier extraction at one cursor position.
+
+# Arguments
+
+- `input::AbstractString`: Provide the source input.
+- `i::Integer`: Provide the cursor position.
+- `result::AbstractString`: Provide the expected identifier.
+"""
 test(input, i::Integer, result) = @eval @test _extract_identifier($input, $i) == $result
-test(x, result) = test(x, length(x)+1, result) # test at end of input
-test(x::Mapping) = [test(x.first, i, x.second) for i in 1 : length(x.first)+1]
+
+"""
+    test(input::AbstractString, result::AbstractString) -> Test.Result
+
+Test identifier extraction at the end of an input string.
+
+# Arguments
+
+- `input::AbstractString`: Provide the source input.
+- `result::AbstractString`: Provide the expected identifier.
+"""
+test(x, result) = test(x, length(x) + 1, result) # Test at the end of the input.
+
+"""
+    test(mapping::Mapping) -> Vector{<:Test.Result}
+
+Test a mapping at every cursor position in its input string.
+
+# Arguments
+
+- `mapping::Mapping`: Provide the input-to-identifier mapping.
+"""
+test(x::Mapping) = [test(x.first, i, x.second) for i in 1:(length(x.first) + 1)]
+
+"""
+    test(input::String) -> Vector{<:Test.Result}
+
+Test an input whose expected identifier is the complete input string.
+
+# Arguments
+
+- `input::String`: Provide the source input and expected identifier.
+"""
 test(x::String) = test(x => x)
 
+"""
+    test(
+        input::AbstractString,
+        mappings::Vector{Mapping},
+    ) -> Nothing
+
+Test every mapped substring at each valid code-point cursor position.
+
+# Arguments
+
+- `input::AbstractString`: Provide the source input.
+- `mappings::Vector{Mapping}`: Provide the substring-to-identifier mappings.
+"""
 function test(input::AbstractString, mappings::Vector{Mapping})
     # Create a lookup table to convert code unit indices to code point indices.
     Mem = @static(VERSION >= v"1.11-" ? Memory : Array)
@@ -27,6 +85,7 @@ function test(input::AbstractString, mappings::Vector{Mapping})
         # Test mapping for all its code point indices.
         [test(input, to_code_point_index[i], m.second) for i in r if isvalid(input, i)]
     end
+    return nothing
 end
 
 
@@ -65,7 +124,7 @@ end
         test("Base.Core.stdout")
     end
 
-    # Base.JuliaSyntax.byte_range
+    # Base.JuliaSyntax.byte_range.
 
     # == Macro With Arguments ==============================================================
 
@@ -96,7 +155,8 @@ end
     test("break")
     test("const")
     test("continue")
-    @static VERSION <= v"1.13-" && test("do") # Deactivate test until https://github.com/JuliaLang/JuliaSyntax.jl/issues/599 is fixed.
+    # Deactivate this test until JuliaSyntax issue 599 is fixed.
+    @static VERSION <= v"1.13-" && test("do")
     test("export")
     test("for")
     test("function")
