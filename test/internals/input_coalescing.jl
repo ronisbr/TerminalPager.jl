@@ -132,16 +132,16 @@ Return the fixed display size used by output restoration tests.
 Base.displaysize(::RecordingOutput) = (10, 40)
 
 """
-    Base.write(io::RecordingOutput, bytes::StridedVector{UInt8}) -> Int
+    Base.write(io::RecordingOutput, bytes::Vector{UInt8}) -> Int
 
 Write bytes to the recording output and trigger its configured failure.
 
 # Arguments
 
 - `io::RecordingOutput`: Provide the recording output to update.
-- `bytes::StridedVector{UInt8}`: Provide the bytes to write.
+- `bytes::Vector{UInt8}`: Provide the bytes to write.
 """
-function Base.write(io::RecordingOutput, bytes::StridedVector{UInt8})
+function Base.write(io::RecordingOutput, bytes::Vector{UInt8})
     text = String(copy(bytes))
     written = write(io.data, bytes)
     if !io.failed && occursin(io.fail_on, text)
@@ -775,18 +775,24 @@ end
     pager_input = IOBuffer("q")
     pager_output = IOContext(IOBuffer(), :displaysize => (8, 30), :color => false)
     pager_term = REPL.Terminals.TTYTerminal("", pager_input, pager_output, pager_output)
-    TerminalPager._pager(
-        join(fill("long line", 40), '\n');
-        auto = true,
-        _display_config_loader = TerminalPager.DisplayConfig,
-        _input_factory = stream -> TerminalPager.PagerInput(pager_input),
-        _layout_factory = lines -> begin
-            layout_calls[] += 1
-            return TerminalPager.TextViewLayout(lines)
-        end,
-        _terminal_factory = () -> pager_term,
-        _raw_runner = (f, terminal) -> f(),
-    )
+    auto_fit_stdout = IOContext(IOBuffer(), :displaysize => (8, 30), :color => false)
+    try
+        Base.eval(:(stdout = $auto_fit_stdout))
+        TerminalPager._pager(
+            join(fill("long line", 40), '\n');
+            auto = true,
+            _display_config_loader = TerminalPager.DisplayConfig,
+            _input_factory = stream -> TerminalPager.PagerInput(pager_input),
+            _layout_factory = lines -> begin
+                layout_calls[] += 1
+                return TerminalPager.TextViewLayout(lines)
+            end,
+            _terminal_factory = () -> pager_term,
+            _raw_runner = (f, terminal) -> f(),
+        )
+    finally
+        Base.eval(:(stdout = $old_stdout))
+    end
     @test layout_calls[] == 1
 
     raw_transitions = Bool[]
