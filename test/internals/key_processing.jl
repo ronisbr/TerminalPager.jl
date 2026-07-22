@@ -9,7 +9,7 @@
 
     # == Down ==============================================================================
 
-    k = TerminalPager.Keystroke(value = "<down>")
+    k = TerminalPager.Keystroke(; value = "<down>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -20,10 +20,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 11
+    @test pagerd.start_row == 11
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -34,12 +34,12 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
-    k = TerminalPager.Keystroke(value = "<enter>")
+    k = TerminalPager.Keystroke(; value = "<enter>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -50,10 +50,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 11
+    @test pagerd.start_row == 11
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -64,14 +64,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Shift Down ========================================================================
 
-    k = TerminalPager.Keystroke(value = "<down>", shift = true)
+    k = TerminalPager.Keystroke(; value = "<down>", shift = true)
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -82,10 +82,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 15
+    @test pagerd.start_row == 15
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -96,14 +96,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 12
+    @test pagerd.start_row == 12
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     # == Up ================================================================================
 
-    k = TerminalPager.Keystroke(value = "<up>")
+    k = TerminalPager.Keystroke(; value = "<up>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -114,10 +114,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 9
+    @test pagerd.start_row == 9
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 1
@@ -128,14 +128,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 1
+    @test pagerd.start_row == 1
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Shift Up ==========================================================================
 
-    k = TerminalPager.Keystroke(value = "<up>", shift = true)
+    k = TerminalPager.Keystroke(; value = "<up>", shift = true)
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -146,10 +146,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 5
+    @test pagerd.start_row == 5
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 2
@@ -160,14 +160,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 1
+    @test pagerd.start_row == 1
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     # == Right =============================================================================
 
-    k = TerminalPager.Keystroke(value = "<right>")
+    k = TerminalPager.Keystroke(; value = "<right>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -178,10 +178,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 11
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -192,14 +192,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Right =============================================================================
 
-    k = TerminalPager.Keystroke(value = "<right>")
+    k = TerminalPager.Keystroke(; value = "<right>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -210,10 +210,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 11
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -224,14 +224,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Alt Right =========================================================================
 
-    k = TerminalPager.Keystroke(value = "<right>", alt = true)
+    k = TerminalPager.Keystroke(; value = "<right>", alt = true)
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -242,10 +242,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 30
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -256,14 +256,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Shift Right =======================================================================
 
-    k = TerminalPager.Keystroke(value = "<right>", shift = true)
+    k = TerminalPager.Keystroke(; value = "<right>", shift = true)
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -274,10 +274,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 20
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -288,14 +288,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 12
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     # == Left ==============================================================================
 
-    k = TerminalPager.Keystroke(value = "<left>")
+    k = TerminalPager.Keystroke(; value = "<left>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -306,10 +306,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 9
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -320,14 +320,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 1
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Alt Left ==========================================================================
 
-    k = TerminalPager.Keystroke(value = "<left>", alt = true)
+    k = TerminalPager.Keystroke(; value = "<left>", alt = true)
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -338,10 +338,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 1
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -352,14 +352,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 1
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Shift Left ========================================================================
 
-    k = TerminalPager.Keystroke(value = "<left>", shift = true)
+    k = TerminalPager.Keystroke(; value = "<left>", shift = true)
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -370,10 +370,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 5
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -384,14 +384,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 1
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     # == End ===============================================================================
 
-    k = TerminalPager.Keystroke(value = "<end>")
+    k = TerminalPager.Keystroke(; value = "<end>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -402,10 +402,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 30
+    @test pagerd.start_row == 30
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -416,14 +416,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 10
+    @test pagerd.start_row == 10
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Home ==============================================================================
 
-    k = TerminalPager.Keystroke(value = "<home>")
+    k = TerminalPager.Keystroke(; value = "<home>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -434,10 +434,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 1
+    @test pagerd.start_row == 1
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 1
@@ -448,14 +448,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 1
+    @test pagerd.start_row == 1
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == false
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == false
+    @test pagerd.event === nothing
 
     # == Half Page Up ======================================================================
 
-    k = TerminalPager.Keystroke(value = "u")
+    k = TerminalPager.Keystroke(; value = "u")
 
     pagerd.redraw          = false
     pagerd.start_row       = 40
@@ -466,10 +466,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 31
+    @test pagerd.start_row == 31
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -480,14 +480,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 1
+    @test pagerd.start_row == 1
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     # == Half Page Down ====================================================================
 
-    k = TerminalPager.Keystroke(value = "d")
+    k = TerminalPager.Keystroke(; value = "d")
 
     pagerd.redraw          = false
     pagerd.start_row       = 20
@@ -498,28 +498,28 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 24
+    @test pagerd.start_row == 24
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
     pagerd.start_column    = 10
     pagerd.cropped_lines   = 10
     pagerd.cropped_columns = 20
-    pagerd.display_size    = (20,20)
+    pagerd.display_size    = (20, 20)
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 19
+    @test pagerd.start_row == 19
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     # == Page Up ===========================================================================
 
-    k = TerminalPager.Keystroke(value = "<pageup>")
+    k = TerminalPager.Keystroke(; value = "<pageup>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 40
@@ -530,10 +530,10 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 21
+    @test pagerd.start_row == 21
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
@@ -544,14 +544,14 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 1
+    @test pagerd.start_row == 1
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     # == Page Down =========================================================================
 
-    k = TerminalPager.Keystroke(value = "<pagedown>")
+    k = TerminalPager.Keystroke(; value = "<pagedown>")
 
     pagerd.redraw          = false
     pagerd.start_row       = 20
@@ -562,22 +562,22 @@
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 29
+    @test pagerd.start_row == 29
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 
     pagerd.redraw          = false
     pagerd.start_row       = 10
     pagerd.start_column    = 10
     pagerd.cropped_lines   = 10
     pagerd.cropped_columns = 20
-    pagerd.display_size    = (20,20)
+    pagerd.display_size    = (20, 20)
 
     TerminalPager._pager_key_process!(pagerd, k)
 
-    @test pagerd.start_row    == 20
+    @test pagerd.start_row == 20
     @test pagerd.start_column == 10
-    @test pagerd.redraw       == true
-    @test pagerd.event        === nothing
+    @test pagerd.redraw == true
+    @test pagerd.event === nothing
 end

@@ -5,6 +5,31 @@
 ############################################################################################
 
 """
+    ControlledInput
+
+Represent an input stream with controllable lookahead and read failures.
+
+# Fields
+
+- `data::Vector{UInt8}`: Store the bytes available to the stream.
+- `position::Int`: Track the next byte to read.
+- `advertised::Int`: Track the number of bytes advertised as available.
+- `reads::Int`: Count completed byte reads.
+- `unsupported::Bool`: Indicate whether lookahead throws an unsupported error.
+- `strict::Bool`: Reject reads of bytes that were not advertised when `true`.
+- `fail_read::Bool`: Force byte reads to fail when `true`.
+"""
+mutable struct ControlledInput <: IO
+    data::Vector{UInt8}
+    position::Int
+    advertised::Int
+    reads::Int
+    unsupported::Bool
+    strict::Bool
+    fail_read::Bool
+end
+
+"""
     ControlledInput(
         data::Union{AbstractString, AbstractVector{UInt8}};
         advertised::Int = 0,
@@ -19,39 +44,20 @@ Construct an input stream with controllable lookahead and read failures.
 
 - `data::Union{AbstractString, AbstractVector{UInt8}}`: Provide the input bytes.
 
-# Fields
-
-- `data::Vector{UInt8}`: Store the bytes available to the stream.
-- `position::Int`: Track the next byte to read.
-- `advertised::Int`: Track the number of bytes advertised as available.
-- `reads::Int`: Count completed byte reads.
-- `unsupported::Bool`: Indicate whether lookahead throws an unsupported error.
-- `strict::Bool`: Reject reads of bytes that were not advertised when `true`.
-- `fail_read::Bool`: Force byte reads to fail when `true`.
-
 # Keywords
 
 - `advertised::Int`: Set the initial number of advertised bytes.
+    (**Default**: `0`)
 - `unsupported::Bool`: Make lookahead unsupported.
+    (**Default**: `false`)
 - `strict::Bool`: Require each read byte to be advertised.
+    (**Default**: `true`)
 - `fail_read::Bool`: Make byte reads fail.
+    (**Default**: `false`)
 """
-mutable struct ControlledInput <: IO
-    data::Vector{UInt8}
-    position::Int
-    advertised::Int
-    reads::Int
-    unsupported::Bool
-    strict::Bool
-    fail_read::Bool
-end
 
 ControlledInput(
-    data;
-    advertised = 0,
-    unsupported = false,
-    strict = true,
-    fail_read = false,
+    data; advertised = 0, unsupported = false, strict = true, fail_read = false
 ) = ControlledInput(
     data isa AbstractString ? collect(codeunits(data)) : collect(UInt8, data),
     1,
@@ -98,15 +104,9 @@ function Base.read(io::ControlledInput, ::Type{UInt8})
 end
 
 """
-    RecordingOutput(data::IOBuffer, fail_on::String, failed::Bool) -> RecordingOutput
+    RecordingOutput
 
-Construct an output stream that records writes and fails on selected text.
-
-# Arguments
-
-- `data::IOBuffer`: Provide the buffer that records output bytes.
-- `fail_on::String`: Provide the text that triggers a controlled failure.
-- `failed::Bool`: Provide the initial failure state.
+Represent an output stream that records writes and fails on selected text.
 
 # Fields
 
@@ -178,11 +178,7 @@ Copy bytes from a pointer into the recording output.
 - `pointer::Ptr{UInt8}`: Provide the pointer to the source bytes.
 - `count::UInt`: Provide the number of bytes to copy.
 """
-function Base.unsafe_write(
-    io::RecordingOutput,
-    pointer::Ptr{UInt8},
-    count::UInt,
-)
+function Base.unsafe_write(io::RecordingOutput, pointer::Ptr{UInt8}, count::UInt)
     bytes = copy(unsafe_wrap(Vector{UInt8}, pointer, Int(count)))
     write(io, bytes)
     return count
@@ -226,7 +222,7 @@ key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
         (0x0d, "<enter>"),
         (0x15, "<shiftin>"),
         (0x7f, "<backspace>"),
-        (UInt8('a'), "a")
+        (UInt8('a'), "a"),
     )
         status, key, _ = TerminalPager._decode_keystroke(UInt8[byte])
         @test status == :complete
@@ -250,15 +246,14 @@ key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
         UInt8[0xe0, 0x80, 0x80],
         UInt8[0xed, 0xa0, 0x80],
         UInt8[0xf4, 0x90, 0x80, 0x80],
-        UInt8[0xf5]
+        UInt8[0xf5],
     )
         status, key, _ = TerminalPager._decode_keystroke(bytes)
         @test status == :complete
         @test key.value == "<undefined>"
     end
 
-    @test first(TerminalPager._decode_keystroke(collect(codeunits("\e[")))) ==
-        :incomplete
+    @test first(TerminalPager._decode_keystroke(collect(codeunits("\e[")))) == :incomplete
     status, key, _ = TerminalPager._decode_keystroke(collect(codeunits("\e[99X")))
     @test status == :complete
     @test key.value == "<undefined>"
@@ -266,9 +261,7 @@ key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
     @test status == :complete
     @test key.value == "<undefined>"
 
-    status, key, consumed = TerminalPager._decode_keystroke(
-        collect(codeunits("\e[Bq"))
-    )
+    status, key, consumed = TerminalPager._decode_keystroke(collect(codeunits("\e[Bq")))
     @test status == :complete
     @test key.value == "<down>"
     @test consumed == 3
@@ -325,7 +318,7 @@ end
     @test TerminalPager._read_keystroke!(input).value == "q"
 
     input.prefix = UInt8[0x1b]
-    input.pending = TerminalPager.Keystroke(value = "pending")
+    input.pending = TerminalPager.Keystroke(; value = "pending")
     @test TerminalPager._read_keystroke!(input).value == "pending"
     @test isnothing(TerminalPager._try_read_keystroke!(input))
     @test input.prefix == UInt8[0x1b]
@@ -375,7 +368,7 @@ end
     @test stream.reads == 1
     @test stream.advertised == 3
 
-    input.pending = TerminalPager.Keystroke(value = "pending")
+    input.pending = TerminalPager.Keystroke(; value = "pending")
     @test TerminalPager._read_keystroke!(input).value == "pending"
     @test stream.reads == 1
 
@@ -407,7 +400,7 @@ end
 """
     coalesce_navigation!(
         pagerd::TerminalPager.Pager,
-        action::Any;
+        action::Union{Nothing, Symbol};
         max_actions::Int = 128,
         max_ns::UInt64 = UInt64(4_000_000),
     ) -> Int
@@ -417,23 +410,18 @@ Coalesce buffered navigation while retaining the pager's fixed test display size
 # Arguments
 
 - `pagerd::TerminalPager.Pager`: Provide the pager state to update.
-- `action::Any`: Provide the first candidate navigation action.
+- `action::Union{Nothing, Symbol}`: Provide the first candidate navigation action.
 
 # Keywords
 
 - `max_actions::Int`: Limit the number of navigation actions in one batch.
+    (**Default**: `128`)
 - `max_ns::UInt64`: Limit the nanoseconds spent collecting one batch.
+    (**Default**: `UInt64(4_000_000)`)
 """
-function coalesce_navigation!(
-    pagerd,
-    action;
-    kwargs...,
-)
+function coalesce_navigation!(pagerd, action; kwargs...)
     return TerminalPager._coalesce_navigation!(
-        pagerd,
-        action;
-        display_size_function = _ -> pagerd.display_size,
-        kwargs...
+        pagerd, action; display_size_function = _ -> pagerd.display_size, kwargs...
     )
 end
 
@@ -503,13 +491,7 @@ Assert that sequential and coalesced navigation produce equivalent final states.
 - `start_column::Int`: Provide the initial viewport column.
 - `input::AbstractString`: Provide the navigation input to compare.
 """
-function assert_sequential_equivalent(
-    lines,
-    display_size,
-    start_row,
-    start_column,
-    input,
-)
+function assert_sequential_equivalent(lines, display_size, start_row, start_column, input)
     sequential = _create_pagerd(join(lines, '\n'))
     batched = _create_pagerd(join(lines, '\n'))
     for pager in (sequential, batched)
@@ -520,7 +502,7 @@ function assert_sequential_equivalent(
         take!(pager.buf.io)
     end
 
-    keys = [TerminalPager.Keystroke(value = string(character)) for character in input]
+    keys = [TerminalPager.Keystroke(; value = string(character)) for character in input]
     sequential_frames = [last(process_and_view!(sequential, key)) for key in keys]
     batched.input = TerminalPager.PagerInput(IOBuffer(input[2:end]))
     batched_frames, _ = drain_batched_views!(batched, keys[1])
@@ -552,7 +534,7 @@ end
     @test TerminalPager._try_read_keystroke!(pagerd.input).value == "X"
 
     # Opposite directions and home/end remain sequentially equivalent.
-    keys = [TerminalPager.Keystroke(value = value) for value in ("j", "j", "k", "G", "g")]
+    keys = [TerminalPager.Keystroke(; value = value) for value in ("j", "j", "k", "G", "g")]
     sequential = _create_pagerd(join(fill("line", 100), '\n'))
     batched = _create_pagerd(join(fill("line", 100), '\n'))
     for pager in (sequential, batched)
@@ -569,7 +551,7 @@ end
 
     # Other-axis input is retained as a boundary.
     batched.input = TerminalPager.PagerInput(IOBuffer("jl"))
-    first_action = process_with_crop!(batched, TerminalPager.Keystroke(value = "j"))
+    first_action = process_with_crop!(batched, TerminalPager.Keystroke(; value = "j"))
     @test coalesce_navigation!(batched, first_action) == 2
     @test batched.input.pending.value == "l"
 
@@ -577,7 +559,8 @@ end
     old_binding = get(TerminalPager._KEYBINDINGS, ("z", false, false, false), nothing)
     try
         TerminalPager._KEYBINDINGS[("z", false, false, false)] = :fastdown
-        @test TerminalPager._pager_action(TerminalPager.Keystroke(value = "z")) == :fastdown
+        @test TerminalPager._pager_action(TerminalPager.Keystroke(; value = "z")) ==
+            :fastdown
         @test TerminalPager._navigation_axis(:fastdown) == :vertical
     finally
         if isnothing(old_binding)
@@ -593,8 +576,7 @@ end
     limited.display_size = (10, 20)
     limited.cropped_lines = 291
     first_action = process_with_crop!(
-        limited,
-        TerminalPager._try_read_keystroke!(limited.input)
+        limited, TerminalPager._try_read_keystroke!(limited.input)
     )
     @test coalesce_navigation!(limited, first_action) == 128
     @test limit_stream.reads == 128
@@ -603,20 +585,14 @@ end
     deadline = _create_pagerd(join(fill("line", 20), '\n'))
     deadline.input = TerminalPager.PagerInput(deadline_stream)
     first_action = process_with_crop!(
-        deadline,
-        TerminalPager._try_read_keystroke!(deadline.input)
+        deadline, TerminalPager._try_read_keystroke!(deadline.input)
     )
-    @test coalesce_navigation!(
-        deadline,
-        first_action;
-        max_ns = UInt64(0)
-    ) == 1
+    @test coalesce_navigation!(deadline, first_action; max_ns = UInt64(0)) == 1
     @test deadline_stream.reads == 1
 
     # Rich rendered state remains identical after sequential and batched movement.
     rich_lines = [
-        isodd(i) ? "\e[31mrow $i α界\e[0m" : "row $i " * repeat("x", i % 11)
-        for i in 1:60
+        isodd(i) ? "\e[31mrow $i α界\e[0m" : "row $i " * repeat("x", i % 11) for i in 1:60
     ]
     sequential = _create_pagerd(join(rich_lines, '\n'))
     batched = _create_pagerd(join(rich_lines, '\n'))
@@ -633,7 +609,7 @@ end
         TerminalPager._view!(pager)
         take!(pager.buf.io)
     end
-    rich_keys = [TerminalPager.Keystroke(value = value) for value in ("j", "j", "k")]
+    rich_keys = [TerminalPager.Keystroke(; value = value) for value in ("j", "j", "k")]
     rich_sequential_frames = [last(process_and_view!(sequential, key)) for key in rich_keys]
     batched.input = TerminalPager.PagerInput(IOBuffer("jk"))
     batched_layout = batched.text_layout
@@ -643,7 +619,7 @@ end
     @test batched.text_layout === batched_layout
 
     horizontal_keys = [
-        TerminalPager.Keystroke(value = value) for value in ("l", "l", "h", "\$", "0")
+        TerminalPager.Keystroke(; value = value) for value in ("l", "l", "h", "\$", "0")
     ]
     sequential = _create_pagerd(repeat("wide α界 ", 20))
     batched = _create_pagerd(repeat("wide α界 ", 20))
@@ -671,21 +647,15 @@ end
     @test TerminalPager._coalesce_navigation!(
         geometry,
         first_action;
-        display_size_function = _ -> (
-            geometry.display_size[1] + 1,
-            geometry.display_size[2]
-        )
+        display_size_function = _ ->
+            (geometry.display_size[1] + 1, geometry.display_size[2]),
     ) == 1
     @test geometry_stream.reads == 1
 
     # Stale viewport positions at short-line and enlarged-display edges use a real view
     # after every reference action.
     assert_sequential_equivalent(
-        ["short", "\e[31mwide α界 $(repeat("x", 40))\e[0m"],
-        (8, 20),
-        1,
-        45,
-        "lh"
+        ["short", "\e[31mwide α界 $(repeat("x", 40))\e[0m"], (8, 20), 1, 45, "lh"
     )
     assert_sequential_equivalent(fill("row α", 8), (20, 30), 8, 1, "jk")
 end
@@ -694,19 +664,16 @@ end
     command_input = IOBuffer("query\n")
     command_output = IOBuffer()
     command_term = REPL.Terminals.TTYTerminal(
-        "",
-        command_input,
-        command_output,
-        command_output
+        "", command_input, command_output, command_output
     )
     text_layout = TerminalPager.TextViewLayout(["x", "y"])
-    pagerd = TerminalPager.Pager(
+    pagerd = TerminalPager.Pager(;
         term = command_term,
         buf = IOContext(IOBuffer(), :color => false),
         input = TerminalPager.PagerInput(command_input),
         display_size = (10, 40),
         num_lines = 2,
-        text_layout = text_layout
+        text_layout = text_layout,
     )
     @test TerminalPager._read_cmd!(pagerd) == "query"
     @test pagerd.input.stream === pagerd.term.in_stream
@@ -765,9 +732,7 @@ end
 
     wrong_input = TerminalPager.PagerInput(IOBuffer("q"))
     @test_throws ArgumentError TerminalPager._pager!(
-        pagerd.term,
-        "help";
-        input = wrong_input
+        pagerd.term, "help"; input = wrong_input
     )
 end
 
@@ -781,7 +746,8 @@ end
     for (lines, display_size) in ((["too wide"], (5, 3)), (fill("x", 4), (5, 20)))
         layout = TerminalPager.TextViewLayout(lines)
         @test TerminalPager._pager_content_fits(layout, display_size) ==
-            TerminalPager._pager_content_fits(lines, display_size) == false
+            TerminalPager._pager_content_fits(lines, display_size) ==
+            false
     end
 
     old_stdout = stdout
@@ -797,7 +763,7 @@ end
             _input_factory = stream -> push!(hook_calls, :input),
             _layout_factory = lines -> push!(hook_calls, :layout),
             _terminal_factory = () -> push!(hook_calls, :terminal),
-            _raw_runner = (f, terminal) -> push!(hook_calls, :raw)
+            _raw_runner = (f, terminal) -> push!(hook_calls, :raw),
         )
     finally
         Base.eval(:(stdout = $old_stdout))
@@ -819,7 +785,7 @@ end
             return TerminalPager.TextViewLayout(lines)
         end,
         _terminal_factory = () -> pager_term,
-        _raw_runner = (f, terminal) -> f()
+        _raw_runner = (f, terminal) -> f(),
     )
     @test layout_calls[] == 1
 
@@ -827,7 +793,7 @@ end
     @test_throws ErrorException TerminalPager._with_raw_mode(
         () -> error("raw callback failure"),
         :terminal;
-        raw_function = (terminal, enabled) -> push!(raw_transitions, enabled)
+        raw_function = (terminal, enabled) -> push!(raw_transitions, enabled),
     )
     @test raw_transitions == [true, false]
 
@@ -838,7 +804,7 @@ end
         raw_function = (terminal, enabled) -> begin
             push!(raw_transitions, enabled)
             enabled && error("raw activation failure")
-        end
+        end,
     )
     @test raw_transitions == [true, false]
 
@@ -846,9 +812,7 @@ end
     input_stream = IOBuffer("q")
     term = REPL.Terminals.TTYTerminal("", input_stream, output, output)
     @test_throws ErrorException TerminalPager._pager!(
-        term,
-        "long";
-        input = TerminalPager.PagerInput(input_stream)
+        term, "long"; input = TerminalPager.PagerInput(input_stream)
     )
     @test occursin("\e[?1l", String(take!(output.data)))
 
@@ -859,7 +823,7 @@ end
         term,
         "long";
         input = TerminalPager.PagerInput(input_stream),
-        use_alternate_screen_buffer = true
+        use_alternate_screen_buffer = true,
     )
     activation_output = String(take!(output.data))
     @test occursin("\e[?1049l", activation_output)
@@ -869,9 +833,7 @@ end
     input_stream = IOBuffer("q")
     term = REPL.Terminals.TTYTerminal("", input_stream, output, output)
     @test_throws ErrorException TerminalPager._pager!(
-        term,
-        "long";
-        input = TerminalPager.PagerInput(input_stream)
+        term, "long"; input = TerminalPager.PagerInput(input_stream)
     )
     @test occursin("\e[?1h", String(take!(output.data)))
 
@@ -882,7 +844,7 @@ end
         term,
         "long";
         input = TerminalPager.PagerInput(input_stream),
-        use_alternate_screen_buffer = true
+        use_alternate_screen_buffer = true,
     )
     restored_output = String(take!(output.data))
     @test occursin("\e[?25h", restored_output)
@@ -901,7 +863,7 @@ end
         term,
         "long";
         input = TerminalPager.PagerInput(failing_input),
-        use_alternate_screen_buffer = true
+        use_alternate_screen_buffer = true,
     )
     failure_output = String(take!(output.data))
     @test occursin("\e[?1049l", failure_output)

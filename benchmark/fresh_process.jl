@@ -17,7 +17,7 @@ function run_fresh_process_benchmarks()
             println(
                 "sample $sample: load=$(values[1]) s, layout=$(values[2]) s, " *
                 "config=$(values[3]) s, first_view=$(values[4]) s, " *
-                "second_view=$(values[5]) s"
+                "second_view=$(values[5]) s",
             )
         end
     end

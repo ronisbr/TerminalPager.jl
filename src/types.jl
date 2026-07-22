@@ -20,11 +20,11 @@ Represent one decoded keystroke.
 - `shift::Bool`: Whether the SHIFT key was pressed.
 """
 Base.@kwdef struct Keystroke
-    raw::String   = ""
+    raw::String = ""
     value::String = ""
-    alt::Bool     = false
-    ctrl::Bool    = false
-    shift::Bool   = false
+    alt::Bool = false
+    ctrl::Bool = false
+    shift::Bool = false
 end
 
 """
@@ -50,6 +50,10 @@ end
     PagerInput(stream::IO) -> PagerInput
 
 Create input state for `stream` with an empty prefix and no pending keystroke.
+
+# Arguments
+
+- `stream::IO`: Input stream that supplies keystroke bytes.
 """
 PagerInput(stream::IO) = PagerInput(stream, UInt8[], nothing, true)
 
@@ -79,10 +83,7 @@ Construct a display configuration with the built-in preference defaults.
 """
 function DisplayConfig()
     return DisplayConfig(
-        string(crayon"black bg:yellow"),
-        string(crayon"black bg:light_gray"),
-        "44",
-        "100"
+        string(crayon"black bg:yellow"), string(crayon"black bg:light_gray"), "44", "100"
     )
 end
 

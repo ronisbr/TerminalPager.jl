@@ -12,7 +12,7 @@ function __init__()
     if isdefined(Base, :active_repl)
         _register_about_shortcut(Base.active_repl)
     else
-        _register_about_shortcut |> atreplinit
+        atreplinit(_register_about_shortcut)
     end
 
     return nothing
@@ -30,7 +30,7 @@ under the cursor.
 
 # Returns
 
-Return the asynchronous `Task` that updates the keymaps.
+- `Task`: Asynchronous task that updates the keymaps.
 """
 function _register_about_shortcut(repl)
     _register_shortcuts(repl) do escapes
@@ -40,40 +40,28 @@ function _register_about_shortcut(repl)
 end
 
 """
-    _show_pager_about(state::Any, _key::Any, _context::Any) -> Symbol
+    _show_pager_about(s::Any, _key::Any, _context::Any) -> Nothing
 
 Show `about` of the identifier under the cursor in the REPL.
 
 # Arguments
 
-- `state::Any`: Current REPL line-edit state.
+- `s::Any`: Current REPL line-edit state.
 - `_key::Any`: Keybinding callback key, which is ignored.
 - `_context::Any`: Keybinding callback context, which is ignored.
-
-# Returns
-
-Return `:ok` after handling the keybinding callback.
 """
 function _show_pager_about(s, _key, _context)
     _show_pager_cursor(s) do identifier
-        show_about = obj -> @stdout_to_pager(
-            about(stdout, obj),
-            use_alternate_screen_buffer = true
-        )
-        _show_about(
-            identifier,
-            s.active_module,
-            Base.eval,
-            show_about,
-            _show_help
-        )
+        show_about =
+            obj -> @stdout_to_pager(about(stdout, obj), use_alternate_screen_buffer = true)
+        _show_about(identifier, s.active_module, Base.eval, show_about, _show_help)
     end
 end
 
 """
     _show_about(
         identifier::AbstractString,
-        mod::Any,
+        mod::Module,
         evaluate::Any,
         show_about::Any,
         show_help::Any
@@ -84,18 +72,12 @@ Evaluate and show About information for `identifier`, falling back to help on er
 # Arguments
 
 - `identifier::AbstractString`: Identifier text to parse and evaluate.
-- `mod::Any`: Module passed to `evaluate`.
+- `mod::Module`: Module passed to `evaluate`.
 - `evaluate::Any`: Callable object used to evaluate the parsed identifier.
 - `show_about::Any`: Callable object used to display About information.
 - `show_help::Any`: Callable fallback used to display help.
 """
-function _show_about(
-    identifier,
-    mod,
-    evaluate,
-    show_about,
-    show_help
-)
+function _show_about(identifier, mod, evaluate, show_about, show_help)
     try
         # About needs the object represented by the identifier string.
         obj = evaluate(mod, Meta.parse(identifier))

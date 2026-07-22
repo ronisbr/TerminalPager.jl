@@ -18,9 +18,10 @@ Print `msg` on the pager command line.
 # Keywords
 
 - `crayon::Crayon`: Formatting applied when the terminal supports color.
+    (**Default**: `Crayon()`)
 """
 function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon())
-    term         = pagerd.term
+    term = pagerd.term
     display_size = pagerd.display_size
 
     if get(term.out_stream, :color, true)
@@ -52,12 +53,12 @@ Redraw the pager command line and status information.
 """
 function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
-    term          = pagerd.term
-    display_size  = pagerd.display_size
-    num_lines     = pagerd.num_lines
+    term = pagerd.term
+    display_size = pagerd.display_size
+    num_lines = pagerd.num_lines
     cropped_lines = pagerd.cropped_lines
-    mode          = pagerd.mode
-    features      = pagerd.features
+    mode = pagerd.mode
+    features = pagerd.features
 
     if get(term.out_stream, :color, true)::Bool
         _d = _CRAYON_RESET
@@ -79,7 +80,7 @@ function _redraw_cmd_line!(pagerd::Pager)
 
     elseif mode == :searching
         active_search_match_id = pagerd.active_search_match_id
-        num_matches            = pagerd.num_matches
+        num_matches = pagerd.num_matches
 
         # Check if there are matches.
         if num_matches > 0
@@ -98,7 +99,7 @@ function _redraw_cmd_line!(pagerd::Pager)
     end
 
     # Compute the scroll position.
-    pos = lpad(round(Int, 100 * (1 - cropped_lines / num_lines)) |> string, 3)
+    pos = lpad(string(round(Int, 100 * (1 - cropped_lines / num_lines))), 3)
     cmd_help *= " " * pos * "%"
 
     lcmd_help = length(cmd_help)
@@ -129,18 +130,19 @@ Read and edit one command from the pager input.
 # Keywords
 
 - `prefix::String`: Prompt displayed before the command.
+    (**Default**: `"/"`)
 """
 function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
-    term         = pagerd.term
+    term = pagerd.term
     display_size = pagerd.display_size
 
     # Initialize variables.
-    cmd         = ""
-    cmd_width   = 0
-    cursor_pos  = 1
+    cmd = ""
+    cmd_width = 0
+    cursor_pos = 1
     prefix_size = textwidth(prefix)
-    redraw      = true
+    redraw = true
 
     while true
         if redraw
@@ -150,11 +152,7 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             write(term.out_stream, prefix * cmd)
 
             # Restore the cursor position.
-            _move_cursor(
-                term.out_stream,
-                display_size[1],
-                cursor_pos + prefix_size
-            )
+            _move_cursor(term.out_stream, display_size[1], cursor_pos + prefix_size)
 
             redraw = false
         end
@@ -188,19 +186,11 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
 
         elseif k.value == "<home>"
             cursor_pos = 1
-            _move_cursor(
-                term.out_stream,
-                display_size[1],
-                cursor_pos + prefix_size
-            )
+            _move_cursor(term.out_stream, display_size[1], cursor_pos + prefix_size)
 
         elseif k.value == "<end>"
             cursor_pos = cmd_width + 1
-            _move_cursor(
-                term.out_stream,
-                display_size[1],
-                cursor_pos + prefix_size
-            )
+            _move_cursor(term.out_stream, display_size[1], cursor_pos + prefix_size)
 
         else
             cmd =

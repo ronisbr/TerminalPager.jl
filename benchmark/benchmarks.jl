@@ -19,17 +19,15 @@ Construct a pager suitable for noninteractive benchmarks.
 # Keywords
 
 - `display_size::Tuple{Int, Int}`: Set the simulated terminal height and width.
+    (**Default**: `(25, 80)`)
 """
-function make_pager(
-    lines;
-    display_size = (25, 80),
-)
+function make_pager(lines; display_size = (25, 80))
     benchmark_output = IOContext(stdout, :displaysize => display_size)
     term = REPL.Terminals.TTYTerminal("", stdin, benchmark_output, stderr)
     io = IOBuffer()
     buf = IOContext(io, :color => true)
     text_layout = TerminalPager.TextViewLayout(lines)
-    return TerminalPager.Pager(
+    return TerminalPager.Pager(;
         term = term,
         buf = buf,
         display_config = TerminalPager._display_config(),
@@ -53,10 +51,7 @@ Decode a runtime-mutated prefix behind a noinline inference barrier.
 - `toggle::Threads.Atomic{UInt8}`: Provide the atomic bit used to defeat constant
   propagation.
 """
-Base.@noinline function benchmark_decode(
-    prefix,
-    toggle,
-)
+Base.@noinline function benchmark_decode(prefix, toggle)
     original_byte = prefix[end]
     toggle_byte = Threads.atomic_xor!(toggle, UInt8(1)) & UInt8(1)
     prefix[end] = original_byte ⊻ toggle_byte
@@ -79,10 +74,7 @@ Repeatedly move through the search index and return the resulting viewport coord
   update.
 - `match_ids::AbstractVector{<:Integer}`: Provide the ordered match identifiers to visit.
 """
-Base.@noinline function benchmark_move_to_match!(
-    pagerd,
-    match_ids,
-)
+Base.@noinline function benchmark_move_to_match!(pagerd, match_ids)
     checksum = 0
     for match_id in match_ids
         pagerd.active_search_match_id = match_id
@@ -105,10 +97,7 @@ Run the previous search-and-count construction path without ordered navigation m
 - `text_layout::TerminalPager.TextViewLayout`: Provide the prepared text layout to search.
 - `regex::Regex`: Provide the regular expression to match.
 """
-function baseline_find_matches(
-    text_layout,
-    regex,
-)
+function baseline_find_matches(text_layout, regex)
     search_matches = TerminalPager.string_search_per_line(text_layout, regex)
     num_matches = sum(length, values(search_matches); init = 0)
     return search_matches, num_matches
@@ -127,14 +116,11 @@ Assemble yank text using the retained cleaned-line vector from the previous cand
 - `lines::AbstractVector{<:AbstractString}`: Provide the decorated source lines.
 - `line_ids::AbstractVector{<:Integer}`: Provide the source line identifiers to assemble.
 """
-function retained_yank_assembly(
-    lines,
-    line_ids,
-)
+function retained_yank_assembly(lines, line_ids)
     ids = sort!(unique!(collect(Int, line_ids)))
     selected_lines = [TerminalPager.remove_decorations(lines[id]) for id in ids]
     sizehint = sum(sizeof, selected_lines; init = 0) + length(selected_lines)
-    buf = IOBuffer(sizehint = sizehint)
+    buf = IOBuffer(; sizehint = sizehint)
     for line in selected_lines
         write(buf, line, '\n')
     end
@@ -154,10 +140,7 @@ Process one navigation key and update crop metrics as the production loop does.
 - `pagerd::TerminalPager.Pager`: Provide the pager state to update.
 - `key::TerminalPager.Keystroke`: Provide the navigation keystroke to process.
 """
-function process_navigation!(
-    pagerd,
-    key,
-)
+function process_navigation!(pagerd, key)
     old_row = pagerd.start_row
     old_column = pagerd.start_column
     action = TerminalPager._pager_key_process!(pagerd, key)
@@ -179,10 +162,7 @@ Process and render every key in a navigation burst.
 - `keys::AbstractVector{TerminalPager.Keystroke}`: Provide the navigation keystrokes to
   process.
 """
-function sequential_navigation_frame!(
-    pagerd,
-    keys,
-)
+function sequential_navigation_frame!(pagerd, keys)
     for key in keys
         process_navigation!(pagerd, key)
         TerminalPager._view!(pagerd)
@@ -206,11 +186,7 @@ Process one coalesced burst and render only its final frame.
 - `input_bytes::AbstractString`: Provide the buffered navigation input after the first key.
 - `first_key::TerminalPager.Keystroke`: Provide the first navigation keystroke.
 """
-function coalesced_navigation_frame!(
-    pagerd,
-    input_bytes,
-    first_key,
-)
+function coalesced_navigation_frame!(pagerd, input_bytes, first_key)
     pagerd.input = TerminalPager.PagerInput(IOBuffer(input_bytes))
     action = process_navigation!(pagerd, first_key)
     count = TerminalPager._coalesce_navigation!(pagerd, action)
@@ -231,12 +207,10 @@ csi_prefix = collect(codeunits("\e[B"))
 ascii_toggle = Threads.Atomic{UInt8}(0)
 csi_toggle = Threads.Atomic{UInt8}(0)
 SUITE["input"]["decode ASCII"] = @benchmarkable(
-    benchmark_decode($ascii_prefix, $ascii_toggle),
-    evals = 100
+    benchmark_decode($ascii_prefix, $ascii_toggle), evals = 100
 )
 SUITE["input"]["decode CSI"] = @benchmarkable(
-    benchmark_decode($csi_prefix, $csi_toggle),
-    evals = 100
+    benchmark_decode($csi_prefix, $csi_toggle), evals = 100
 )
 SUITE["input"]["single buffered key"] = @benchmarkable(
     TerminalPager._try_read_keystroke!(input),
@@ -260,8 +234,7 @@ prepared_pager = make_pager(short_lines; display_size = (25, 80))
 TerminalPager._view!(prepared_pager)
 take!(prepared_pager.buf.io)
 SUITE["prepared view"]["repeated view"] = @benchmarkable(
-    TerminalPager._view!($prepared_pager),
-    setup = begin
+    TerminalPager._view!($prepared_pager), setup = begin
         truncate($prepared_pager.buf.io, 0)
         seekstart($prepared_pager.buf.io)
     end
@@ -303,12 +276,10 @@ construction_pager = make_pager(search_lines; display_size = (25, 80))
 
 SUITE["search"] = BenchmarkGroup()
 SUITE["search"]["index 100k"] = @benchmarkable TerminalPager._ordered_search_matches(
-    $large_matches,
-    100_000
+    $large_matches, 100_000
 )
 SUITE["search"]["baseline construction 100k"] = @benchmarkable baseline_find_matches(
-    $search_layout,
-    $search_regex
+    $search_layout, $search_regex
 )
 
 SUITE["wide prepared view"] = BenchmarkGroup()
@@ -319,8 +290,7 @@ for source_width in (100, 10_000, 100_000)
         wide_pager.start_column = start_column
         label = "width $source_width / $position"
         SUITE["wide prepared view"][label] = @benchmarkable(
-            TerminalPager._view!($wide_pager),
-            setup = begin
+            TerminalPager._view!($wide_pager), setup = begin
                 truncate($wide_pager.buf.io, 0)
                 seekstart($wide_pager.buf.io)
             end
@@ -328,8 +298,7 @@ for source_width in (100, 10_000, 100_000)
     end
 end
 SUITE["search"]["candidate construction 100k"] = @benchmarkable(
-    TerminalPager._find_matches!($construction_pager, $search_regex),
-    evals = 1
+    TerminalPager._find_matches!($construction_pager, $search_regex), evals = 1
 )
 SUITE["search"]["far movement 100k (100 calls; report per call)"] = @benchmarkable(
     benchmark_move_to_match!($search_pager, $movement_ids),
@@ -343,28 +312,24 @@ SUITE["search"]["far movement 100k (100 calls; report per call)"] = @benchmarkab
 yank_lines = ["\e[31mrow $i αβγ\e[0m" for i in 1:10_000]
 yank_ids = collect(10_000:-2:1)
 SUITE["yank assembly 10k"] = @benchmarkable TerminalPager._assemble_yank_text(
-    $yank_lines,
-    $yank_ids
+    $yank_lines, $yank_ids
 )
 
 large_yank_lines = [
-    "\e[3$(i)m" * repeat(string(Char(Int('a') + i - 1)), 1024^2 - 9) * "\e[0m"
-    for i in 1:8
+    "\e[3$(i)m" * repeat(string(Char(Int('a') + i - 1)), 1024^2 - 9) * "\e[0m" for i in 1:8
 ]
 large_yank_ids = collect(8:-1:1)
 SUITE["yank 8 MiB"] = BenchmarkGroup()
 SUITE["yank 8 MiB"]["retained-vector baseline"] = @benchmarkable retained_yank_assembly(
-    $large_yank_lines,
-    $large_yank_ids
+    $large_yank_lines, $large_yank_ids
 )
 SUITE["yank 8 MiB"]["streaming candidate"] = @benchmarkable(
-    TerminalPager._assemble_yank_text($large_yank_lines, $large_yank_ids),
-    evals = 1
+    TerminalPager._assemble_yank_text($large_yank_lines, $large_yank_ids), evals = 1
 )
 
 SUITE["coalescing"] = BenchmarkGroup()
 burst_lines = ["row $i α " * repeat("x", 40) for i in 1:500]
-burst_keys = fill(TerminalPager.Keystroke(value = "j"), 100)
+burst_keys = fill(TerminalPager.Keystroke(; value = "j"), 100)
 burst_input = repeat("j", 99)
 sequential_pager = make_pager(burst_lines; display_size = (25, 80))
 coalesced_pager = make_pager(burst_lines; display_size = (25, 80))
@@ -382,9 +347,7 @@ SUITE["coalescing"]["100 keys / 100 views"] = @benchmarkable(
 )
 SUITE["coalescing"]["100 keys / final frame"] = @benchmarkable(
     coalesced_navigation_frame!(
-        $coalesced_pager,
-        $burst_input,
-        TerminalPager.Keystroke(value = "j")
+        $coalesced_pager, $burst_input, TerminalPager.Keystroke(; value = "j")
     ),
     setup = begin
         $coalesced_pager.start_row = 1
@@ -395,8 +358,7 @@ SUITE["coalescing"]["100 keys / final frame"] = @benchmarkable(
 
 auto_fit_lines = ["short α", "second line"]
 SUITE["auto fit"] = @benchmarkable TerminalPager._pager_content_fits(
-    $auto_fit_lines,
-    (25, 80)
+    $auto_fit_lines, (25, 80)
 )
 
 if abspath(PROGRAM_FILE) == @__FILE__

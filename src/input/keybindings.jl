@@ -6,51 +6,51 @@
 
 # Dictionary with the default bindings.
 const _DEFAULT_KEYBINDINGS = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}(
-    ("q",          false, false, false) => :quit,
-    ("?",          false, false, false) => :help,
-    ("<up>",       false, false, false) => :up,
-    ("k",          false, false, false) => :up,
-    ("<down>",     false, false, false) => :down,
-    ("j",          false, false, false) => :down,
-    ("<enter>",    false, false, false) => :down,
-    ("<left>",     false, false, false) => :left,
-    ("h",          false, false, false) => :left,
-    ("<right>",    false, false, false) => :right,
-    ("l",          false, false, false) => :right,
-    ("<up>",       false, false, true ) => :fastup,
-    ("<down>",     false, false, true ) => :fastdown,
-    ("<left>",     false, false, true ) => :fastleft,
-    ("<right>",    false, false, true ) => :fastright,
-    ("<left>",     true,  false, false) => :bol,
-    ("0",          false, false, false) => :bol,
-    ("^",          false, false, false) => :bol,
-    ("<right>",    true,  false, false) => :eol,
-    ("\$",         false, false, false) => :eol,
-    ("u",          false, false, false) => :halfpageup,
-    ("d",          false, false, false) => :halfpagedown,
-    ("<pageup>",   false, false, false) => :pageup,
-    ("b",          false, false, false) => :pageup,
+    ("q", false, false, false) => :quit,
+    ("?", false, false, false) => :help,
+    ("<up>", false, false, false) => :up,
+    ("k", false, false, false) => :up,
+    ("<down>", false, false, false) => :down,
+    ("j", false, false, false) => :down,
+    ("<enter>", false, false, false) => :down,
+    ("<left>", false, false, false) => :left,
+    ("h", false, false, false) => :left,
+    ("<right>", false, false, false) => :right,
+    ("l", false, false, false) => :right,
+    ("<up>", false, false, true) => :fastup,
+    ("<down>", false, false, true) => :fastdown,
+    ("<left>", false, false, true) => :fastleft,
+    ("<right>", false, false, true) => :fastright,
+    ("<left>", true, false, false) => :bol,
+    ("0", false, false, false) => :bol,
+    ("^", false, false, false) => :bol,
+    ("<right>", true, false, false) => :eol,
+    ("\$", false, false, false) => :eol,
+    ("u", false, false, false) => :halfpageup,
+    ("d", false, false, false) => :halfpagedown,
+    ("<pageup>", false, false, false) => :pageup,
+    ("b", false, false, false) => :pageup,
     ("<pagedown>", false, false, false) => :pagedown,
-    (" ",          false, false, false) => :pagedown,
-    ("<home>",     false, false, false) => :home,
-    ("<up>",       true,  false, false) => :home,
-    ("g",          false, false, false) => :home,
-    ("<",          false, false, false) => :home,
-    ("<end>",      false, false, false) => :end,
-    ("<down>",     true,  false, false) => :end,
-    ("G",          false, false, false) => :end,
-    (">",          false, false, false) => :end,
-    ("/",          false, false, false) => :search,
-    ("n",          false, false, false) => :next_match,
-    ("N",          false, false, false) => :previous_match,
-    ("<esc>",      false, false, false) => :quit_search,
-    ("f",          false, false, false) => :change_freeze,
-    ("<eot>",      false, false, false) => :quit_eot,
-    ("r",          false, false, false) => :toggle_ruler,
-    ("t",          false, false, false) => :change_title_rows,
-    ("v",          false, false, false) => :toggle_visual_mode,
-    ("m",          false, false, false) => :select_visual_mode_line,
-    ("y",          false, false, false) => :yank
+    (" ", false, false, false) => :pagedown,
+    ("<home>", false, false, false) => :home,
+    ("<up>", true, false, false) => :home,
+    ("g", false, false, false) => :home,
+    ("<", false, false, false) => :home,
+    ("<end>", false, false, false) => :end,
+    ("<down>", true, false, false) => :end,
+    ("G", false, false, false) => :end,
+    (">", false, false, false) => :end,
+    ("/", false, false, false) => :search,
+    ("n", false, false, false) => :next_match,
+    ("N", false, false, false) => :previous_match,
+    ("<esc>", false, false, false) => :quit_search,
+    ("f", false, false, false) => :change_freeze,
+    ("<eot>", false, false, false) => :quit_eot,
+    ("r", false, false, false) => :toggle_ruler,
+    ("t", false, false, false) => :change_title_rows,
+    ("v", false, false, false) => :toggle_visual_mode,
+    ("m", false, false, false) => :select_visual_mode_line,
+    ("y", false, false, false) => :yank,
 )
 
 # Dictionary with the current keybindings, it is initialized here with the default values to
@@ -73,14 +73,14 @@ For more information about how specify `key` see [`set_keybinding`](@ref).
 # Keywords
 
 - `alt::Bool`: Select a binding that requires ALT.
+    (**Default**: `false`)
 - `ctrl::Bool`: Select a binding that requires CTRL.
+    (**Default**: `false`)
 - `shift::Bool`: Select a binding that requires SHIFT.
+    (**Default**: `false`)
 """
 function delete_keybinding(
-    key::String;
-    alt::Bool = false,
-    ctrl::Bool = false,
-    shift::Bool = false
+    key::String; alt::Bool = false, ctrl::Bool = false, shift::Bool = false
 )
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
     delete!(_KEYBINDINGS, dict_key)
@@ -98,7 +98,7 @@ function reset_keybindings()
 
     # Key bindings that depend on the mode.
     if _get_preference("pager_mode") == "vi"
-        _KEYBINDINGS[("<eot>",     false, false, false)] = :halfpagedown
+        _KEYBINDINGS[("<eot>", false, false, false)] = :halfpagedown
         _KEYBINDINGS[("<shiftin>", false, false, false)] = :halfpageup
     else
         _KEYBINDINGS[("<eot>", false, false, false)] = :quit_eot
@@ -114,7 +114,7 @@ end
 Set key binding `key` to the action `action`. The modifiers keys can be selected using the
 keywords `alt`, `ctrl`, and `shift`.
 
-`key` can be a `Char` or a `Symbol` indicating one of the following special keys:
+`key` can contain a character or one of the following special key names:
 
     "<up>", "<down>", "<right>", "<left>", "<home>", "<end>", "<F1>", "<F2>",
     "<F3>", "<F4>", "<F5>", "<F6>", "<F7>", "<F8>", "<F9>", "<F10>", "<F11>",
@@ -137,15 +137,14 @@ keywords `alt`, `ctrl`, and `shift`.
 # Keywords
 
 - `alt::Bool`: Require ALT for the binding.
+    (**Default**: `false`)
 - `ctrl::Bool`: Require CTRL for the binding.
+    (**Default**: `false`)
 - `shift::Bool`: Require SHIFT for the binding.
+    (**Default**: `false`)
 """
 function set_keybinding(
-    key::String,
-    action::Symbol;
-    alt::Bool = false,
-    ctrl::Bool = false,
-    shift::Bool = false
+    key::String, action::Symbol; alt::Bool = false, ctrl::Bool = false, shift::Bool = false
 )
     dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
     _KEYBINDINGS[dict_key] = action

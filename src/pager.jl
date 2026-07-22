@@ -73,16 +73,22 @@ Open an interactive pager for `str`, or print it directly when automatic mode fi
 
 # Keywords
 
-- `auto::Bool = false`: Print fitting text without creating a layout or terminal session.
-- `_display_config_loader::Any = _display_config`: Callable object that creates the session
+- `auto::Bool`: Print fitting text without creating a layout or terminal session.
+    (**Default**: `false`)
+- `_display_config_loader::Any`: Callable object that creates the session
     display configuration.
-- `_input_factory::Any = PagerInput`: Callable object that creates input state for a stream.
-- `_layout_factory::Any = TextViewLayout`: Callable object that creates a prepared text
+    (**Default**: `_display_config`)
+- `_input_factory::Any`: Callable object that creates input state for a stream.
+    (**Default**: `PagerInput`)
+- `_layout_factory::Any`: Callable object that creates a prepared text
     layout.
+    (**Default**: `TextViewLayout`)
 - `_terminal_factory::Any`: Callable object that creates the terminal. By default, create a
     `REPL.Terminals.TTYTerminal` connected to the standard streams.
-- `_raw_runner::Any = _with_raw_mode`: Callable object that runs the pager callback in raw
+    (**Default**: `() -> REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)`)
+- `_raw_runner::Any`: Callable object that runs the pager callback in raw
     mode.
+    (**Default**: `_with_raw_mode`)
 - `kwargs...`: Additional keywords forwarded to [`_pager!`](@ref).
 """
 function _pager(
@@ -93,7 +99,7 @@ function _pager(
     _layout_factory = TextViewLayout,
     _terminal_factory = () -> REPL.Terminals.TTYTerminal("", stdin, stdout, stderr),
     _raw_runner = _with_raw_mode,
-    kwargs...
+    kwargs...,
 )
     lines = String.(split(str, '\n'))
     display_size = displaysize(stdout)::Tuple{Int, Int}
@@ -119,7 +125,7 @@ function _pager(
             display_config = display_config,
             input = input,
             text_layout = text_layout,
-            kwargs...
+            kwargs...,
         )
     end
 
@@ -127,10 +133,10 @@ function _pager(
 end
 
 """
-    _with_raw_mode(f::Any, term::Any;
-        raw_function::Any = REPL.Terminals.raw!) -> Any
+    _with_raw_mode(f::Any, term::Any; raw_function::Any = REPL.Terminals.raw!) -> Any
 
-Enable raw mode for `f` and restore it after normal return or an exception.
+Enable raw mode on `term` while executing `f` and restore it after normal return or an
+exception.
 
 # Arguments
 
@@ -140,17 +146,13 @@ Enable raw mode for `f` and restore it after normal return or an exception.
 # Keywords
 
 - `raw_function::Any`: Callable object used to enable and disable raw mode.
+    (**Default**: `REPL.Terminals.raw!`)
 
 # Returns
 
-Return the result of `f`. Its type is polymorphic because `_with_raw_mode` accepts any
-callable object.
+- `Any`: Result returned by `f`.
 """
-function _with_raw_mode(
-    f,
-    term;
-    raw_function = REPL.Terminals.raw!
-)
+function _with_raw_mode(f, term; raw_function = REPL.Terminals.raw!)
     raw_enabled = false
     try
         raw_enabled = true
@@ -173,27 +175,42 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
 
 # Keywords
 
-- `auto::Bool = false`: Print fitting text without opening the interactive pager.
-- `change_freeze::Bool = true`: Enable commands that change frozen rows and columns.
-- `display_config::Union{Nothing, DisplayConfig} = nothing`: Prepared session display
+- `auto::Bool`: Print fitting text without opening the interactive pager.
+    (**Default**: `false`)
+- `change_freeze::Bool`: Enable commands that change frozen rows and columns.
+    (**Default**: `true`)
+- `display_config::Union{Nothing, DisplayConfig}`: Prepared session display
     configuration, or `nothing` to load one.
-- `frozen_columns::Int = 0`: Number of leading columns to freeze.
-- `frozen_rows::Int = 0`: Number of leading rows to freeze.
-- `title_rows::Int = 0`: Number of leading title rows.
-- `hashelp::Bool = true`: Enable pager help.
-- `has_visual_mode::Bool = true`: Enable visual selection mode.
-- `show_ruler::Bool = false`: Show the line-number ruler initially.
-- `use_alternate_screen_buffer::Bool = false`: Request the terminal's alternate screen
+    (**Default**: `nothing`)
+- `frozen_columns::Int`: Number of leading columns to freeze.
+    (**Default**: `0`)
+- `frozen_rows::Int`: Number of leading rows to freeze.
+    (**Default**: `0`)
+- `title_rows::Int`: Number of leading title rows.
+    (**Default**: `0`)
+- `hashelp::Bool`: Enable pager help.
+    (**Default**: `true`)
+- `has_visual_mode::Bool`: Enable visual selection mode.
+    (**Default**: `true`)
+- `show_ruler::Bool`: Show the line-number ruler initially.
+    (**Default**: `false`)
+- `use_alternate_screen_buffer::Bool`: Request the terminal's alternate screen
     buffer.
-- `input::Union{Nothing, PagerInput} = nothing`: Input state associated with the terminal
+    (**Default**: `false`)
+- `input::Union{Nothing, PagerInput}`: Input state associated with the terminal
     input stream, or `nothing` to create one.
-- `lines::Union{Nothing, Vector{String}} = nothing`: Raw lines used when no layout is
+    (**Default**: `nothing`)
+- `lines::Union{Nothing, Vector{String}}`: Raw lines used when no layout is
     supplied.
-- `text_layout::Union{Nothing, TextViewLayout} = nothing`: Prepared layout used directly
+    (**Default**: `nothing`)
+- `text_layout::Union{Nothing, TextViewLayout}`: Prepared layout used directly
     when supplied, or `nothing` to construct one.
-- `_layout_factory::Any = TextViewLayout`: Callable object that creates a layout from raw
+    (**Default**: `nothing`)
+- `_layout_factory::Any`: Callable object that creates a layout from raw
     lines.
-- `manage_cursor_key_mode::Bool = true`: Enable and restore terminal cursor-key mode.
+    (**Default**: `TextViewLayout`)
+- `manage_cursor_key_mode::Bool`: Enable and restore terminal cursor-key mode.
+    (**Default**: `true`)
 """
 function _pager!(
     @nospecialize(term::REPL.Terminals.TTYTerminal),
@@ -212,7 +229,7 @@ function _pager!(
     lines::Union{Nothing, Vector{String}} = nothing,
     text_layout::Union{Nothing, TextViewLayout} = nothing,
     _layout_factory = TextViewLayout,
-    manage_cursor_key_mode::Bool = true
+    manage_cursor_key_mode::Bool = true,
 )
     # Split once and reuse the result for auto-fit and layout construction.
     source_lines = if !isnothing(text_layout)
@@ -255,14 +272,14 @@ function _pager!(
             alternate_screen_enabled = true
             _turn_on_alternate_screen_buffer(term.out_stream)
         else
-            _clear_screen(term.out_stream, newlines = true)
+            _clear_screen(term.out_stream; newlines = true)
         end
 
         # The pager is divided into a view buffer and command line. Everything in the view
         # buffer is written to this buffer and then flushed to the screen.
-        iobuf    = IOBuffer()
+        iobuf = IOBuffer()
         hascolor = get(stdout, :color, true)::Bool
-        buf      = IOContext(iobuf, :color => hascolor)
+        buf = IOContext(iobuf, :color => hascolor)
 
         features = Symbol[]
         change_freeze && push!(features, :change_freeze)
@@ -270,21 +287,21 @@ function _pager!(
         has_visual_mode && push!(features, :visual_mode)
 
         # Initialize the pager structure.
-        pagerd = Pager(
-            buf            = buf,
+        pagerd = Pager(;
+            buf = buf,
             display_config = session_config,
-            display_size   = dsize,
-            features       = features,
+            display_size = dsize,
+            features = features,
             frozen_columns = frozen_columns,
-            frozen_rows    = frozen_rows,
-            input          = session_input,
-            num_lines      = num_tokens,
-            show_ruler     = show_ruler,
-            start_column   = max(1, frozen_columns + 1),
-            start_row      = min(max(1, frozen_rows + 1), num_tokens),
-            term           = term,
-            text_layout    = session_layout,
-            title_rows     = title_rows
+            frozen_rows = frozen_rows,
+            input = session_input,
+            num_lines = num_tokens,
+            show_ruler = show_ruler,
+            start_column = max(1, frozen_columns + 1),
+            start_row = min(max(1, frozen_rows + 1), num_tokens),
+            term = term,
+            text_layout = session_layout,
+            title_rows = title_rows,
         )
 
         # == Application Main Loop =========================================================
@@ -334,8 +351,7 @@ Return whether `lines` fit without opening a pager, reserving two terminal rows.
 - `display_size::Tuple{Int, Int}`: Available terminal rows and columns.
 """
 function _pager_content_fits(
-    lines::AbstractVector{<:AbstractString},
-    display_size::Tuple{Int, Int}
+    lines::AbstractVector{<:AbstractString}, display_size::Tuple{Int, Int}
 )
     display_size[1] - 2 >= length(lines) || return false
     return all(line -> printable_textwidth(line) <= display_size[2], lines)
@@ -353,16 +369,16 @@ Process `k`, update pager state, and return the resolved action.
 """
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # Unpack variables.
-    cropped_columns  = pagerd.cropped_columns
-    display_size     = pagerd.display_size
-    features         = pagerd.features
-    frozen_columns   = pagerd.frozen_columns
-    frozen_rows      = pagerd.frozen_rows
-    cropped_lines    = pagerd.cropped_lines
-    num_lines        = pagerd.num_lines
-    start_column     = pagerd.start_column
-    start_row        = pagerd.start_row
-    visual_mode      = pagerd.visual_mode
+    cropped_columns = pagerd.cropped_columns
+    display_size = pagerd.display_size
+    features = pagerd.features
+    frozen_columns = pagerd.frozen_columns
+    frozen_rows = pagerd.frozen_rows
+    cropped_lines = pagerd.cropped_lines
+    num_lines = pagerd.num_lines
+    start_column = pagerd.start_column
+    start_row = pagerd.start_row
+    visual_mode = pagerd.visual_mode
     visual_mode_line = pagerd.visual_mode_line
 
     event = nothing
@@ -651,15 +667,14 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     elseif action == :quit_eot
         event = :quit_eot
-
     end
 
     # Repack values.
-    pagerd.start_column     = start_column
-    pagerd.start_row        = start_row
-    pagerd.cropped_lines    = cropped_lines
-    pagerd.cropped_columns  = cropped_columns
-    pagerd.event            = event
+    pagerd.start_column = start_column
+    pagerd.start_row = start_row
+    pagerd.cropped_lines = cropped_lines
+    pagerd.cropped_columns = cropped_columns
+    pagerd.event = event
     pagerd.visual_mode_line = visual_mode_line
 
     return action
@@ -679,13 +694,7 @@ function _pager_action(k::Keystroke)
     return get(_KEYBINDINGS, key, nothing)
 end
 
-const _VERTICAL_FORWARD_ACTIONS = (
-    :down,
-    :fastdown,
-    :pagedown,
-    :halfpagedown,
-    :end
-)
+const _VERTICAL_FORWARD_ACTIONS = (:down, :fastdown, :pagedown, :halfpagedown, :end)
 const _VERTICAL_BACKWARD_ACTIONS = (:up, :fastup, :pageup, :halfpageup, :home)
 const _HORIZONTAL_FORWARD_ACTIONS = (:right, :fastright, :eol)
 const _HORIZONTAL_BACKWARD_ACTIONS = (:left, :fastleft, :bol)
@@ -740,24 +749,17 @@ Update crop metrics by the signed viewport delta after one navigation action.
 - `old_column::Int`: Viewport column before the action.
 - `action::Union{Nothing, Symbol}`: Resolved pager action.
 """
-function _update_crop_after_action!(
-    pagerd::Pager,
-    old_row::Int,
-    old_column::Int,
-    action
-)
+function _update_crop_after_action!(pagerd::Pager, old_row::Int, old_column::Int, action)
     axis = _navigation_axis(action)
     if axis === :vertical
         pagerd.cropped_lines = max(0, pagerd.cropped_lines - (pagerd.start_row - old_row))
     elseif axis === :horizontal
         pagerd.cropped_columns = max(
-            0,
-            pagerd.cropped_columns - (pagerd.start_column - old_column)
+            0, pagerd.cropped_columns - (pagerd.start_column - old_column)
         )
     end
     return nothing
 end
-
 
 """
     _coalesce_navigation!(pagerd::Pager, first_action::Union{Nothing, Symbol};
@@ -776,19 +778,22 @@ boundary.
 # Keywords
 
 - `max_actions::Int`: Maximum number of actions to coalesce.
+    (**Default**: `128`)
 - `max_ns::UInt64`: Maximum elapsed nanoseconds spent coalescing.
+    (**Default**: `UInt64(4_000_000)`)
 - `display_size_function::Any`: Callable object used to detect display-size changes.
+    (**Default**: `displaysize`)
 
 # Returns
 
-Return the number of actions processed, including `first_action`.
+- `Int`: Number of actions processed, including `first_action`.
 """
 function _coalesce_navigation!(
     pagerd::Pager,
     first_action;
     max_actions::Int = 128,
     max_ns::UInt64 = UInt64(4_000_000),
-    display_size_function = displaysize
+    display_size_function = displaysize,
 )
     group = _navigation_group(first_action)
     isnothing(group) && return 1
@@ -869,18 +874,11 @@ function _pager_event_process!(pagerd::Pager)
         pagerd.mode = :view
 
     elseif event == :change_freeze
-        cmd_input = _read_cmd!(
-            pagerd;
-            prefix = "Frozen rows # ($(pagerd.frozen_rows)): "
-        )
+        cmd_input = _read_cmd!(pagerd; prefix = "Frozen rows # ($(pagerd.frozen_rows)): ")
         frozen_rows = tryparse(Int, cmd_input; base = 10)
 
         if isnothing(frozen_rows) && !isempty(cmd_input)
-            _print_cmd_message!(
-                pagerd,
-                "Invalid data!";
-                crayon = crayon"red bold"
-            )
+            _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
             _read_keystroke!(pagerd.input)
         else
             if !isnothing(frozen_rows)
@@ -890,16 +888,12 @@ function _pager_event_process!(pagerd::Pager)
             end
 
             cmd_input = _read_cmd!(
-                pagerd;
-                prefix = "Frozen columns # ($(pagerd.frozen_columns)): "
+                pagerd; prefix = "Frozen columns # ($(pagerd.frozen_columns)): "
             )
             frozen_columns = tryparse(Int, cmd_input; base = 10)
 
             if isnothing(frozen_columns) && !isempty(cmd_input)
-                _print_cmd_message!(
-                    pagerd, "Invalid data!";
-                    crayon = crayon"red bold"
-                )
+                _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
                 _read_keystroke!(pagerd.input)
 
             elseif !isnothing(frozen_columns)
@@ -911,18 +905,11 @@ function _pager_event_process!(pagerd::Pager)
         _request_redraw!(pagerd)
 
     elseif event == :change_title_rows
-        cmd_input = _read_cmd!(
-            pagerd;
-            prefix = "Title rows ($(pagerd.title_rows)): "
-        )
+        cmd_input = _read_cmd!(pagerd; prefix = "Title rows ($(pagerd.title_rows)): ")
         title_rows = tryparse(Int, cmd_input; base = 10)
 
         if isnothing(title_rows) && !isempty(cmd_input)
-            _print_cmd_message!(
-                pagerd,
-                "Invalid data!";
-                crayon = crayon"red bold"
-            )
+            _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
             _read_keystroke!(pagerd.input)
         elseif !isnothing(title_rows)
             pagerd.title_rows = max(0, title_rows)
@@ -936,7 +923,7 @@ function _pager_event_process!(pagerd::Pager)
         # If the ruler is hidden, we must verify if the screen is on the right edge to fix
         # the `start_column`.
         if !pagerd.show_ruler
-            ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
+            ruler_spacing = floor(Int, log10(abs(pagerd.num_lines))) + 4
 
             if pagerd.cropped_columns ≤ ruler_spacing
                 pagerd.start_column -= ruler_spacing
@@ -974,18 +961,17 @@ function _pager_event_process!(pagerd::Pager)
         if pagerd.visual_mode
             yanked_lines = vcat(
                 pagerd.visual_mode_line + pagerd.start_row - 1,
-                pagerd.visual_mode_selected_lines
+                pagerd.visual_mode_selected_lines,
             )
 
             yanked_text, num_yanked_lines = _assemble_yank_text(
-                pagerd.text_layout,
-                yanked_lines
+                pagerd.text_layout, yanked_lines
             )
             clipboard(yanked_text)
 
             _print_cmd_message!(
                 pagerd,
-                num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" : "1 line copied"
+                num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" : "1 line copied",
             )
         end
     end
@@ -1010,7 +996,7 @@ text and selected-line count.
 function _assemble_yank_text(lines::AbstractVector{<:AbstractString}, line_ids)
     ids = sort!(unique!(collect(Int, line_ids)))
     sizehint = sum(id -> sizeof(lines[id]) + 1, ids; init = 0)
-    buf = IOBuffer(sizehint = sizehint)
+    buf = IOBuffer(; sizehint = sizehint)
 
     for id in ids
         write(buf, remove_decorations(lines[id]), '\n')
@@ -1029,14 +1015,14 @@ Write the prepared view buffer to the terminal and clear the redraw request.
 - `pagerd::Pager`: Pager state to redraw.
 """
 function _redraw!(pagerd::Pager)
-    buf          = pagerd.buf
-    term         = pagerd.term
+    buf = pagerd.buf
+    term = pagerd.term
     display_size = _get_pager_display_size(pagerd)
 
     # We will split the lines to make sure that every line is cleaned. We will not use the
     # ANSI escape sequence `\e[2J` because it adds new lines to the screen.
-    str       = String(take!(buf.io))
-    lines     = split(str, '\n')
+    str = String(take!(buf.io))
+    lines = split(str, '\n')
     num_lines = length(lines)
 
     # To improve the speed, it is advisable to create an intermediate buffer to write

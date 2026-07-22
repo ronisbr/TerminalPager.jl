@@ -88,7 +88,6 @@ function test(input::AbstractString, mappings::Vector{Mapping})
     return nothing
 end
 
-
 @testset "Extract identifier" begin
     # == Empty Input =======================================================================
 
@@ -138,10 +137,11 @@ end
     test("Base.@time")
 
     test(
-        "InteractiveUtils.@code_lowered(debuginfo=:none, ", [
+        "InteractiveUtils.@code_lowered(debuginfo=:none, ",
+        [
             "InteractiveUtils.@code_lowered(" => "InteractiveUtils.@code_lowered",
-            ", " => "InteractiveUtils.@code_lowered"
-        ]
+            ", " => "InteractiveUtils.@code_lowered",
+        ],
     )
 
     # == Non-Standard String Literals ======================================================
@@ -298,7 +298,8 @@ end
     test("15 ⫸ x", ["15 " => "15", "⫸ " => "⫸", "x" => "x"])
 
     test(
-        "15 ⫸ x -> x - 2 ⫸", [
+        "15 ⫸ x -> x - 2 ⫸",
+        [
             "15 " => "15",
             "⫸ " => "⫸",
             "x " => "x",
@@ -306,8 +307,8 @@ end
             "x " => "x",
             "- " => "-",
             "2 " => "2",
-            "⫸" => "⫸"
-        ]
+            "⫸" => "⫸",
+        ],
     )
 
     # == Real World Examples ===============================================================

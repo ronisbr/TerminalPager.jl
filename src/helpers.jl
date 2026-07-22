@@ -61,23 +61,22 @@ See also [`pager`](@ref).
     needed.
 """
 macro stdout_to_pager(ex_in, args...)
-    all(x -> Meta.isexpr(x, :(=)), args) ||
-        "All additional arguments to @stdout_to_pager must be keyword arguments." |>
-        MethodError |> throw
+    all(x -> Meta.isexpr(x, :(=)), args) || throw(
+        MethodError(
+            "All additional arguments to @stdout_to_pager must be keyword arguments."
+        ),
+    )
     # Convert args from macro expressions to keyword arguments.
     kwargs = map(x -> Expr(:kw, x.args[1], x.args[2]), args)
 
     ex_out = quote
-        hascolor     = get(stdout, :color, true)
+        hascolor = get(stdout, :color, true)
         bypass_pager = get(stdout, :bypass_pager, false)
-        old_stdout   = stdout
-        buf          = IOBuffer()
+        old_stdout = stdout
+        buf = IOBuffer()
 
         io = IOContext(
-            buf,
-            :bypass_pager => bypass_pager,
-            :color        => hascolor,
-            :limit        => false,
+            buf, :bypass_pager => bypass_pager, :color => hascolor, :limit => false
         )
 
         try
@@ -89,7 +88,6 @@ macro stdout_to_pager(ex_in, args...)
         finally
             Base.eval(:(stdout = $old_stdout))
         end
-
     end
 
     return ex_out
@@ -121,14 +119,13 @@ Render help for `f` in `mod`, falling back to `Main` when the binding is not fou
 
 - `f::AbstractString`: Help query to render.
 - `mod::Module`: Module in which to evaluate the help query first.
+    (**Default**: `Base.active_module()`)
 """
 function _get_help(f::AbstractString, mod::Module = Base.active_module())
     # Create a buffer that will replace `stdout`.
     buf = IOBuffer()
     io = IOContext(
-        IOContext(buf, stdout),
-        :displaysize => displaysize(stdout),
-        :limit => false,
+        IOContext(buf, stdout), :displaysize => displaysize(stdout), :limit => false
     )
 
     # Evaluate the AST, which returns a Markdown object.
@@ -184,7 +181,8 @@ function _get_help(f::AbstractString, mod::Module = Base.active_module())
             catch err2
                 err2 isa UndefVarError || rethrow()
                 Markdown.parse(
-                    "No documentation found.\n\nBinding `$(lstrip(f, '?'))` does not exist."
+                    "No documentation found.\n\n" *
+                    "Binding `$(lstrip(f, '?'))` does not exist.",
                 )
             end
         end

@@ -16,7 +16,7 @@ const _AVAILABLE_PREFERENCES = Dict{String, Any}(
     "copy_stdout_to_clipboard_in_repl_mode" => false,
     "pager_mode" => "default",
     "visual_mode_line_background" => "100",
-    "visual_mode_active_line_background" => "44"
+    "visual_mode_active_line_background" => "44",
 )
 
 ############################################################################################
@@ -60,7 +60,6 @@ function drop_preference!(pref::String)
     return nothing
 end
 
-
 """
     set_preference!(pref::String, value::Any) -> Nothing
 
@@ -97,10 +96,7 @@ Return the configured value for `pref`, or its built-in default when it is not s
 - `pref::String`: Name of a supported preference.
 """
 function _get_preference(pref::String)
-    value = @load_preference(
-        pref,
-        _AVAILABLE_PREFERENCES[pref]
-    )
+    value = @load_preference(pref, _AVAILABLE_PREFERENCES[pref])
     return _validate_preference(pref, value)
 end
 
@@ -121,7 +117,7 @@ function _validate_preference(pref::String, value)
     value isa expected_type || throw(
         ArgumentError(
             "Preference \"$pref\" must be a $expected_type; received $(typeof(value))."
-        )
+        ),
     )
     return value
 end
@@ -135,14 +131,13 @@ Capture the display string preferences for a new pager session.
 # Arguments
 
 - `get_preference::F`: Callable preference getter used to capture each display value.
+    (**Default**: `_get_preference`)
 """
-function _display_config(
-    get_preference::F = _get_preference
-) where {F <: Function}
+function _display_config(get_preference::F = _get_preference) where {F <: Function}
     return DisplayConfig(
         get_preference("active_search_decoration")::String,
         get_preference("inactive_search_decoration")::String,
         get_preference("visual_mode_active_line_background")::String,
-        get_preference("visual_mode_line_background")::String
+        get_preference("visual_mode_line_background")::String,
     )
 end

@@ -6,7 +6,7 @@
 
 @testset "Views" begin
     # Create the pager structure.
-    a   = [(i, j) for i = 1:99, j = 1:9]
+    a = [(i, j) for i in 1:99, j in 1:9]
     str = sprint(show, MIME"text/plain"(), a)
     pagerd = _create_pagerd(str)
 
@@ -58,4 +58,3 @@
     @test pagerd.cropped_lines == 88
     @test pagerd.cropped_columns == 51
 end
-

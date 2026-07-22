@@ -4,13 +4,13 @@
 #
 ############################################################################################
 
-import PrecompileTools
+using PrecompileTools: PrecompileTools
 
 PrecompileTools.@setup_workload begin
     # We will redirect the `stdout` and `stdin` so that we can execute the pager and input
     # some commands without making visible changes to the user.
     old_stdout = Base.stdout
-    old_stdin  = Base.stdin
+    old_stdin = Base.stdin
 
     redirect_stdout(devnull)
     stdin_rd, stdin_wr = redirect_stdin()
@@ -21,8 +21,7 @@ PrecompileTools.@setup_workload begin
 
         # Create a mock REPL to precompile the REPL integration functions.
         mock_repl = REPL.LineEditREPL(
-            REPL.Terminals.TTYTerminal("", stdin, stdout, stderr),
-            true
+            REPL.Terminals.TTYTerminal("", stdin, stdout, stderr), true
         )
         mock_repl.interface = REPL.setup_interface(mock_repl)
         _init_pager_repl_mode(mock_repl)
@@ -99,14 +98,14 @@ PrecompileTools.@setup_workload begin
         burst_input = IOBuffer("jj")
         burst_term = REPL.Terminals.TTYTerminal("", burst_input, devnull, devnull)
         burst_layout = TextViewLayout(fill("line", 20))
-        burst_pager = Pager(
+        burst_pager = Pager(;
             term = burst_term,
             buf = IOContext(IOBuffer(), :color => false),
             input = PagerInput(burst_input),
             display_size = displaysize(devnull),
             num_lines = 20,
             cropped_lines = 10,
-            text_layout = burst_layout
+            text_layout = burst_layout,
         )
         burst_key = TerminalPager._read_keystroke!(burst_pager.input)
         burst_action = TerminalPager._pager_key_process!(burst_pager, burst_key)
@@ -116,7 +115,7 @@ PrecompileTools.@setup_workload begin
         for prepared_lines in (
             ["plain text", "second line"],
             ["Unicode α界", "combining e\u0301"],
-            ["\e[31mANSI red\e[0m", "search search"]
+            ["\e[31mANSI red\e[0m", "search search"],
         )
             prepared_layout = TextViewLayout(prepared_lines)
             TerminalPager._pager_content_fits(prepared_layout, (10, 40))
@@ -133,7 +132,7 @@ PrecompileTools.@setup_workload begin
                 active_match_location = active_location,
                 maximum_number_of_columns = 40,
                 maximum_number_of_lines = 10,
-                search_matches = prepared_matches
+                search_matches = prepared_matches,
             )
         end
     end

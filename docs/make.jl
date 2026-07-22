@@ -1,12 +1,12 @@
 using Documenter
 using TerminalPager
 
-makedocs(
+makedocs(;
     modules = [TerminalPager],
-    format = Documenter.HTML(
+    format = Documenter.HTML(;
         prettyurls = !("local" in ARGS),
         canonical = "https://ronisbr.github.io/TerminalPager.jl/stable/",
-        edit_link = "main"
+        edit_link = "main",
     ),
     sitename = "Terminal Pager",
     authors = "Ronan Arraes Jardim Chagas",
@@ -14,12 +14,10 @@ makedocs(
         "Introduction"  => "index.md",
         "Usage"         => "man/usage.md",
         "Customization" => "man/customization.md",
-        "Library"       => "lib/library.md"
+        "Library"       => "lib/library.md",
     ],
 )
 
-deploydocs(
-    repo = "github.com/ronisbr/TerminalPager.jl.git",
-    devbranch = "main",
-    target = "build",
+deploydocs(;
+    repo = "github.com/ronisbr/TerminalPager.jl.git", devbranch = "main", target = "build"
 )

@@ -27,10 +27,10 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # In this case, we will use the same completion provider as the julia prompt.
     tp_mode = LineEdit.Prompt(
         _tp_mode_prompt;
-        complete      = REPL.REPLCompletionProvider(),
+        complete = REPL.REPLCompletionProvider(),
         prompt_prefix = repl.options.hascolor ? Base.text_colors[:magenta] : "",
         prompt_suffix = "",
-        sticky        = true
+        sticky = true,
     )
 
     # This function is called when the user hits return after typing a command.
@@ -79,7 +79,7 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
 
     # Assign `?` as the key map to switch to pager help mode.
     help_mode_transition_keymap = Dict{Any, Any}(
-        '?' => function(s, args...)
+        '?' => function (s, args...)
             # We must only switch to pager mode if `|` is typed at the beginning
             # of the line.
             if isempty(s) || (position(LineEdit.buffer(s)) == 0)
@@ -124,32 +124,31 @@ Create the pager-help REPL mode.
 - `tp_mode::LineEdit.Prompt`: Pager prompt to which help mode returns.
 """
 function _create_pager_help_repl_mode(
-    repl::REPL.AbstractREPL,
-    main::LineEdit.Prompt,
-    tp_mode::LineEdit.Prompt
+    repl::REPL.AbstractREPL, main::LineEdit.Prompt, tp_mode::LineEdit.Prompt
 )
     # == Prompt of the Pager Help Mode =====================================================
 
     tp_help_mode = LineEdit.Prompt(
         _tp_help_mode_prompt;
-        complete      = REPL.REPLCompletionProvider(),
+        complete = REPL.REPLCompletionProvider(),
         prompt_prefix = repl.options.hascolor ? Base.text_colors[:yellow] : "",
         prompt_suffix = "",
-        sticky        = false
+        sticky = false,
     )
 
-    tp_help_mode.on_done = (s, buf, ok) -> begin
-        # Take the input command.
-        input = String(take!(buf))
-        REPL.reset(repl)
+    tp_help_mode.on_done =
+        (s, buf, ok) -> begin
+            # Take the input command.
+            input = String(take!(buf))
+            REPL.reset(repl)
 
-        # Process the input command inside the pager mode.
-        _tp_help_mode_do_cmd(repl, input)
+            # Process the input command inside the pager mode.
+            _tp_help_mode_do_cmd(repl, input)
 
-        REPL.prepare_next(repl)
-        REPL.reset_state(s)
-        s.current_mode.sticky || REPL.transition(s, tp_mode)
-    end
+            REPL.prepare_next(repl)
+            REPL.reset_state(s)
+            s.current_mode.sticky || REPL.transition(s, tp_mode)
+        end
 
     # == Key Mappings ======================================================================
 
@@ -207,7 +206,7 @@ function _init_pager_repl_mode(repl::AbstractREPL)
 
     # Assign `|` as the key map to switch to pager mode.
     keymap = Dict{Any, Any}(
-        '|' => function(s, args...)
+        '|' => function (s, args...)
             # We must only switch to pager mode if `|` is typed at the beginning
             # of the line.
             if isempty(s) || position(LineEdit.buffer(s)) == 0
@@ -245,7 +244,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     if !isinteractive() && !PRINTED_REPL_WARNING[]
         @warn(
             "The pager mode is intended for interactive use only and should not be used " *
-            "from scripts."
+                "from scripts."
         )
         PRINTED_REPL_WARNING[] = true
     end
@@ -263,18 +262,18 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         #
         #   https://github.com/ronisbr/TerminalPager.jl/issues/40
         buf = IOBuffer()
-        io  = IOContext(
+        io = IOContext(
             IOContext(buf, stdout),
             :bypass_pager => true,
-            :displaysize  => displaysize(stdout),
-            :limit        => false,
+            :displaysize => displaysize(stdout),
+            :limit => false,
         )
 
         # Redirect `stdout` to the new buffer.
         Base.eval(:(stdout = $io))
 
         # First, we need to split the buffer into lines.
-        lines = split(input, '\n', keepempty = true)
+        lines = split(input, '\n'; keepempty = true)
 
         # Variable to assemble the command, which can have multiple lines.
         cmd = ""
@@ -331,9 +330,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 "always_use_alternate_screen_buffer_in_repl_mode"
             )
 
-            copy_to_clipboard = _get_preference(
-                "copy_stdout_to_clipboard_in_repl_mode"
-            )
+            copy_to_clipboard = _get_preference("copy_stdout_to_clipboard_in_repl_mode")
 
             # Take everything and display in the pager using `auto` mode. In this case, the
             # pager will only be called if there is not space in the display to show

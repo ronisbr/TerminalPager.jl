@@ -13,10 +13,11 @@ Change the active match forward when `forward` is `true` and backward otherwise.
 
 - `pagerd::Pager`: Pager state to update.
 - `forward::Bool`: Whether to select the next match instead of the previous match.
+    (**Default**: `true`)
 """
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     active_search_match_id = pagerd.active_search_match_id
-    num_matches            = pagerd.num_matches
+    num_matches = pagerd.num_matches
 
     if num_matches != 0
         # Activate the next match according to the user preference.
@@ -79,10 +80,7 @@ function _ordered_search_matches(search_matches::SearchMatches, num_lines::Int)
     for line in 1:num_lines
         haskey(search_matches, line) || continue
         for (index_in_line, match) in enumerate(search_matches[line])
-            push!(
-                ordered_matches,
-                SearchMatch(line, index_in_line, match[1], match[2])
-            )
+            push!(ordered_matches, SearchMatch(line, index_in_line, match[1], match[2]))
         end
     end
 
@@ -101,20 +99,20 @@ Move the viewport so that the active search match is visible.
 function _move_view_to_match!(pagerd::Pager)
     # Unpack.
     active_search_match_id = pagerd.active_search_match_id
-    frozen_columns         = pagerd.frozen_columns
-    frozen_rows            = pagerd.frozen_rows
+    frozen_columns = pagerd.frozen_columns
+    frozen_rows = pagerd.frozen_rows
     ordered_search_matches = pagerd.ordered_search_matches
-    show_ruler             = pagerd.show_ruler
-    start_column           = pagerd.start_column
-    start_row              = pagerd.start_row
-    title_rows             = pagerd.title_rows
+    show_ruler = pagerd.show_ruler
+    start_column = pagerd.start_column
+    start_row = pagerd.start_row
+    title_rows = pagerd.title_rows
 
     rows, cols = _get_pager_display_size(pagerd)
 
     # If we show the ruler, the amount of available columns to draw data must be reduced to
     # take into account its width.
     if show_ruler
-        ruler_spacing = floor(Int, pagerd.num_lines |> abs |> log10) + 4
+        ruler_spacing = floor(Int, log10(abs(pagerd.num_lines))) + 4
         cols -= ruler_spacing
     end
 
@@ -126,8 +124,8 @@ function _move_view_to_match!(pagerd::Pager)
     hl_i = active_search_match_id
     hl_i == 0 && return nothing
 
-    match      = ordered_search_matches[hl_i]
-    hl_line    = match.line
+    match = ordered_search_matches[hl_i]
+    hl_line = match.line
     hl_col_beg = match.column
     hl_col_end = hl_col_beg + match.width - 1
 
@@ -149,7 +147,7 @@ function _move_view_to_match!(pagerd::Pager)
     end
 
     pagerd.start_column = start_column
-    pagerd.start_row    = start_row
+    pagerd.start_row = start_row
 
     return nothing
 end

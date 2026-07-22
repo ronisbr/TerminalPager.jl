@@ -7,7 +7,7 @@ config_time = @elapsed config = TerminalPager._display_config()
 
 term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 io = IOBuffer()
-pagerd = TerminalPager.Pager(
+pagerd = TerminalPager.Pager(;
     term = term,
     buf = IOContext(io, :color => true),
     display_config = config,

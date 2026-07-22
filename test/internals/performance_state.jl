@@ -12,9 +12,8 @@ module InlineHelpModule end
     config = @inferred TerminalPager._display_config()
     @test config isa TerminalPager.DisplayConfig
     @test isconcretetype(typeof(config))
-    @test @inferred(
-        TerminalPager._validate_preference("active_search_decoration", "44")
-    ) == "44"
+    @test @inferred(TerminalPager._validate_preference("active_search_decoration", "44")) ==
+        "44"
 
     defaults = TerminalPager._AVAILABLE_PREFERENCES
     default_config = TerminalPager.DisplayConfig()
@@ -43,11 +42,8 @@ module InlineHelpModule end
 
     default_lines = ["default α", "second"]
     default_layout = TerminalPager.TextViewLayout(default_lines)
-    compatible_pager = TerminalPager.Pager(
-        term = pagerd.term,
-        buf = pagerd.buf,
-        num_lines = 2,
-        text_layout = default_layout
+    compatible_pager = TerminalPager.Pager(;
+        term = pagerd.term, buf = pagerd.buf, num_lines = 2, text_layout = default_layout
     )
     @test compatible_pager.text_layout === default_layout
     @test compatible_pager.num_lines == length(default_layout)
@@ -65,10 +61,7 @@ module InlineHelpModule end
 
     pagerd = _create_pagerd("match")
     pagerd.display_config = TerminalPager.DisplayConfig(
-        "\e[30;43m",
-        "\e[30;47m",
-        "196",
-        "22"
+        "\e[30;43m", "\e[30;47m", "196", "22"
     )
     TerminalPager._find_matches!(pagerd, r"match")
     @test pagerd.text_layout[1] == "match"
@@ -84,24 +77,18 @@ end
     pagerd = _create_pagerd("zero\nα x x\nnone\nx")
     pagerd.display_size = (5, 8)
     pagerd.search_matches = TerminalPager.SearchMatches(
-        4 => [(1, 1)],
-        2 => [(5, 1), (3, 1)]
+        4 => [(1, 1)], 2 => [(5, 1), (3, 1)]
     )
     source_keys = collect(keys(pagerd.search_matches))
     source_vectors = Dict(
         line => copy(matches) for (line, matches) in pagerd.search_matches
     )
     pagerd.ordered_search_matches = TerminalPager._ordered_search_matches(
-        pagerd.search_matches,
-        pagerd.num_lines
+        pagerd.search_matches, pagerd.num_lines
     )
     pagerd.num_matches = length(pagerd.ordered_search_matches)
 
-    @test [(m.line, m.column, m.width) for m in pagerd.ordered_search_matches] == [
-        (2, 5, 1),
-        (2, 3, 1),
-        (4, 1, 1)
-    ]
+    @test [(m.line, m.column, m.width) for m in pagerd.ordered_search_matches] == [(2, 5, 1), (2, 3, 1), (4, 1, 1)]
     @test [m.index_in_line for m in pagerd.ordered_search_matches] == [1, 2, 1]
     @test collect(keys(pagerd.search_matches)) == source_keys
     @test pagerd.search_matches == source_vectors
@@ -129,18 +116,13 @@ end
     pagerd.num_matches = 1
     pagerd.active_search_match_id = 1
     TerminalPager._find_matches!(pagerd, r"x")
-    @test [(m.line, m.column) for m in pagerd.ordered_search_matches] == [
-        (2, 3),
-        (2, 5),
-        (4, 1)
-    ]
+    @test [(m.line, m.column) for m in pagerd.ordered_search_matches] == [(2, 3), (2, 5), (4, 1)]
     TerminalPager._find_matches!(pagerd, r"absent")
     @test isempty(pagerd.search_matches)
     @test isempty(pagerd.ordered_search_matches)
     @test pagerd.num_matches == 0
     @test pagerd.active_search_match_id == 0
 end
-
 
 @testset "Prepared layout lifecycle" begin
     pagerd = _create_pagerd("\e[31mrow α one\e[0m\nrow 界 two\nrow three")
@@ -199,15 +181,12 @@ end
         term,
         join(fill("long line", 10), '\n');
         input = TerminalPager.PagerInput(input_stream),
-        _layout_factory = fit_layout_factory
+        _layout_factory = fit_layout_factory,
     )
     @test layout_calls[] == 1
 
     comparison_lines = [
-        "title α",
-        "\e[31mrow match 界 match\e[0m",
-        "visual e\u0301 row",
-        "last row"
+        "title α", "\e[31mrow match 界 match\e[0m", "visual e\u0301 row", "last row"
     ]
     comparison_layout = TerminalPager.TextViewLayout(comparison_lines)
     comparison_matches = TerminalPager.string_search_per_line(comparison_layout, r"match")
@@ -226,7 +205,7 @@ end
         show_ruler = true,
         title_lines = 1,
         visual_lines = [3],
-        visual_line_backgrounds = "44"
+        visual_line_backgrounds = "44",
     )
     prepared_crop = TerminalPager.textview(
         prepared_buffer,
@@ -242,7 +221,7 @@ end
         show_ruler = true,
         title_lines = 1,
         visual_lines = [3],
-        visual_line_backgrounds = "44"
+        visual_line_backgrounds = "44",
     )
     @test prepared_crop == raw_crop
     @test String(take!(prepared_buffer)) == String(take!(raw_buffer))
@@ -275,8 +254,7 @@ end
     source_root = dirname(pathof(TerminalPager))
     help_source = read(joinpath(source_root, "help_keybinding.jl"), String)
     extension_source = read(
-        joinpath(dirname(source_root), "ext", "TerminalPagerAboutExt.jl"),
-        String
+        joinpath(dirname(source_root), "ext", "TerminalPagerAboutExt.jl"), String
     )
     @test !occursin("@eval", help_source)
     @test !occursin("@eval", extension_source)
@@ -311,7 +289,7 @@ end
     @test_throws ErrorException TerminalPager._with_raw_restoration(
         () -> error("callback failed"),
         :terminal;
-        raw_function = (terminal, raw) -> push!(restored, terminal == :terminal && raw)
+        raw_function = (terminal, raw) -> push!(restored, terminal == :terminal && raw),
     )
     @test restored == [true]
 
@@ -324,7 +302,7 @@ end
         InlineHelpModule,
         (mod, expression) -> 42,
         value -> push!(about_values, value),
-        (identifier, mod) -> push!(fallback_calls, (identifier, mod))
+        (identifier, mod) -> push!(fallback_calls, (identifier, mod)),
     )
     @test about_values == [42]
     extension._show_about(
@@ -332,7 +310,7 @@ end
         InlineHelpModule,
         (mod, expression) -> error("missing"),
         value -> nothing,
-        (identifier, mod) -> push!(fallback_calls, (identifier, mod))
+        (identifier, mod) -> push!(fallback_calls, (identifier, mod)),
     )
     @test fallback_calls == [("missing", InlineHelpModule)]
 end

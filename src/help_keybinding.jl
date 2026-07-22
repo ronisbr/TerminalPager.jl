@@ -110,17 +110,29 @@ Ascend to the most specific SyntaxNode containing all the information needed for
 - `node::SyntaxNode`: Syntax node from which to ascend.
 """
 function _ascend(node::SyntaxNode)
-    # Depending on Julia version, macros are handled differently in JuliaSyntax.jl.
-    is_macro_part(n) = @static if VERSION >= v"1.13-"
-        kind(n) == K"Identifier" && n.parent !== nothing && kind(n.parent) == K"macro_name"
-    else
-        kind(n) == K"MacroName"
+    """
+        is_macro_part(n::SyntaxNode) -> Bool
+
+    Return whether `n` represents part of a macro name for the active Julia version.
+
+    # Arguments
+
+    - `n::SyntaxNode`: Syntax node to inspect.
+    """
+    function is_macro_part(n)
+        @static if VERSION >= v"1.13-"
+            kind(n) == K"Identifier" &&
+                n.parent !== nothing &&
+                kind(n.parent) == K"macro_name"
+        else
+            kind(n) == K"MacroName"
+        end
     end
 
     # Now that we have the most specific descendant containing the cursor, we need to find
     # the most specific ascendant (ancestor) which contains all the needed information.
-    # The K"…" type is described here:
-    # https://github.com/JuliaLang/JuliaSyntax.jl/blob/main/src/julia/kinds.jl
+    # See the JuliaSyntax kind definitions in the JuliaSyntax repository.
+    # <https://github.com/JuliaLang/JuliaSyntax.jl/blob/main/src/julia/kinds.jl>.
     # Continue through incomplete expressions, macro names, non-standard string literals,
     # and qualified identifiers.
     while (parent = node.parent) !== nothing && (
@@ -147,17 +159,17 @@ Extract the string from syntax node `x` to be provided for `@help`.
 """
 function _helpstring(x::SyntaxNode)
     # Use the first child of calls because it is the callable.
-    kind(x) in KSet"call curly macrocall" && return x[1] |> _helpstring
-    kind(x) in KSet". module block error" && return x |> sourcetext
+    kind(x) in KSet"call curly macrocall" && return _helpstring(x[1])
+    kind(x) in KSet". module block error" && return sourcetext(x)
     @static if VERSION >= v"1.13-"
-        kind(x) == K"macro_name" && return x |> sourcetext
+        kind(x) == K"macro_name" && return sourcetext(x)
     end
     # Handle literals specially to match help-mode identifiers.
     kind(x) in KSet"string String" && return "String"
     kind(x) in KSet"char Char" && return "Char"
     kind(x) in KSet"cmdstring CmdString" && return "@cmd"
-    (kind(x) == K"->" || is_keyword(x)) && return x |> kind |> untokenize
-    return x |> string
+    (kind(x) == K"->" || is_keyword(x)) && return untokenize(kind(x))
+    return string(x)
 end
 
 """
@@ -173,7 +185,7 @@ under the cursor.
 function _register_help_shortcuts(repl)
     _register_shortcuts(repl) do escapes
         escapes['O']['P'] = _show_pager_help  # <F1>
-        escapes['h']      = _show_pager_help  # <Alt> + h
+        escapes['h'] = _show_pager_help  # <Alt> + h
     end
 end
 
@@ -201,8 +213,8 @@ function _register_shortcuts(f, repl)
 
         # Register the keybindings both in the regular REPL mode (always the first one)
         # and in the pager mode (which is the last one, as we just added it).
-        for m in repl.interface.modes |> Ref .|> (first, last)
-            m.keymap_dict['\e'] |> f
+        for m in (first, last)(Ref(repl.interface.modes))
+            f(m.keymap_dict['\e'])
         end
 
         return nothing
@@ -210,13 +222,13 @@ function _register_shortcuts(f, repl)
 end
 
 """
-    _show_pager_help(state::Any, _key::Any, _context::Any) -> Symbol
+    _show_pager_help(s::Any, _key::Any, _context::Any) -> Symbol
 
 Show the extended inline help for the identifier under the cursor in the REPL.
 
 # Arguments
 
-- `state::Any`: Current REPL line-edit state.
+- `s::Any`: Current REPL line-edit state.
 - `_key::Any`: Keybinding callback key, which is ignored.
 - `_context::Any`: Keybinding callback context, which is ignored.
 """
@@ -240,21 +252,20 @@ function _show_extended_help(identifier::AbstractString, mod::Module)
     return _show_help("?" * identifier, mod)
 end
 
-
 """
-    _show_pager_cursor(f::Any, state::Any) -> Symbol
+    _show_pager_cursor(f::Any, s::Any) -> Symbol
 
 Show information about the identifier under the cursor in the REPL by calling `f`.
 
 # Arguments
 
 - `f::Any`: Callable object invoked with the identifier under the cursor.
-- `state::Any`: Current REPL line-edit state.
+- `s::Any`: Current REPL line-edit state.
 """
 function _show_pager_cursor(f, s)
-    input           = input_string(s)
+    input = input_string(s)
     cursor_position = buffer(s).ptr
-    identifier      = _extract_identifier(input, cursor_position)
+    identifier = _extract_identifier(input, cursor_position)
 
     isempty(identifier) && return :ok
 
@@ -280,17 +291,13 @@ Call `f` and restore `terminal` to raw mode even if the callback throws.
 # Keywords
 
 - `raw_function::Any`: Callable object used to restore raw mode.
+    (**Default**: `REPL.Terminals.raw!`)
 
 # Returns
 
-Return the result of `f`. Its type is polymorphic because `_with_raw_restoration` accepts
-any callable object.
+- `Any`: Result returned by `f`.
 """
-function _with_raw_restoration(
-    f,
-    terminal;
-    raw_function = REPL.Terminals.raw!
-)
+function _with_raw_restoration(f, terminal; raw_function = REPL.Terminals.raw!)
     try
         return f()
     finally

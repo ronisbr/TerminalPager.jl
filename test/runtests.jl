@@ -18,7 +18,7 @@ function _create_pagerd(str::AbstractString)
     iobuf = IOBuffer()
     buf = IOContext(iobuf, :color => get(stdout, :color, true))
 
-    pagerd = TerminalPager.Pager(
+    pagerd = TerminalPager.Pager(;
         buf = buf,
         display_config = TerminalPager._display_config(),
         display_size = displaysize(term.out_stream),

@@ -44,18 +44,18 @@ end
 # documented binding to check that `_get_help` looks in the given module, and separately
 # document a `Main`-level function to check the fallback from a non-`Main` active module.
 module HelpModuleTest
-    """
-        local_documented_function()
+"""
+    local_documented_function() -> Int
 
-    This is the documentation of a function local to `HelpModuleTest`.
-    """
-    local_documented_function() = 1
+Return one from a function local to `HelpModuleTest`.
+"""
+local_documented_function() = 1
 end
 
 """
-    main_only_documented_function()
+    main_only_documented_function() -> Int
 
-This is the documentation of a function defined in `Main`.
+Return one from a function defined in `Main`.
 """
 main_only_documented_function() = 1
 

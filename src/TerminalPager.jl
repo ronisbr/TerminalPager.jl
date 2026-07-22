@@ -39,13 +39,13 @@ const CSI = "\x1b["
 const PKG_VERSION = v"0.6.0"
 
 # Define reusable crayons.
-const _CRAYON_B     = string(crayon"bold")
-const _CRAYON_CB    = string(crayon"cyan bold")
-const _CRAYON_C     = string(crayon"cyan")
-const _CRAYON_G     = string(crayon"dark_gray")
-const _CRAYON_R     = string(crayon"red bold")
-const _CRAYON_RESET = string(Crayon(reset = true))
-const _CRAYON_Y     = string(crayon"yellow bold")
+const _CRAYON_B = string(crayon"bold")
+const _CRAYON_CB = string(crayon"cyan bold")
+const _CRAYON_C = string(crayon"cyan")
+const _CRAYON_G = string(crayon"dark_gray")
+const _CRAYON_R = string(crayon"red bold")
+const _CRAYON_RESET = string(Crayon(; reset = true))
+const _CRAYON_Y = string(crayon"yellow bold")
 
 ############################################################################################
 #                                         Includes                                         #
@@ -83,24 +83,29 @@ Call the pager to show the output of the object `obj`.
 !!! info
     Some of the default values shown here can be modified by user-defined preferences.
 
-- `auto::Bool`: If `true`, then the pager is only shown if the output does not fit into the
-    display. (**Default** = `false`)
+- `auto::Bool`: Show the pager only when the output does not fit in the display.
+    (**Default**: `false`)
 - `change_freeze::Bool`: If `true`, then the user can change the number of frozen rows and
-    columns inside the pager. (**Default** = `true`)
-- `frozen_columns::Int = 0`: Number of columns to be frozen at startup. (**Default** = 0)
-- `frozen_rows::Int = 0`: Number of rows to be frozen at startup. (**Default** = 0)
-- `title_rows::Int = 0`: Number of frozen rows treated as horizontally fixed titles.
-    (**Default** = 0)
-- `hashelp::Bool = true`: If `true`, then the user can see the pager help.
-    (**Default** = `true`)
-- `has_visual_mode::Bool = true`: If `true`, the user can use the visual mode.
-    (**Default** = `true`)
+    columns inside the pager.
+    (**Default**: `true`)
+- `frozen_columns::Int`: Number of columns to freeze at startup.
+    (**Default**: `0`)
+- `frozen_rows::Int`: Number of rows to freeze at startup.
+    (**Default**: `0`)
+- `title_rows::Int`: Number of frozen rows treated as horizontally fixed titles.
+    (**Default**: `0`)
+- `hashelp::Bool`: Allow the user to open pager help.
+    (**Default**: `true`)
+- `has_visual_mode::Bool`: Allow the user to use visual mode.
+    (**Default**: `true`)
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
-    numbers. (**Default** = `false`)
+    numbers.
+    (**Default**: `false`)
 - `use_alternate_screen_buffer::Bool`: If `true`, the pager will use the alternate screen
     buffer, which keeps the current screen when exiting the pager. Notice, however, that we
     use the XTerm escape sequences here. Hence, if your terminal is different, this option
     can lead to rendering problems.
+    (**Default**: `false`)
 
 # Preferences
 
@@ -109,31 +114,50 @@ The user can define custom preferences using the function
 
 - `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     active search element. One can easily obtain this sequence by converting a `Crayon` to
-    string. (**Default** = `string(crayon"black bg:yellow")`)
+    string.
+    (**Default**: `string(crayon"black bg:yellow")`)
 - `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
-    string. (**Default** = `string(crayon"black bg:light_gray")`)
+    string.
+    (**Default**: `string(crayon"black bg:light_gray")`)
 - `"always_use_alternate_screen_buffer_in_repl_mode"`: If `true`, we will always use the
-    alternate screen buffer when showing the pager in REPL mode. (**Default** = false)
+    alternate screen buffer when showing the pager in REPL mode.
+    (**Default**: `false`)
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
-    the terminal is not compatible with XTerm. (**Default** = `false`)
+    the terminal is not compatible with XTerm.
+    (**Default**: `false`)
 - `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
-    (**Default** = "default")
+    (**Default**: `"default"`)
 - `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
-    selected lines in the visual mode. (**Default** = "100")
+    selected lines in the visual mode.
+    (**Default**: `"100"`)
 - `"visual_mode_active_line_background"`: `String` with the ANSI code of the background for
-    the active line in the visual mode. (**Default** = "44")
+    the active line in the visual mode.
+    (**Default**: `"44"`)
 
 For more information, see: [`TerminalPager.set_preference!`](@ref),
 [`TerminalPager.drop_preference!`](@ref), and [`TerminalPager.drop_all_preferences!`](@ref).
 """
 function pager(obj::Any; kwargs...)
-    str = sprint(show, MIME"text/plain"(), obj, context = :color => true)
+    str = sprint(show, MIME"text/plain"(), obj; context = :color => true)
     return pager(str; kwargs...)
 end
 
+"""
+    pager(obj::AbstractString; kwargs...) -> Nothing
+
+Show the text in `obj` using the terminal pager.
+
+# Arguments
+
+- `obj::AbstractString`: Text to display without applying plain-text object rendering.
+
+# Keywords
+
+- `kwargs...`: Pager options documented by [`pager(::Any; kwargs...)`](@ref).
+"""
 function pager(obj::AbstractString; kwargs...)
     # If we have a context key called `bypass_pager` with the value `true`, we must not call
     # the pager because we are in the pager> REPL mode. Hence, if we call the pager, it
@@ -159,7 +183,7 @@ Apply mode-dependent keybindings and initialize REPL integrations.
 function __init__()
     # Modify the key bindings if the user wants `vi` mode.
     if _get_preference("pager_mode") == "vi"
-        _keybindings[("<eot>",     false, false, false)] = :halfpagedown
+        _keybindings[("<eot>", false, false, false)] = :halfpagedown
         _keybindings[("<shiftin>", false, false, false)] = :halfpageup
     end
 
