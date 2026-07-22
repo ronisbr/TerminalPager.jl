@@ -2,6 +2,8 @@ using BenchmarkTools
 using REPL
 using TerminalPager
 
+include("reporting.jl")
+
 const SUITE = BenchmarkGroup()
 
 """
@@ -362,5 +364,7 @@ SUITE["auto fit"] = @benchmarkable TerminalPager._pager_content_fits(
 )
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    display(run(SUITE; seconds = 1))
+    results = run(SUITE; seconds = 1)
+    color = get(stdout, :color, false)
+    render_benchmark_report(stdout, results; color = color)
 end
