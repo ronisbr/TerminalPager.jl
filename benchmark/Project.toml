@@ -1,0 +1,9 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+StringManipulation = "892a3eda-7b42-436c-8928-eab12a02cf0e"
+TerminalPager = "0c614874-6106-40ed-a7c2-2f1cd0bff883"
+
+[compat]
+BenchmarkTools = "1"
+TerminalPager = "0.6"
+julia = "1.10"
