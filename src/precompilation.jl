@@ -19,8 +19,11 @@ PrecompileTools.@setup_workload begin
         # Precompile everything called in __init__.
         __init__()
 
-        # Precompile REPL integration functions - create a mock REPL for precompilation
-        mock_repl = REPL.LineEditREPL(REPL.Terminals.TTYTerminal("", stdin, stdout, stderr), true)
+        # Create a mock REPL to precompile the REPL integration functions.
+        mock_repl = REPL.LineEditREPL(
+            REPL.Terminals.TTYTerminal("", stdin, stdout, stderr),
+            true
+        )
         mock_repl.interface = REPL.setup_interface(mock_repl)
         _init_pager_repl_mode(mock_repl)
         _register_help_shortcuts(mock_repl)
@@ -66,9 +69,8 @@ PrecompileTools.@setup_workload begin
         write(stdin_wr, "/0.1986\n")
         # Next search.
         write(stdin_wr, "nnn")
-        # Exit search (ESC).
-        write(stdin_wr, Char(27))
-        # Exit pager.
+        # Exit the pager directly from search mode. Standalone Escape is exercised below
+        # without racing the following quit byte.
         write(stdin_wr, "q")
 
         wait(t)
@@ -90,6 +92,50 @@ PrecompileTools.@setup_workload begin
         f = "read read read"
         TerminalPager._get_help(@view f[1:4])
         TerminalPager._extract_identifier("while true break end", 10)
+        TerminalPager._decode_keystroke(collect(codeunits("\e[B")))
+        TerminalPager._try_read_keystroke!(PagerInput(IOBuffer("j")))
+        TerminalPager._read_keystroke!(PagerInput(IOBuffer("\e")))
+
+        burst_input = IOBuffer("jj")
+        burst_term = REPL.Terminals.TTYTerminal("", burst_input, devnull, devnull)
+        burst_layout = TextViewLayout(fill("line", 20))
+        burst_pager = Pager(
+            term = burst_term,
+            buf = IOContext(IOBuffer(), :color => false),
+            input = PagerInput(burst_input),
+            display_size = displaysize(devnull),
+            num_lines = 20,
+            cropped_lines = 10,
+            text_layout = burst_layout
+        )
+        burst_key = TerminalPager._read_keystroke!(burst_pager.input)
+        burst_action = TerminalPager._pager_key_process!(burst_pager, burst_key)
+        TerminalPager._coalesce_navigation!(burst_pager, burst_action)
+        TerminalPager._view!(burst_pager)
+
+        for prepared_lines in (
+            ["plain text", "second line"],
+            ["Unicode α界", "combining e\u0301"],
+            ["\e[31mANSI red\e[0m", "search search"]
+        )
+            prepared_layout = TextViewLayout(prepared_lines)
+            TerminalPager._pager_content_fits(prepared_layout, (10, 40))
+            TerminalPager._assemble_yank_text(prepared_layout, [2, 1, 2])
+            prepared_layout[1]
+            length(prepared_layout)
+            prepared_matches = string_search_per_line(prepared_layout, r"search")
+            active_location = isempty(prepared_matches) ? (0, 0) : (2, 1)
+            textview(
+                devnull,
+                prepared_layout,
+                (1, -1, 1, -1);
+                active_match = 0,
+                active_match_location = active_location,
+                maximum_number_of_columns = 40,
+                maximum_number_of_lines = 10,
+                search_matches = prepared_matches
+            )
+        end
     end
 
     close(stdin_wr)
