@@ -5,6 +5,15 @@ Version 0.6.15
 --------------
 
 - ![Enhancement][badge-enhancement] Enable cursor-key mode while the pager is active.
+- ![Enhancement][badge-enhancement] Improve pager responsiveness with coalesced navigation
+  input and reusable rendering, search, and yank state.
+- ![Enhancement][badge-enhancement] Improve REPL help integration and preserve terminal
+  state when showing inline help.
+- ![Enhancement][badge-enhancement] Expand precompilation coverage for pager workflows.
+- ![Enhancement][badge-enhancement] Add runtime and fresh-process benchmarks with modern
+  PrettyTables reports.
+- ![Bugfix][badge-bugfix] Fix asynchronous registration of the `F1` and `Alt+h` REPL help
+  shortcuts.
 
 Version 0.6.14
 --------------
