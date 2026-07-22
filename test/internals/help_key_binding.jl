@@ -8,6 +8,26 @@ using TerminalPager: _extract_identifier
 
 const Mapping = Pair{String, String}
 
+@testset "Help Shortcut Registration" begin
+    function create_mode()
+        escapes = Dict{Char, Any}('O' => Dict{Char, Any}())
+        return (; keymap_dict = Dict{Char, Any}('\e' => escapes))
+    end
+
+    regular_mode = create_mode()
+    pager_mode = create_mode()
+    repl = (; interface = (; modes = [regular_mode, pager_mode]))
+
+    fetch(TerminalPager._register_help_shortcuts(repl))
+
+    for mode in (regular_mode, pager_mode)
+        escapes = mode.keymap_dict['\e']
+        @test escapes['O']['P'] === TerminalPager._show_pager_help
+        @test escapes['h'] === TerminalPager._show_pager_help
+        @test !haskey(escapes, 'H')
+    end
+end
+
 """
     test(
         input::AbstractString,

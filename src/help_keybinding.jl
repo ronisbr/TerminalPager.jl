@@ -175,8 +175,8 @@ end
 """
     _register_help_shortcuts(repl::Any) -> Task
 
-Register the `<Alt> + h` and `<F1>` shortcuts in the REPL to show help for the identifier
-under the cursor.
+Register the `<Alt> + h` and `<F1>` shortcuts in the REPL to show extended help for the
+identifier under the cursor.
 
 # Arguments
 
@@ -213,7 +213,8 @@ function _register_shortcuts(f, repl)
 
         # Register the keybindings both in the regular REPL mode (always the first one)
         # and in the pager mode (which is the last one, as we just added it).
-        for m in (first, last)(Ref(repl.interface.modes))
+        modes = repl.interface.modes
+        for m in (first(modes), last(modes))
             f(m.keymap_dict['\e'])
         end
 
