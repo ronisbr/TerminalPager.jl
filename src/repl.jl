@@ -8,8 +8,19 @@
 #
 ############################################################################################
 
-# Create the REPL mode `pager`. `repl` must be the active REPL, and `main` must be the main
-# REPL mode (julia prompt).
+"""
+    _create_pager_repl_mode(
+        repl::REPL.AbstractREPL,
+        main::LineEdit.Prompt
+    ) -> LineEdit.Prompt
+
+Create the pager REPL mode for the active `repl` and its main prompt.
+
+# Arguments
+
+- `repl::REPL.AbstractREPL`: Active REPL that owns the new mode.
+- `main::LineEdit.Prompt`: Main Julia prompt used for history and keymaps.
+"""
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # == Prompt of the Pager Mode ==========================================================
 
@@ -97,8 +108,21 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     return tp_mode
 end
 
-# Create the REPL mode `pager help`. `repl` must be the active REPL, `main` must be the main
-# REPL mode (julia prompt), and `tp_mode` must be the REPL mode `pager`.
+"""
+    _create_pager_help_repl_mode(
+        repl::REPL.AbstractREPL,
+        main::LineEdit.Prompt,
+        tp_mode::LineEdit.Prompt
+    ) -> LineEdit.Prompt
+
+Create the pager-help REPL mode.
+
+# Arguments
+
+- `repl::REPL.AbstractREPL`: Active REPL that owns the new mode.
+- `main::LineEdit.Prompt`: Main Julia prompt used for history and keymaps.
+- `tp_mode::LineEdit.Prompt`: Pager prompt to which help mode returns.
+"""
 function _create_pager_help_repl_mode(
     repl::REPL.AbstractREPL,
     main::LineEdit.Prompt,
@@ -162,7 +186,15 @@ function _create_pager_help_repl_mode(
     return tp_help_mode
 end
 
-# Initialize the pager mode in the `repl`.
+"""
+    _init_pager_repl_mode(repl::AbstractREPL) -> Nothing
+
+Initialize pager and pager-help modes in `repl`.
+
+# Arguments
+
+- `repl::AbstractREPL`: REPL whose interface receives the pager modes.
+"""
 function _init_pager_repl_mode(repl::AbstractREPL)
     # Get the main REPL mode (julia prompt).
     main_mode = repl.interface.modes[1]
@@ -189,7 +221,7 @@ function _init_pager_repl_mode(repl::AbstractREPL)
         end
     )
 
-    # Add the key map that initialize the pager mode to the default REPL key mappings.
+    # Add the keymap that initializes pager mode to the default REPL key mappings.
     main_mode.keymap_dict = LineEdit.keymap_merge(main_mode.keymap_dict, keymap)
 
     return nothing
@@ -199,11 +231,22 @@ end
 #                           Command Treatment for the REPL Modes                           #
 ############################################################################################
 
-# Execute the actions when a command has been received in the REPL mode `pager`. `repl`
-# must be the active REPL, and `input` is a string with the command.
+"""
+    _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String) -> Nothing
+
+Execute `input` in pager REPL mode and display its standard output.
+
+# Arguments
+
+- `repl::REPL.AbstractREPL`: Active REPL used to evaluate the command.
+- `input::String`: Command text to evaluate.
+"""
 function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     if !isinteractive() && !PRINTED_REPL_WARNING[]
-        @warn "The parger mode is intended for interaction use only, and should not be used from scripts."
+        @warn(
+            "The pager mode is intended for interactive use only and should not be used " *
+            "from scripts."
+        )
         PRINTED_REPL_WARNING[] = true
     end
 
@@ -312,8 +355,16 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     return nothing
 end
 
-# Execute the actions when a command has been received in the REPL mode `pager help`. `repl`
-# must be the active REPL, and `input` is a string with the command.
+"""
+    _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String) -> Nothing
+
+Display help for `input` from pager-help REPL mode.
+
+# Arguments
+
+- `repl::REPL.AbstractREPL`: Active REPL used to report errors.
+- `input::String`: Help query to display.
+"""
 function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     # We do not need to verify if we are in a interactive environment because this mode is
     # only accessible through pager mode, which already checks it.
@@ -332,5 +383,16 @@ end
 #                                         Prompts                                          #
 ############################################################################################
 
+"""
+    _tp_mode_prompt() -> String
+
+Return the pager-mode prompt.
+"""
 _tp_mode_prompt() = "pager> "
+
+"""
+    _tp_help_mode_prompt() -> String
+
+Return the pager-help-mode prompt.
+"""
 _tp_help_mode_prompt() = "pager?> "

@@ -15,6 +15,11 @@ the character behind it, return that identifier. If the cursor is not on an iden
 but in the argument/parameter list of a valid callable, return the callable name.
 
 Extraction works even for invalid (i.e. incomplete) input.
+
+# Arguments
+
+- `input::AbstractString`: REPL input text to inspect.
+- `cursor_pos::Integer`: Character cursor position in `input`.
 """
 function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
     input_str = string(input)
@@ -28,8 +33,7 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
     # This collaterates (moving sideways) the AST or enters a branch if out-of-tree.
     search_index = _collaterate(input_str, cursor_pos)
 
-    # Find the most specific syntax node containing the search_index.
-    # This descents the AST.
+    # Find the most specific syntax node containing `search_index` by descending the AST.
     descendant = _descend(head, search_index)
 
     # Find the least generic syntax node containing all the information needed for `@help`.
@@ -42,9 +46,14 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
 end
 
 """
-    _collaterate(input::String, cursor_pos::Integer) -> Integer
+    _collaterate(input::String, cursor_pos::Integer) -> Int
 
 Based on cursor position, collaterate (branch) to the intended token's index.
+
+# Arguments
+
+- `input::String`: REPL input text to inspect.
+- `cursor_pos::Integer`: Character cursor position in `input`.
 """
 function _collaterate(input::String, cursor_pos::Integer)
     # Some operations seem to be easier to do on the character level than on the AST,
@@ -75,6 +84,11 @@ end
     _descend(node::SyntaxNode, search_index::Integer) -> SyntaxNode
 
 Descend to the most specific syntax node containing `search_index`.
+
+# Arguments
+
+- `node::SyntaxNode`: Root syntax node to search.
+- `search_index::Integer`: Byte index that the result must contain.
 """
 function _descend(node::SyntaxNode, search_index::Integer)
     # Return the node if it does not have children, as it is then most specific.
@@ -90,6 +104,10 @@ end
     _ascend(node::SyntaxNode) -> SyntaxNode
 
 Ascend to the most specific SyntaxNode containing all the information needed for `@help`.
+
+# Arguments
+
+- `node::SyntaxNode`: Syntax node from which to ascend.
 """
 function _ascend(node::SyntaxNode)
     # Depending on Julia version, macros are handled differently in JuliaSyntax.jl.
@@ -103,13 +121,14 @@ function _ascend(node::SyntaxNode)
     # the most specific ascendant (ancestor) which contains all the needed information.
     # The K"…" type is described here:
     # https://github.com/JuliaLang/JuliaSyntax.jl/blob/main/src/julia/kinds.jl
-    # This is wider than 92 characters, but it is more readable this way.
+    # Continue through incomplete expressions, macro names, non-standard string literals,
+    # and qualified identifiers.
     while (parent = node.parent) !== nothing && (
-        kind(node) == K"error" ||                                  # incomplete expression
-        is_macro_part(node) ||                                     # MacroName/macro_name does not contain the @
-        kind(node) == K"String" && kind(parent) == K"string" ||    # string part of non-standard string literal
-        kind(node) == K"string" && kind(parent) == K"macrocall" || # string-r part of non-standard string literal
-        kind(parent) == K"."                                       # part of a qualified identifier
+        kind(node) == K"error" ||
+        is_macro_part(node) ||
+        kind(node) == K"String" && kind(parent) == K"string" ||
+        kind(node) == K"string" && kind(parent) == K"macrocall" ||
+        kind(parent) == K"."
     )
         node = parent
     end
@@ -121,23 +140,35 @@ end
     _helpstring(x::SyntaxNode) -> String
 
 Extract the string from syntax node `x` to be provided for `@help`.
+
+# Arguments
+
+- `x::SyntaxNode`: Syntax node to convert to a help query.
 """
 function _helpstring(x::SyntaxNode)
-    kind(x) in KSet"call curly macrocall" && return x[1] |> _helpstring    # First child is callable.
-    kind(x) in KSet". module block error" && return x |> sourcetext        # Use plain text.
-    @static VERSION >= v"1.13-" && kind(x) == K"macro_name" && return x |> sourcetext
-    kind(x) in KSet"string String" && return "String"                      # String literals are special in `help?>`.
-    kind(x) in KSet"char Char" && return "Char"                            # Avoid converting Char literal to String.
-    kind(x) in KSet"cmdstring CmdString" && return "@cmd"                  # Unclear what to show for `cmd`.
-    (kind(x) == K"->" || is_keyword(x) ) && return x |> kind |> untokenize # Extract as string.
-    return x |> string                                                     # Fallback: Convert to string.
+    # Use the first child of calls because it is the callable.
+    kind(x) in KSet"call curly macrocall" && return x[1] |> _helpstring
+    kind(x) in KSet". module block error" && return x |> sourcetext
+    @static if VERSION >= v"1.13-"
+        kind(x) == K"macro_name" && return x |> sourcetext
+    end
+    # Handle literals specially to match help-mode identifiers.
+    kind(x) in KSet"string String" && return "String"
+    kind(x) in KSet"char Char" && return "Char"
+    kind(x) in KSet"cmdstring CmdString" && return "@cmd"
+    (kind(x) == K"->" || is_keyword(x)) && return x |> kind |> untokenize
+    return x |> string
 end
 
 """
-    _register_help_shortcuts(repl) -> Nothing
+    _register_help_shortcuts(repl::Any) -> Task
 
 Register the `<Alt> + h` and `<F1>` shortcuts in the REPL to show help for the identifier
 under the cursor.
+
+# Arguments
+
+- `repl::Any`: REPL instance whose keymaps are updated asynchronously.
 """
 function _register_help_shortcuts(repl)
     _register_shortcuts(repl) do escapes
@@ -147,18 +178,23 @@ function _register_help_shortcuts(repl)
 end
 
 """
-    _register_shortcuts(f, repl) -> Nothing
+    _register_shortcuts(f::Any, repl::Any) -> Task
 
 Register escape shortcuts in the REPL by calling `f(escapes)` to register them.
+
+# Arguments
+
+- `f::Any`: Callable object that adds entries to an escape keymap.
+- `repl::Any`: REPL instance whose keymaps are updated asynchronously.
 """
 function _register_shortcuts(f, repl)
-    # When atreplinit is called, repl.interface is still an undefined reference. So use
-    # @async, to first finish initialization.
+    # When `atreplinit` is called, `repl.interface` is still undefined. Use `@async` to
+    # finish initialization first.
     @async begin
         # According to tests, this while loop is currently not needed. However, as long as
         # we don't know whether this is guaranteed, better be safe than sorry. If this is
-        # not needed, it is only evaluating the condition once at runtime without never
-        # actually sleeping.
+        # not needed, it only evaluates the condition once at runtime without actually
+        # sleeping.
         while !isdefined(repl, :interface)
             sleep(0.1)
         end
@@ -174,25 +210,46 @@ function _register_shortcuts(f, repl)
 end
 
 """
-    _show_pager_help(s, _, _) -> Symbol
+    _show_pager_help(state::Any, _key::Any, _context::Any) -> Symbol
 
 Show the extended inline help for the identifier under the cursor in the REPL.
-"""
-function _show_pager_help(s, _, _)
-    _show_pager_cursor(s) do identifier
-        # Use extended help.
-        ext_identifier = "?" * identifier
 
-        # Execute @help macro which will temporarily take over terminal control.
-        @eval(@help $ext_identifier)
+# Arguments
+
+- `state::Any`: Current REPL line-edit state.
+- `_key::Any`: Keybinding callback key, which is ignored.
+- `_context::Any`: Keybinding callback context, which is ignored.
+"""
+function _show_pager_help(s, _key, _context)
+    _show_pager_cursor(s) do identifier
+        _show_extended_help(identifier, s.active_module)
     end
+end
+
+"""
+    _show_extended_help(identifier::AbstractString, mod::Module) -> Nothing
+
+Route an identifier to extended help in `mod`.
+
+# Arguments
+
+- `identifier::AbstractString`: Identifier whose extended help is displayed.
+- `mod::Module`: Module in which to evaluate the help query.
+"""
+function _show_extended_help(identifier::AbstractString, mod::Module)
+    return _show_help("?" * identifier, mod)
 end
 
 
 """
-    _show_pager_cursor(f, s) -> Symbol
+    _show_pager_cursor(f::Any, state::Any) -> Symbol
 
 Show information about the identifier under the cursor in the REPL by calling `f`.
+
+# Arguments
+
+- `f::Any`: Callable object invoked with the identifier under the cursor.
+- `state::Any`: Current REPL line-edit state.
 """
 function _show_pager_cursor(f, s)
     input           = input_string(s)
@@ -201,13 +258,44 @@ function _show_pager_cursor(f, s)
 
     isempty(identifier) && return :ok
 
-    # Call the provided functionality with the identifier under the cursor.
-    f(identifier)
-
-    # After pager exits, put REPL back in raw mode.
-    REPL.Terminals.raw!(Base.active_repl.t, true)
+    _with_raw_restoration(Base.active_repl.t) do
+        # Call the provided functionality with the identifier under the cursor.
+        f(identifier)
+    end
 
     return :ok
+end
+
+"""
+    _with_raw_restoration(f::Any, terminal::Any;
+        raw_function::Any = REPL.Terminals.raw!) -> Any
+
+Call `f` and restore `terminal` to raw mode even if the callback throws.
+
+# Arguments
+
+- `f::Any`: Callable object to invoke while raw-mode restoration is guarded.
+- `terminal::Any`: REPL terminal object passed to `raw_function`.
+
+# Keywords
+
+- `raw_function::Any`: Callable object used to restore raw mode.
+
+# Returns
+
+Return the result of `f`. Its type is polymorphic because `_with_raw_restoration` accepts
+any callable object.
+"""
+function _with_raw_restoration(
+    f,
+    terminal;
+    raw_function = REPL.Terminals.raw!
+)
+    try
+        return f()
+    finally
+        raw_function(terminal, true)
+    end
 end
 
 ############################################################################################
@@ -218,6 +306,10 @@ end
     _tryparsestmt(x::String) -> SyntaxNode
 
 Try to parse `x` into a `SyntaxNode`. If there are errors or warnings, they are ignored.
+
+# Arguments
+
+- `x::String`: Julia source text to parse.
 """
 function _tryparsestmt(x::String)
     return parsestmt(SyntaxNode, x; ignore_errors = true, ignore_warnings = true)

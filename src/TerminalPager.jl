@@ -19,8 +19,8 @@ using StringManipulation
 
 import Base: convert, string
 
-# The performance of TerminalPager.jl does not increase by a lot of optimizations that is
-# performed by the compiler. Hence, we disable then to improve compile time.
+# The performance of TerminalPager.jl does not improve with many compiler optimizations.
+# Hence, we disable them to improve compile time.
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optlevel"))
     @eval Base.Experimental.@optlevel 1
 end
@@ -38,7 +38,7 @@ include("./types.jl")
 const CSI = "\x1b["
 const PKG_VERSION = v"0.6.0"
 
-# Crayons
+# Define reusable crayons.
 const _CRAYON_B     = string(crayon"bold")
 const _CRAYON_CB    = string(crayon"cyan bold")
 const _CRAYON_C     = string(crayon"cyan")
@@ -70,9 +70,13 @@ include("./help_keybinding.jl")
 export pager
 
 """
-    pager(obj; kwargs...)
+    pager(obj::Any; kwargs...) -> Nothing
 
 Call the pager to show the output of the object `obj`.
+
+# Arguments
+
+- `obj::Any`: Object to render and display.
 
 # Keywords
 
@@ -85,6 +89,8 @@ Call the pager to show the output of the object `obj`.
     columns inside the pager. (**Default** = `true`)
 - `frozen_columns::Int = 0`: Number of columns to be frozen at startup. (**Default** = 0)
 - `frozen_rows::Int = 0`: Number of rows to be frozen at startup. (**Default** = 0)
+- `title_rows::Int = 0`: Number of frozen rows treated as horizontally fixed titles.
+    (**Default** = 0)
 - `hashelp::Bool = true`: If `true`, then the user can see the pager help.
     (**Default** = `true`)
 - `has_visual_mode::Bool = true`: If `true`, the user can use the visual mode.
@@ -98,7 +104,7 @@ Call the pager to show the output of the object `obj`.
 
 # Preferences
 
-The user can defined custom preferences using the function
+The user can define custom preferences using the function
 [`TerminalPager.set_preference!`](@ref). The available preferences are listed as follows:
 
 - `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
@@ -130,7 +136,7 @@ end
 
 function pager(obj::AbstractString; kwargs...)
     # If we have a context key called `bypass_pager` with the value `true`, we must not call
-    # the pager because we are in the pager> REPL mode. Hence, we we call the pager, it
+    # the pager because we are in the pager> REPL mode. Hence, if we call the pager, it
     # locks the screen until the user types CTRL-D. For more information, see:
     #
     #   https://github.com/ronisbr/TerminalPager.jl/issues/40
@@ -145,8 +151,13 @@ end
 
 const less = pager
 
+"""
+    __init__() -> Nothing
+
+Apply mode-dependent keybindings and initialize REPL integrations.
+"""
 function __init__()
-    # Modify the key bindings if the used wants `vi` mode.
+    # Modify the key bindings if the user wants `vi` mode.
     if _get_preference("pager_mode") == "vi"
         _keybindings[("<eot>",     false, false, false)] = :halfpagedown
         _keybindings[("<shiftin>", false, false, false)] = :halfpageup

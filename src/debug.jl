@@ -1,20 +1,20 @@
 ## Description #############################################################################
 #
-# Functions for debugging purposed.
+# Functions for debugging key input.
 #
 ############################################################################################
 
 """
     debug_keycode() -> Nothing
 
-Debug key codes.
+Read and print decoded keystrokes in raw terminal mode until the user presses `q`.
 """
 function debug_keycode()
     # Initialize the terminal.
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
-    # Switch the terminal to raw mode, meaning that all keystroke is immediatly passed to us
-    # instead of waiting for <return>.
+    # Switch the terminal to raw mode, meaning that every keystroke is immediately passed to
+    # us instead of waiting for <return>.
     REPL.Terminals.raw!(term, true)
 
     write(term.out_stream, "Type any key to echo the processed keycode. Hit q to exit.\n\n")

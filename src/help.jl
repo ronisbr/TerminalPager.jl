@@ -5,9 +5,13 @@
 ############################################################################################
 
 """
-    _help!(pargerd::Pager) -> Nothing
+    _help!(pagerd::Pager) -> Nothing
 
 Open a new pager with the help.
+
+# Arguments
+
+- `pagerd::Pager`: Parent pager state whose terminal and input are reused.
 """
 function _help!(pagerd::Pager)
     # Unpack values.
@@ -32,13 +36,13 @@ function _help!(pagerd::Pager)
 
     # Get the current key bindings.
 
-    # General
+    # Collect general keybindings.
     kb_help         = _getkb(:help)
     kb_quit         = _getkb(:quit)
     kb_quit_eot     = _getkb(:quit_eot)
     kb_toggle_ruler = _getkb(:toggle_ruler)
 
-    # Movement
+    # Collect movement keybindings.
     kb_up        = _getkb(:up)
     kb_down      = _getkb(:down)
     kb_left      = _getkb(:left)
@@ -56,17 +60,17 @@ function _help!(pagerd::Pager)
     kb_home      = _getkb(:home)
     kb_end       = _getkb(:end)
 
-    # Searching
+    # Collect search keybindings.
     kb_search         = _getkb(:search)
     kb_next_match     = _getkb(:next_match)
     kb_previous_match = _getkb(:previous_match)
     kb_quit_search    = _getkb(:quit_search)
 
-    # Freezing data
+    # Collect data-freezing keybindings.
     kb_change_freeze     = _getkb(:change_freeze)
     kb_change_title_rows = _getkb(:change_title_rows)
 
-    # Visual mode
+    # Collect visual-mode keybindings.
     kb_toggle_visual_mode      = _getkb(:toggle_visual_mode)
     kb_select_visual_mode_line = _getkb(:select_visual_mode_line)
     kb_yank                    = _getkb(:yank)
@@ -189,7 +193,15 @@ $(_y)  :yank$(_d)
 $(_c)    Keybindings: $(kb_yank)$(_d)
 """
 
-    _pager!(pagerd.term, help_str; hashelp = false, has_visual_mode = false)
+    _pager!(
+        pagerd.term,
+        help_str;
+        display_config = pagerd.display_config,
+        hashelp = false,
+        has_visual_mode = false,
+        input = pagerd.input,
+        manage_cursor_key_mode = false
+    )
 
     return nothing
 end
@@ -198,6 +210,15 @@ end
 #                                    Private Functions                                     #
 ############################################################################################
 
+"""
+    _getkb(action::Symbol) -> String
+
+Return a comma-separated description of every keybinding assigned to `action`.
+
+# Arguments
+
+- `action::Symbol`: Pager action whose keybindings are described.
+"""
 function _getkb(action::Symbol)
     kb = [_kbtostr(k) for (k, v) in _KEYBINDINGS if v == action]
     num_kb = length(kb)
@@ -212,6 +233,15 @@ function _getkb(action::Symbol)
     return str
 end
 
+"""
+    _kbtostr(kb::Tuple{String, Bool, Bool, Bool}) -> String
+
+Convert a keybinding tuple to a human-readable description.
+
+# Arguments
+
+- `kb::Tuple{String, Bool, Bool, Bool}`: Key value and ALT, CTRL, and SHIFT flags.
+"""
 function _kbtostr(kb::Tuple{String, Bool, Bool, Bool})
     str = kb[1] == " " ? "space" : string(kb[1])
 
