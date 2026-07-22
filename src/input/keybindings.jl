@@ -1,6 +1,6 @@
 ## Description #############################################################################
 #
-# This file contains functions related to key bindings.
+# Functions related to key bindings.
 #
 ############################################################################################
 
@@ -58,12 +58,23 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}
 const _KEYBINDINGS = copy(_DEFAULT_KEYBINDINGS)
 
 """
-    delete_keybinding(key::Union{Char, Symbol}; kwargs...) -> Nothing
+    delete_keybinding(key::String; alt::Bool = false, ctrl::Bool = false,
+        shift::Bool = false) -> Nothing
 
 Delete the keybinding `key`. The modifiers keys can be selected using the keywords `alt`,
 `ctrl`, and `shift`.
 
 For more information about how specify `key` see [`set_keybinding`](@ref).
+
+# Arguments
+
+- `key::String`: Key value whose binding is deleted.
+
+# Keywords
+
+- `alt::Bool`: Select a binding that requires ALT.
+- `ctrl::Bool`: Select a binding that requires CTRL.
+- `shift::Bool`: Select a binding that requires SHIFT.
 """
 function delete_keybinding(
     key::String;
@@ -85,7 +96,7 @@ function reset_keybindings()
     empty!(_KEYBINDINGS)
     merge!(_KEYBINDINGS, _DEFAULT_KEYBINDINGS)
 
-    # Key bindings that depends on the mode.
+    # Key bindings that depend on the mode.
     if _get_preference("pager_mode") == "vi"
         _KEYBINDINGS[("<eot>",     false, false, false)] = :halfpagedown
         _KEYBINDINGS[("<shiftin>", false, false, false)] = :halfpageup
@@ -97,7 +108,8 @@ function reset_keybindings()
 end
 
 """
-    set_keybinding(key::Union{Char, Symbol}, action::Symbol; kwargs...) -> Nothing
+    set_keybinding(key::String, action::Symbol; alt::Bool = false,
+        ctrl::Bool = false, shift::Bool = false) -> Nothing
 
 Set key binding `key` to the action `action`. The modifiers keys can be selected using the
 keywords `alt`, `ctrl`, and `shift`.
@@ -116,6 +128,17 @@ keywords `alt`, `ctrl`, and `shift`.
 
     :quit, :help, :up, :down, :left, :right, :fastup, :fastdown, :fastleft,
     :fastright :bol, :eol, :pageup, :pagedown, :home, :end
+
+# Arguments
+
+- `key::String`: Key value whose binding is set.
+- `action::Symbol`: Pager action assigned to the key.
+
+# Keywords
+
+- `alt::Bool`: Require ALT for the binding.
+- `ctrl::Bool`: Require CTRL for the binding.
+- `shift::Bool`: Require SHIFT for the binding.
 """
 function set_keybinding(
     key::String,
@@ -128,4 +151,3 @@ function set_keybinding(
     _KEYBINDINGS[dict_key] = action
     return nothing
 end
-

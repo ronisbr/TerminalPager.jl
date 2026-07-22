@@ -4,8 +4,16 @@
 #
 ############################################################################################
 
-# Change the active matches in `pagerd`. If `forward` is `true`, the search is performed
-# forward. Otherwise, it is performed backwards.
+"""
+    _change_active_match!(pagerd::Pager, forward::Bool = true) -> Nothing
+
+Change the active match forward when `forward` is `true` and backward otherwise.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `forward::Bool`: Whether to select the next match instead of the previous match.
+"""
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     active_search_match_id = pagerd.active_search_match_id
     num_matches            = pagerd.num_matches
@@ -30,30 +38,72 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
     return nothing
 end
 
-# Find all matches of `regex` in the text of the pager `pager`. The vector with the matches
-# will be written to `pagerd`.
+"""
+    _find_matches!(pagerd::Pager, regex::Regex) -> Nothing
+
+Find every match of `regex` and store the search metadata in `pagerd`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `regex::Regex`: Regular expression to search for.
+"""
 function _find_matches!(pagerd::Pager, regex::Regex)
-    pagerd.search_matches = string_search_per_line(pagerd.lines, regex)
+    search_matches = string_search_per_line(pagerd.text_layout, regex)
+    ordered_search_matches = _ordered_search_matches(search_matches, pagerd.num_lines)
+    num_matches = length(ordered_search_matches)
 
-    num_matches = 0
-
-    for (k, v) in pagerd.search_matches
-        num_matches += length(v)
-    end
-
+    pagerd.search_matches = search_matches
+    pagerd.ordered_search_matches = ordered_search_matches
     pagerd.num_matches = num_matches
+    pagerd.active_search_match_id = 0
 
     return nothing
 end
 
-# Move the view of the pager `pagerd` to ensure that the current highlighted match is inside
-# it.
+"""
+    _ordered_search_matches(search_matches::SearchMatches, num_lines::Int) ->
+        Vector{SearchMatch}
+
+Build search-navigation metadata in document and within-line order.
+
+# Arguments
+
+- `search_matches::SearchMatches`: Search matches grouped by source line.
+- `num_lines::Int`: Number of source lines to traverse.
+"""
+function _ordered_search_matches(search_matches::SearchMatches, num_lines::Int)
+    ordered_matches = SearchMatch[]
+    sizehint!(ordered_matches, sum(length, values(search_matches); init = 0))
+
+    for line in 1:num_lines
+        haskey(search_matches, line) || continue
+        for (index_in_line, match) in enumerate(search_matches[line])
+            push!(
+                ordered_matches,
+                SearchMatch(line, index_in_line, match[1], match[2])
+            )
+        end
+    end
+
+    return ordered_matches
+end
+
+"""
+    _move_view_to_match!(pagerd::Pager) -> Nothing
+
+Move the viewport so that the active search match is visible.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
 function _move_view_to_match!(pagerd::Pager)
     # Unpack.
     active_search_match_id = pagerd.active_search_match_id
     frozen_columns         = pagerd.frozen_columns
     frozen_rows            = pagerd.frozen_rows
-    search_matches         = pagerd.search_matches
+    ordered_search_matches = pagerd.ordered_search_matches
     show_ruler             = pagerd.show_ruler
     start_column           = pagerd.start_column
     start_row              = pagerd.start_row
@@ -76,35 +126,10 @@ function _move_view_to_match!(pagerd::Pager)
     hl_i = active_search_match_id
     hl_i == 0 && return nothing
 
-    # The search matches are a dictionary in which the key is the line with a match. Hence,
-    # we need to order the keys to count the matches and find the information about the
-    # active match.
-    #
-    # TODO: Can it be improved?
-    lines = search_matches |> keys |> collect |> sort
-
-    # Information about the active match.
-    hl_line    = 0
-    hl_col_beg = 0
-    hl_col_end = 0
-
-    # Search what is the current active match.
-    i = 0
-    for l in lines
-        Δ = length(search_matches[l])
-
-        if i + Δ ≥ hl_i
-            j = hl_i - i
-
-            match      = search_matches[l][j]
-            hl_line    = l
-            hl_col_beg = match[1]
-            hl_col_end = hl_col_beg + match[2] - 1
-            break
-        end
-
-        i += Δ
-    end
+    match      = ordered_search_matches[hl_i]
+    hl_line    = match.line
+    hl_col_beg = match.column
+    hl_col_end = hl_col_beg + match.width - 1
 
     # Check if the highlight row is visible.
     if (hl_line < start_row)
@@ -113,7 +138,7 @@ function _move_view_to_match!(pagerd::Pager)
         start_row = (hl_line + 1) - (rows - frozen_rows)
     end
 
-    # If the highlight is outsidde the title rows, we can move the view to display it.
+    # If the highlight is outside the title rows, we can move the view to display it.
     if title_rows < hl_line
         # Check if the highlight column is visible.
         if hl_col_beg < start_column
@@ -129,9 +154,19 @@ function _move_view_to_match!(pagerd::Pager)
     return nothing
 end
 
-# Quit search mode of pager `pagerd`.
+"""
+    _quit_search!(pagerd::Pager) -> Nothing
+
+Clear all search state in `pagerd`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to clear.
+"""
 function _quit_search!(pagerd::Pager)
     empty!(pagerd.search_matches)
+    empty!(pagerd.ordered_search_matches)
+    pagerd.num_matches = 0
     pagerd.active_search_match_id = 0
     return nothing
 end

@@ -1,11 +1,24 @@
 ## Description #############################################################################
 #
-# Functions related with the command line.
+# Functions related to the command line.
 #
 ############################################################################################
 
-# Print the message `msg` in the command line of pager `pagerd`. The string formatting can
-# be selected using the keyword `crayon`.
+"""
+    _print_cmd_message!(pagerd::Pager, msg::String;
+        crayon::Crayon = Crayon()) -> Nothing
+
+Print `msg` on the pager command line.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose terminal receives the message.
+- `msg::String`: Message to print.
+
+# Keywords
+
+- `crayon::Crayon`: Formatting applied when the terminal supports color.
+"""
 function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon())
     term         = pagerd.term
     display_size = pagerd.display_size
@@ -28,7 +41,15 @@ function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon
     return nothing
 end
 
-# Print the command line of pager `pagerd` to the display.
+"""
+    _redraw_cmd_line!(pagerd::Pager) -> Nothing
+
+Redraw the pager command line and status information.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to redraw.
+"""
 function _redraw_cmd_line!(pagerd::Pager)
     # Unpack variables.
     term          = pagerd.term
@@ -76,7 +97,7 @@ function _redraw_cmd_line!(pagerd::Pager)
         cmd_help = "ERROR"
     end
 
-    # Compute the scroll position
+    # Compute the scroll position.
     pos = lpad(round(Int, 100 * (1 - cropped_lines / num_lines)) |> string, 3)
     cmd_help *= " " * pos * "%"
 
@@ -96,7 +117,19 @@ function _redraw_cmd_line!(pagerd::Pager)
     return nothing
 end
 
-# Read a command in the pager `pagerd`. This function returns a string with the command.
+"""
+    _read_cmd!(pagerd::Pager; prefix::String = "/") -> String
+
+Read and edit one command from the pager input.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose terminal and input are used.
+
+# Keywords
+
+- `prefix::String`: Prompt displayed before the command.
+"""
 function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
     term         = pagerd.term
@@ -116,7 +149,7 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             _clear_to_eol(term.out_stream)
             write(term.out_stream, prefix * cmd)
 
-            # Restore the cursor position
+            # Restore the cursor position.
             _move_cursor(
                 term.out_stream,
                 display_size[1],
@@ -126,7 +159,7 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             redraw = false
         end
 
-        k = _jlgetch(term.in_stream)
+        k = _read_keystroke!(pagerd.input)
 
         if k.value == "<enter>"
             break
