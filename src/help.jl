@@ -68,6 +68,17 @@ function _help_screen(use_color::Bool)
 end
 
 """
+    _pkg_version() -> VersionNumber
+
+Return the version of this package.
+
+Notice that this must not be stored in a constant. `pkgversion` evaluated while the package is
+precompiled captures the version that was current at that moment, so the help screen kept
+showing a stale one after a new version was released.
+"""
+_pkg_version() = pkgversion(@__MODULE__)
+
+"""
     _help_string(use_color::Bool) -> String
 
 Assemble the pager help screen from the current key bindings.
@@ -135,7 +146,7 @@ function _help_string(use_color::Bool)
     kb_yank = _getkb(:yank)
 
     help_str = """
-                 $(_cb)TerminalPager.jl $(PKG_VERSION)$(_d)
+                 $(_cb)TerminalPager.jl $(_pkg_version())$(_d)
 
                  The pager can execute several types of actions, as shown below. The key
                  bindings of each action can be changed using the function

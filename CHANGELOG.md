@@ -1,6 +1,66 @@
 TerminalPager.jl
 ================
 
+Version 0.7.0
+-------------
+
+- ![BREAKING][badge-breaking] Searching now starts at the first match at or after the top of
+  the current view, wrapping to the first match when every one of them is above it, instead
+  of always jumping back to the top of the text. This matches the behavior of `less`.
+- ![BREAKING][badge-breaking] CTRL combinations with a letter are now decoded with the
+  `ctrl` modifier. Hence, `set_keybinding("a", :quit; ctrl = true)` finally works, whereas a
+  binding to the raw control character no longer matches. `<eot>` (CTRL-D) and `<shiftin>`
+  (CTRL-U) keep their names, so the `vi` key bindings are unchanged.
+- ![Enhancement][badge-enhancement] The redraw now paints only the screen rows that changed
+  instead of the whole view, and a frame identical to the previous one sends nothing to the
+  terminal at all, so a keystroke that does not move the view no longer makes the cursor
+  flicker. The redraw and the command line no longer allocate, and a scroll frame over a
+  500-line colored text went from 27 kB to 11.6 kB.
+- ![Enhancement][badge-enhancement] ANSI escape sequences are assembled from constants and
+  precomputed pieces instead of string interpolation. `_move_cursor`, which the redraw calls
+  once per screen row, went from 640 bytes and 161 ns per call to no allocation and 8 ns.
+- ![Enhancement][badge-enhancement] Reduce the time to show the first frame: the text is no
+  longer copied after being split, the automatic fit check reuses the widths already
+  measured by the layout, the preferences are cached, and the help screen and its layout are
+  rebuilt only when the key bindings change.
+- ![Enhancement][badge-enhancement] Keystrokes are decoded with precomputed tables. An arrow
+  key went from 81 ns to 10 ns and an ASCII key from 38 ns and 144 bytes to 1 ns and no
+  allocation. The display size is also queried once per coalesced burst instead of once per
+  action, which is a system call on a real terminal.
+- ![Enhancement][badge-enhancement] Build the search index by sorting the matched lines when
+  they are sparse instead of probing the match dictionary once per line of the text. Finding
+  two matches in a text with one million lines went from 2876 µs to 0.04 µs.
+- ![Enhancement][badge-enhancement] The help screen lists the key bindings of each action in
+  a deterministic order instead of depending on the iteration order of a dictionary.
+- ![Bugfix][badge-bugfix] Fix package initialization when the preference `pager_mode` is set
+  to `"vi"`, which threw an `UndefVarError` while loading the package.
+- ![Bugfix][badge-bugfix] Fix the help screen when the terminal does not support color,
+  which threw an `UndefVarError` when pressing `?`.
+- ![Bugfix][badge-bugfix] Fix the warning shown when the pager REPL mode is used from a
+  script, which referenced an undefined variable.
+- ![Bugfix][badge-bugfix] Validate the search pattern typed by the user. A malformed one,
+  such as `[`, used to tear down the pager session with a stack trace.
+- ![Bugfix][badge-bugfix] Support pager sessions without any line, which threw an
+  `InexactError` while rendering the status line and while toggling the ruler.
+- ![Bugfix][badge-bugfix] Fix the command line editor: backspace now deletes the character
+  before the cursor instead of truncating the end of the command, keystrokes such as `<up>`
+  and `<F1>` are no longer inserted verbatim, `<delete>` removes the character under the
+  cursor, and the cursor column accounts for wide characters.
+- ![Bugfix][badge-bugfix] Keep the visual mode state consistent. The visual cursor could sit
+  past the last line, which made the yank throw, the disabled state was not written back,
+  and marking a line produced no feedback until the next keystroke.
+- ![Bugfix][badge-bugfix] Fix the search viewport bounds. A match ending exactly at the
+  right edge was considered visible, so the view never scrolled to it.
+- ![Bugfix][badge-bugfix] Fix the state left behind by changing the frozen rows and columns
+  and by toggling the ruler, which could place the view inside the frozen region.
+- ![Bugfix][badge-bugfix] Fix `F1` and `ALT-h` for input with non-ASCII characters. The REPL
+  cursor position is a byte offset and was used as a character index, so the help of the
+  wrong identifier was shown.
+- ![Bugfix][badge-bugfix] Fix the scope of the keyword arguments of `@stdout_to_pager`,
+  which were resolved inside the package instead of the caller's module.
+- ![Info][badge-info] The version shown in the help screen is now read from the project at
+  run time instead of a hardcoded constant that was left at 0.6.0.
+
 Version 0.6.15
 --------------
 

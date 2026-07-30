@@ -109,3 +109,12 @@ main_only_documented_function() = 1
     str = _get_help("binding_that_does_not_exist_anywhere", HelpModuleTest)
     @test occursin("No documentation found", str)
 end
+
+@testset "Help Screen Version" begin
+    # The version used to be a constant that was left at 0.6.0. It must also not be captured
+    # while the package is precompiled, otherwise it goes stale after a new release.
+    @test TerminalPager._pkg_version() == pkgversion(TerminalPager)
+    @test occursin(
+        "TerminalPager.jl $(pkgversion(TerminalPager))", TerminalPager._help_string(false)
+    )
+end

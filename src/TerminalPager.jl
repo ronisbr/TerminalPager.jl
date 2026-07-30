@@ -37,10 +37,6 @@ include("./types.jl")
 
 const CSI = "\x1b["
 
-# The version is read from the project, otherwise the help screen shows a stale one whenever a
-# new version is released.
-const PKG_VERSION = pkgversion(@__MODULE__)
-
 # Define reusable crayons.
 const _CRAYON_B = string(crayon"bold")
 const _CRAYON_CB = string(crayon"cyan bold")
