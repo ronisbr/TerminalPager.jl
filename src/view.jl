@@ -52,12 +52,20 @@ function _view!(pagerd::Pager)
     end
 
     if pagerd.visual_mode
-        current_line = pagerd.visual_mode_line + start_row - 1
-        visual_lines = vcat(current_line, pagerd.visual_mode_selected_lines)
-        visual_line_backgrounds = vcat(
-            vm_active_line_background,
-            fill(vm_line_background, length(pagerd.visual_mode_selected_lines)),
-        )
+        # These buffers are reused across frames. Otherwise, every frame allocates one vector
+        # per selected line.
+        visual_lines = pagerd.visual_lines
+        visual_line_backgrounds = pagerd.visual_line_backgrounds
+        empty!(visual_lines)
+        empty!(visual_line_backgrounds)
+
+        push!(visual_lines, pagerd.visual_mode_line + start_row - 1)
+        push!(visual_line_backgrounds, vm_active_line_background)
+
+        for line in pagerd.visual_mode_selected_lines
+            push!(visual_lines, line)
+            push!(visual_line_backgrounds, vm_line_background)
+        end
     else
         visual_lines = nothing
         visual_line_backgrounds = ""

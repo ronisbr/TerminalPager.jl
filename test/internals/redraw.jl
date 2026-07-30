@@ -457,6 +457,42 @@ end
     @test pagerd.term.out_stream.writes == 4
 end
 
+@testset "Visual Mode Buffers" begin
+    pagerd = _create_redraw_pagerd(["line $i" for i in 1:8]; display_size = (10, 20))
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+    pagerd.visual_mode_line = 2
+    append!(pagerd.visual_mode_selected_lines, [4, 6])
+
+    TerminalPager._view!(pagerd)
+
+    # The active line comes first, so that it keeps its own background.
+    @test pagerd.visual_lines == [2, 4, 6]
+    @test pagerd.visual_line_backgrounds == [
+        pagerd.display_config.visual_mode_active_line_background,
+        pagerd.display_config.visual_mode_line_background,
+        pagerd.display_config.visual_mode_line_background,
+    ]
+
+    # The buffers must be reused instead of reallocated at every frame.
+    lines_buffer = pagerd.visual_lines
+    backgrounds_buffer = pagerd.visual_line_backgrounds
+    pagerd.visual_mode_line = 3
+    TerminalPager._view!(pagerd)
+
+    @test pagerd.visual_lines === lines_buffer
+    @test pagerd.visual_line_backgrounds === backgrounds_buffer
+    @test pagerd.visual_lines == [3, 4, 6]
+
+    # Leaving visual mode must not leave stale entries behind.
+    pagerd.visual_mode = false
+    TerminalPager._view!(pagerd)
+    pagerd.visual_mode = true
+    empty!(pagerd.visual_mode_selected_lines)
+    TerminalPager._view!(pagerd)
+    @test pagerd.visual_lines == [3]
+end
+
 @testset "Frame Byte Access" begin
     # `_frame_bytes` reads `IOBuffer` internals, which changed between Julia versions. This
     # must fail here rather than as corrupted output.

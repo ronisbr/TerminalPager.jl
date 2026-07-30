@@ -170,6 +170,9 @@ Store the mutable state for one pager session.
 - `visual_mode::Bool`: Whether visual selection mode is active.
 - `visual_mode_line::Int`: Active visual line relative to the viewport.
 - `visual_mode_selected_lines::Vector{Int}`: Selected source-line indices.
+- `visual_lines::Vector{Int}`: Reused buffer with the lines rendered with a background.
+- `visual_line_backgrounds::Vector{String}`: Reused buffer with the background of each entry
+    of `visual_lines`.
 - `frame_cache::FrameCache`: State supporting the incremental redraw.
 """
 Base.@kwdef mutable struct Pager
@@ -199,5 +202,7 @@ Base.@kwdef mutable struct Pager
     visual_mode::Bool = false
     visual_mode_line::Int = 1
     visual_mode_selected_lines::Vector{Int} = Int[]
+    visual_lines::Vector{Int} = Int[]
+    visual_line_backgrounds::Vector{String} = String[]
     frame_cache::FrameCache = FrameCache()
 end
