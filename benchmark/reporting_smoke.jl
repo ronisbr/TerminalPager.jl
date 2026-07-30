@@ -13,18 +13,16 @@ suite_output = String(take!(suite_io))
 @assert !occursin('\e', suite_output)
 
 fresh_io = IOBuffer()
-fresh_samples = [
-    (
-        compiled_modules = "no",
-        sample = 1,
-        load_time = 1.0,
-        layout_time = 0.01,
-        config_time = 0.001,
-        first_view_time = 0.0001,
-        first_redraw_time = 0.00005,
-        repeated_view_time = 0.00001,
-    ),
-]
+fresh_samples = [(
+    compiled_modules = "no",
+    sample = 1,
+    load_time = 1.0,
+    layout_time = 0.01,
+    config_time = 0.001,
+    first_view_time = 0.0001,
+    first_redraw_time = 0.00005,
+    repeated_view_time = 0.00001,
+),]
 render_fresh_process_report(fresh_io, fresh_samples; color = false)
 fresh_output = String(take!(fresh_io))
 @assert occursin("Fresh-Process", fresh_output)

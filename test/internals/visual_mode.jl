@@ -19,18 +19,14 @@
         pagerd.visual_mode_line = 8
         pagerd.cropped_lines = 0
 
-        TerminalPager._pager_key_process!(
-            pagerd, TerminalPager.Keystroke(; value = action)
-        )
+        TerminalPager._pager_key_process!(pagerd, TerminalPager.Keystroke(; value = action))
 
         absolute_line = pagerd.visual_mode_line + pagerd.start_row - 1
         @test 1 <= absolute_line <= pagerd.num_lines
 
         # The yank must not index the layout out of bounds.
         pagerd.event = :yank
-        text, count = TerminalPager._assemble_yank_text(
-            pagerd.text_layout, [absolute_line]
-        )
+        text, count = TerminalPager._assemble_yank_text(pagerd.text_layout, [absolute_line])
         @test count == 1
     end
 end

@@ -114,9 +114,7 @@ Apply the key bindings that depend on the `pager_mode` preference to `_KEYBINDIN
 - `get_preference::F`: Callable preference getter used to read `pager_mode`.
     (**Default**: `_get_preference`)
 """
-function _apply_mode_keybindings!(
-    get_preference::F = _get_preference
-) where {F <: Function}
+function _apply_mode_keybindings!(get_preference::F = _get_preference) where {F <: Function}
     if get_preference("pager_mode") == "vi"
         _KEYBINDINGS[("<eot>", false, false, false)] = :halfpagedown
         _KEYBINDINGS[("<shiftin>", false, false, false)] = :halfpageup

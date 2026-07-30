@@ -1281,9 +1281,8 @@ function _redraw!(pagerd::Pager)
         end
 
         _clear_to_eol(out)
-        row_size > 0 && GC.@preserve data unsafe_write(
-            out, pointer(data, new_first[i]), UInt(row_size)
-        )
+        row_size > 0 &&
+            GC.@preserve data unsafe_write(out, pointer(data, new_first[i]), UInt(row_size))
 
         previous_row = i
     end

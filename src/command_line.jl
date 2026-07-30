@@ -231,9 +231,11 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
                 write(out, character)
             end
 
-            _move_cursor(out, display_size[1], _cmd_cursor_column(
-                chars, cursor, prefix_width, display_size[2]
-            ))
+            _move_cursor(
+                out,
+                display_size[1],
+                _cmd_cursor_column(chars, cursor, prefix_width, display_size[2]),
+            )
 
             _flush_screen!(pagerd)
 

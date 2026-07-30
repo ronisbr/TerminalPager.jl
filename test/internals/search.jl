@@ -74,7 +74,7 @@ end
 end
 
 @testset "Search Starts At The Viewport" begin
-    lines = ["match" ; ["filler $i" for i in 1:20] ; "match" ; ["tail $i" for i in 1:5]]
+    lines = ["match"; ["filler $i" for i in 1:20]; "match"; ["tail $i" for i in 1:5]]
     pagerd = _create_modal_pagerd(lines, "")
 
     # From the top of the text, the first match in document order is selected.

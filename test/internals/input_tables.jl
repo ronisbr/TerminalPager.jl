@@ -4,13 +4,17 @@
 #
 ############################################################################################
 
-_loop_ascii_keystroke(n) = (for _ in 1:n
-    TerminalPager._ascii_keystroke(UInt8('j'))
-end)
+_loop_ascii_keystroke(n) = (
+    for _ in 1:n
+        TerminalPager._ascii_keystroke(UInt8('j'))
+    end
+)
 
-_loop_decode_arrow(bytes, n) = (for _ in 1:n
-    TerminalPager._decode_keystroke(bytes)
-end)
+_loop_decode_arrow(bytes, n) = (
+    for _ in 1:n
+        TerminalPager._decode_keystroke(bytes)
+    end
+)
 
 @testset "Precomputed ASCII Keystrokes" begin
     # The table must agree with the function that used to build every keystroke on demand.
@@ -89,7 +93,10 @@ end
     # with `ctrl = false` and the raw control character as its value, so a CTRL binding could
     # never match.
     named = Dict(
-        0x04 => "<eot>", 0x09 => "<tab>", 0x0a => "<enter>", 0x0d => "<enter>",
+        0x04 => "<eot>",
+        0x09 => "<tab>",
+        0x0a => "<enter>",
+        0x0d => "<enter>",
         0x15 => "<shiftin>",
     )
 
@@ -145,6 +152,5 @@ end
     # value. `_pager_action` only ever builds `String` keys.
     @test keytype(TerminalPager._KEYBINDINGS) == Tuple{String, Bool, Bool, Bool}
     @test isconcretetype(keytype(TerminalPager._KEYBINDINGS))
-    @test keytype(TerminalPager._DEFAULT_KEYBINDINGS) ==
-        keytype(TerminalPager._KEYBINDINGS)
+    @test keytype(TerminalPager._DEFAULT_KEYBINDINGS) == keytype(TerminalPager._KEYBINDINGS)
 end

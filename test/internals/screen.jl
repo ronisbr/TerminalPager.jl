@@ -75,30 +75,46 @@ end
 # `@testset` measures the uncompiled, dynamically dispatched version and always reports
 # spurious allocations.
 
-_loop_clear_to_eol(io, n) = (for _ in 1:n
-    TerminalPager._clear_to_eol(io)
-end)
-_loop_hide_cursor(io, n) = (for _ in 1:n
-    TerminalPager._hide_cursor(io)
-end)
-_loop_show_cursor(io, n) = (for _ in 1:n
-    TerminalPager._show_cursor(io)
-end)
-_loop_move_cursor_bol(io, n) = (for _ in 1:n
-    TerminalPager._move_cursor(io, 12, 1)
-end)
-_loop_move_cursor(io, n) = (for _ in 1:n
-    TerminalPager._move_cursor(io, 12, 34)
-end)
-_loop_cursor_back(io, n) = (for _ in 1:n
-    TerminalPager._cursor_back(io, 1)
-end)
-_loop_cursor_forward(io, n) = (for _ in 1:n
-    TerminalPager._cursor_forward(io, 1)
-end)
-_loop_write_decimal(io, n) = (for _ in 1:n
-    TerminalPager._write_decimal(io, 42)
-end)
+_loop_clear_to_eol(io, n) = (
+    for _ in 1:n
+        TerminalPager._clear_to_eol(io)
+    end
+)
+_loop_hide_cursor(io, n) = (
+    for _ in 1:n
+        TerminalPager._hide_cursor(io)
+    end
+)
+_loop_show_cursor(io, n) = (
+    for _ in 1:n
+        TerminalPager._show_cursor(io)
+    end
+)
+_loop_move_cursor_bol(io, n) = (
+    for _ in 1:n
+        TerminalPager._move_cursor(io, 12, 1)
+    end
+)
+_loop_move_cursor(io, n) = (
+    for _ in 1:n
+        TerminalPager._move_cursor(io, 12, 34)
+    end
+)
+_loop_cursor_back(io, n) = (
+    for _ in 1:n
+        TerminalPager._cursor_back(io, 1)
+    end
+)
+_loop_cursor_forward(io, n) = (
+    for _ in 1:n
+        TerminalPager._cursor_forward(io, 1)
+    end
+)
+_loop_write_decimal(io, n) = (
+    for _ in 1:n
+        TerminalPager._write_decimal(io, 42)
+    end
+)
 
 """
     _allocated_per_call(loop::Function, io::IOBuffer) -> Float64

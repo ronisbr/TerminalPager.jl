@@ -249,16 +249,12 @@ SUITE["prepared view"]["layout + first view"] = @benchmarkable(
     evals = 1
 )
 short_pager = make_pager(["short αβγ", "second line"]; display_size = (25, 80))
-SUITE["view"]["short"] = @benchmarkable TerminalPager._view!($short_pager) setup = (
-    truncate($short_pager.buf.io, 0);
-    seekstart($short_pager.buf.io)
-)
+SUITE["view"]["short"] = @benchmarkable TerminalPager._view!($short_pager) setup =
+    (truncate($short_pager.buf.io, 0); seekstart($short_pager.buf.io))
 for width in (40, 80, 160)
     pagerd = make_pager(short_lines; display_size = (25, width))
-    SUITE["view"]["width $width"] = @benchmarkable TerminalPager._view!($pagerd) setup = (
-        truncate($pagerd.buf.io, 0);
-        seekstart($pagerd.buf.io)
-    )
+    SUITE["view"]["width $width"] = @benchmarkable TerminalPager._view!($pagerd) setup =
+        (truncate($pagerd.buf.io, 0); seekstart($pagerd.buf.io))
 end
 
 large_matches = TerminalPager.SearchMatches(
@@ -444,8 +440,9 @@ SUITE["redraw"]["visual line movement"] = @benchmarkable(
     )
 )
 
-SUITE["redraw"]["command line"] =
-    @benchmarkable TerminalPager._redraw_cmd_line!($redraw_pager)
+SUITE["redraw"]["command line"] = @benchmarkable TerminalPager._redraw_cmd_line!(
+    $redraw_pager
+)
 
 SUITE["redraw"]["view + redraw + command line"] = @benchmarkable(
     begin

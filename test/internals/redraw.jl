@@ -29,8 +29,7 @@ end
 
 # The buffer is pre-grown, so that its own reallocation is not attributed to the redraw when
 # measuring allocations.
-RedrawSink(; color::Bool = false) =
-    RedrawSink(IOBuffer(; sizehint = 1 << 22), 0, 0, color)
+RedrawSink(; color::Bool = false) = RedrawSink(IOBuffer(; sizehint = 1 << 22), 0, 0, color)
 
 function Base.write(sink::RedrawSink, byte::UInt8)
     sink.bytes += 1
@@ -44,8 +43,7 @@ function Base.unsafe_write(sink::RedrawSink, p::Ptr{UInt8}, n::UInt)
     return unsafe_write(sink.data, p, n)
 end
 
-Base.get(sink::RedrawSink, key::Symbol, default) =
-    key === :color ? sink.color : default
+Base.get(sink::RedrawSink, key::Symbol, default) = key === :color ? sink.color : default
 
 """
     FailingSink
@@ -98,9 +96,7 @@ Create a pager whose terminal output is a `RedrawSink`.
     (**Default**: `false`)
 """
 function _create_redraw_pagerd(
-    lines::Vector{String};
-    display_size::NTuple{2, Int} = (10, 20),
-    color::Bool = false,
+    lines::Vector{String}; display_size::NTuple{2, Int} = (10, 20), color::Bool = false
 )
     sink = RedrawSink(; color = color)
     input = IOBuffer()
@@ -160,7 +156,8 @@ function _emulate!(screen::Vector{String}, str::AbstractString)
         else
             line * ' '^(column - 1 - length(line))
         end
-        suffix = length(line) > column - 1 + length(text) ?
+        suffix =
+            length(line) > column - 1 + length(text) ?
             last(line, length(line) - (column - 1 + length(text))) : ""
         return prefix * text * suffix
     end
@@ -189,7 +186,8 @@ function _emulate!(screen::Vector{String}, str::AbstractString)
             if final == 'H'
                 parts = split(parameters, ';')
                 row = isempty(parts[1]) ? 1 : parse(Int, parts[1])
-                column = (length(parts) > 1) && !isempty(parts[2]) ? parse(Int, parts[2]) : 1
+                column =
+                    (length(parts) > 1) && !isempty(parts[2]) ? parse(Int, parts[2]) : 1
 
             elseif final == 'K'
                 # Erase from the cursor through the end of the line.
@@ -237,13 +235,17 @@ end
 
 # These must be top-level functions, otherwise `@allocated` measures the uncompiled version.
 
-_loop_redraw(pagerd, n) = (for _ in 1:n
-    TerminalPager._redraw!(pagerd)
-end)
+_loop_redraw(pagerd, n) = (
+    for _ in 1:n
+        TerminalPager._redraw!(pagerd)
+    end
+)
 
-_loop_redraw_cmd_line(pagerd, n) = (for _ in 1:n
-    TerminalPager._redraw_cmd_line!(pagerd)
-end)
+_loop_redraw_cmd_line(pagerd, n) = (
+    for _ in 1:n
+        TerminalPager._redraw_cmd_line!(pagerd)
+    end
+)
 
 ############################################################################################
 #                                          Tests                                           #
@@ -382,10 +384,30 @@ end
         ["short", "", "α界 wide", repeat("y", 60)],
     )
     actions = Union{String, Symbol}[
-        "j", "j", "j", "k", "G", "g", "l", "l", "h", "\$", "0",
-        :toggle_visual_mode, "j", :select_visual_mode_line, "j",
-        :select_visual_mode_line, "k", :toggle_ruler, "j", "G", "g",
-        :toggle_ruler, :toggle_visual_mode, "j",
+        "j",
+        "j",
+        "j",
+        "k",
+        "G",
+        "g",
+        "l",
+        "l",
+        "h",
+        "\$",
+        "0",
+        :toggle_visual_mode,
+        "j",
+        :select_visual_mode_line,
+        "j",
+        :select_visual_mode_line,
+        "k",
+        :toggle_ruler,
+        "j",
+        "G",
+        "g",
+        :toggle_ruler,
+        :toggle_visual_mode,
+        "j",
     ]
     display_size = (12, 24)
 
@@ -533,7 +555,8 @@ end
             frame_cache, data, length(data), max_rows
         )
         return [
-            String(data[frame_cache.new_first[i]:frame_cache.new_last[i]]) for i in 1:num_rows
+            String(data[frame_cache.new_first[i]:frame_cache.new_last[i]]) for
+            i in 1:num_rows
         ]
     end
 
