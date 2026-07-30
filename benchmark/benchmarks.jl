@@ -363,6 +363,99 @@ SUITE["auto fit"] = @benchmarkable TerminalPager._pager_content_fits(
     $auto_fit_lines, (25, 80)
 )
 
+############################################################################################
+#                                          Redraw                                          #
+############################################################################################
+
+"""
+    make_redraw_pager(
+        lines::AbstractVector{<:AbstractString};
+        display_size::Tuple{Int, Int} = (25, 80),
+    ) -> TerminalPager.Pager
+
+Construct a pager whose terminal output is discarded, so that the redraw can be benchmarked
+without writing to the real terminal.
+
+# Arguments
+
+- `lines::AbstractVector{<:AbstractString}`: Provide the text lines to display.
+
+# Keywords
+
+- `display_size::Tuple{Int, Int}`: Set the simulated terminal height and width.
+    (**Default**: `(25, 80)`)
+"""
+function make_redraw_pager(lines; display_size = (25, 80))
+    sink = IOContext(devnull, :color => true, :displaysize => display_size)
+    term = REPL.Terminals.TTYTerminal("", stdin, sink, sink)
+    text_layout = TerminalPager.TextViewLayout(lines)
+    return TerminalPager.Pager(;
+        term = term,
+        buf = IOContext(IOBuffer(), :color => true),
+        display_config = TerminalPager._display_config(),
+        display_size = display_size,
+        num_lines = length(text_layout),
+        text_layout = text_layout,
+        show_ruler = true,
+    )
+end
+
+SUITE["redraw"] = BenchmarkGroup()
+
+SUITE["redraw"]["first frame"] = @benchmarkable(
+    begin
+        TerminalPager._view!(pager)
+        TerminalPager._redraw!(pager)
+    end,
+    setup = (pager = make_redraw_pager($short_lines)),
+    evals = 1
+)
+
+redraw_pager = make_redraw_pager(short_lines)
+TerminalPager._view!(redraw_pager)
+TerminalPager._redraw!(redraw_pager)
+
+# The frame is identical to the one on screen, hence nothing must be sent to the terminal.
+SUITE["redraw"]["unchanged frame"] = @benchmarkable TerminalPager._redraw!($redraw_pager)
+
+# Scrolling by one row changes every row, which is the worst case for the incremental redraw.
+SUITE["redraw"]["scroll one row"] = @benchmarkable(
+    begin
+        TerminalPager._view!($redraw_pager)
+        TerminalPager._redraw!($redraw_pager)
+    end,
+    setup = ($redraw_pager.start_row = ($redraw_pager.start_row % 20) + 1)
+)
+
+# Moving the visual line only changes two rows.
+visual_redraw_pager = make_redraw_pager(short_lines)
+visual_redraw_pager.features = [:visual_mode]
+visual_redraw_pager.visual_mode = true
+TerminalPager._view!(visual_redraw_pager)
+TerminalPager._redraw!(visual_redraw_pager)
+SUITE["redraw"]["visual line movement"] = @benchmarkable(
+    begin
+        TerminalPager._view!($visual_redraw_pager)
+        TerminalPager._redraw!($visual_redraw_pager)
+    end,
+    setup = (
+        $visual_redraw_pager.visual_mode_line =
+            ($visual_redraw_pager.visual_mode_line % 10) + 1
+    )
+)
+
+SUITE["redraw"]["command line"] =
+    @benchmarkable TerminalPager._redraw_cmd_line!($redraw_pager)
+
+SUITE["redraw"]["view + redraw + command line"] = @benchmarkable(
+    begin
+        TerminalPager._view!($redraw_pager)
+        TerminalPager._redraw!($redraw_pager)
+        TerminalPager._redraw_cmd_line!($redraw_pager)
+    end,
+    setup = ($redraw_pager.start_row = ($redraw_pager.start_row % 20) + 1)
+)
+
 if abspath(PROGRAM_FILE) == @__FILE__
     results = run(SUITE; seconds = 1)
     color = get(stdout, :color, false)

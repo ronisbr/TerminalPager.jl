@@ -193,6 +193,7 @@ function render_fresh_process_report(io::IO, samples; color = false)
             format_duration(sample.layout_time * 1_000_000_000),
             format_duration(sample.config_time * 1_000_000_000),
             format_duration(sample.first_view_time * 1_000_000_000),
+            format_duration(sample.first_redraw_time * 1_000_000_000),
             format_duration(sample.repeated_view_time * 1_000_000_000),
         ) for sample in sorted_samples
     ]
@@ -208,9 +209,10 @@ function render_fresh_process_report(io::IO, samples; color = false)
             "Layout",
             "Config",
             "First View",
+            "First Redraw",
             "Repeated View",
         ],
-        alignment = [:l, :r, :r, :r, :r, :r, :r],
+        alignment = [:l, :r, :r, :r, :r, :r, :r, :r],
         color = color,
     )
     return nothing

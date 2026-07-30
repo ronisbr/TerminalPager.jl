@@ -110,7 +110,21 @@ PrecompileTools.@setup_workload begin
         burst_key = TerminalPager._read_keystroke!(burst_pager.input)
         burst_action = TerminalPager._pager_key_process!(burst_pager, burst_key)
         TerminalPager._coalesce_navigation!(burst_pager, burst_action)
+
+        # Precompile a complete frame, so that the first one the user sees is not also the
+        # first one to be compiled. The terminal is `devnull`, hence this is silent.
         TerminalPager._view!(burst_pager)
+        TerminalPager._redraw!(burst_pager)
+        TerminalPager._redraw_cmd_line!(burst_pager)
+
+        # A second frame exercises the incremental path, which compares the frame against the
+        # snapshot instead of painting every row.
+        burst_pager.start_row = 2
+        TerminalPager._view!(burst_pager)
+        TerminalPager._redraw!(burst_pager)
+
+        burst_pager.mode = :searching
+        TerminalPager._redraw_cmd_line!(burst_pager)
 
         for prepared_lines in (
             ["plain text", "second line"],

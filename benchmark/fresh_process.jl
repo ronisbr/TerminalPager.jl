@@ -14,7 +14,7 @@ function run_fresh_process_benchmarks()
             command = `$(Base.julia_cmd()) --startup-file=no --project=$project \
                 --compiled-modules=$compiled_modules $worker`
             values = split(strip(read(command, String)), '\t')
-            length(values) == 5 || error("Unexpected fresh-process worker output.")
+            length(values) == 6 || error("Unexpected fresh-process worker output.")
             timings = parse.(Float64, values)
             push!(
                 results,
@@ -25,7 +25,8 @@ function run_fresh_process_benchmarks()
                     layout_time = timings[2],
                     config_time = timings[3],
                     first_view_time = timings[4],
-                    repeated_view_time = timings[5],
+                    first_redraw_time = timings[5],
+                    repeated_view_time = timings[6],
                 ),
             )
         end
