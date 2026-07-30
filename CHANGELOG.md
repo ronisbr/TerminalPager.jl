@@ -4,13 +4,14 @@ TerminalPager.jl
 Version 0.7.0
 -------------
 
-- ![BREAKING][badge-breaking] Searching now starts at the first match at or after the top of
-  the current view, wrapping to the first match when every one of them is above it, instead
-  of always jumping back to the top of the text. This matches the behavior of `less`.
-- ![BREAKING][badge-breaking] CTRL combinations with a letter are now decoded with the
-  `ctrl` modifier. Hence, `set_keybinding("a", :quit; ctrl = true)` finally works, whereas a
-  binding to the raw control character no longer matches. `<eot>` (CTRL-D) and `<shiftin>`
-  (CTRL-U) keep their names, so the `vi` key bindings are unchanged.
+- ![BREAKING][badge-breaking] Breaking Change: Searching now starts at the first match at or
+  after the top of the current view, wrapping to the first match when every one of them is
+  above it, instead of always jumping back to the top of the text. This matches the behavior
+  of `less`.
+- ![BREAKING][badge-breaking] Breaking Change: CTRL combinations with a letter are now
+  decoded with the `ctrl` modifier. Hence, `set_keybinding("a", :quit; ctrl = true)` finally
+  works, whereas a binding to the raw control character no longer matches. `<eot>` (CTRL-D)
+  and `<shiftin>` (CTRL-U) keep their names, so the `vi` key bindings are unchanged.
 - ![Enhancement][badge-enhancement] The redraw now paints only the screen rows that changed
   instead of the whole view, and a frame identical to the previous one sends nothing to the
   terminal at all, so a keystroke that does not move the view no longer makes the cursor
