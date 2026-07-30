@@ -35,9 +35,18 @@ function _view!(pagerd::Pager)
     start_row = pagerd.start_row
     title_rows = pagerd.title_rows
 
-    # Make sure that the argument values are correct.
-    start_row < 1 && (start_row = 1)
-    start_column < 1 && (start_column = 1)
+    # Make sure that the argument values are correct. The sanitized values must be written back,
+    # otherwise the invalid ones are reused by the key processing, by the search, and by the
+    # visual mode computations.
+    if start_row < 1
+        start_row = 1
+        pagerd.start_row = start_row
+    end
+
+    if start_column < 1
+        start_column = 1
+        pagerd.start_column = start_column
+    end
 
     active_highlight = display_config.active_search_decoration
     inactive_highlight = display_config.inactive_search_decoration

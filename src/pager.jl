@@ -418,8 +418,9 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     min_row = max(1, frozen_rows + 1)
     min_col = max(1, frozen_columns + 1)
 
-    # We should disable the visual line mode if all lines are frozen.
-    if (min_row >= num_lines) || (min_row >= display_size[1])
+    # We should disable the visual line mode if all lines are frozen. Notice that the view has
+    # `display_size[1] - 1` rows, because the last one is the command line.
+    if (min_row >= num_lines) || (min_row >= display_size[1] - 1)
         visual_mode = false
     end
 
@@ -434,11 +435,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     elseif action == :down
         if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
             visual_mode_line += 1
-
-            # The visual line must not be placed after the last line.
-            if min_row + visual_mode_line - 1 > num_lines
-                visual_mode_line = num_lines - min_row + 1
-            end
 
             _request_redraw!(pagerd)
         else
@@ -459,11 +455,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             if Δy > 0
                 start_row += min(Δy, cropped_lines)
                 visual_mode_line = display_size[1] - frozen_rows - 1
-            end
-
-            # The visual line must not be placed after the last line.
-            if min_row + visual_mode_line - 1 > num_lines
-                visual_mode_line = num_lines - min_row + 1
             end
 
             _request_redraw!(pagerd)
@@ -555,11 +546,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         if visual_mode && (visual_mode_line ≠ display_size[1] - frozen_rows - 1)
             visual_mode_line = display_size[1] - frozen_rows - 1
 
-            # The visual line must not be placed after the last line.
-            if min_row + visual_mode_line - 1 > num_lines
-                visual_mode_line = num_lines - min_row + 1
-            end
-
             _request_redraw!(pagerd)
         end
 
@@ -583,11 +569,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
         if visual_mode && (visual_mode_line ≠ display_size[1] - frozen_rows - 1)
             visual_mode_line = display_size[1] - frozen_rows - 1
-
-            # The visual line must not be placed after the last line.
-            if min_row + visual_mode_line - 1 > num_lines
-                visual_mode_line = num_lines - min_row + 1
-            end
 
             _request_redraw!(pagerd)
         end
@@ -619,11 +600,6 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             if Δy > 0
                 start_row += min(Δy, cropped_lines)
                 visual_mode_line = display_size[1] - frozen_rows - 1
-            end
-
-            # The visual line must not be placed after the last line.
-            if min_row + visual_mode_line - 1 > num_lines
-                visual_mode_line = num_lines - min_row + 1
             end
 
             _request_redraw!(pagerd)
@@ -699,12 +675,21 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         event = :quit_eot
     end
 
-    # Repack values.
+    # The visual line is relative to the viewport, so it must always agree with `start_row`
+    # and with the number of rows the view has. Clamping it inside each movement branch left
+    # the cursor past the last line whenever the state was changed elsewhere, for example by
+    # `:change_freeze`, and the yank then indexed the layout out of bounds.
+    if visual_mode
+        max_visual_line = min(display_size[1] - frozen_rows - 1, num_lines - start_row + 1)
+        visual_mode_line = clamp(visual_mode_line, 1, max(1, max_visual_line))
+    end
+
+    # Repack values. Notice that `cropped_lines` and `cropped_columns` are not written back,
+    # because they are owned by `_update_crop_after_action!` and `_view!`.
     pagerd.start_column = start_column
     pagerd.start_row = start_row
-    pagerd.cropped_lines = cropped_lines
-    pagerd.cropped_columns = cropped_columns
     pagerd.event = event
+    pagerd.visual_mode = visual_mode
     pagerd.visual_mode_line = visual_mode_line
 
     return action
@@ -992,14 +977,19 @@ function _pager_event_process!(pagerd::Pager)
         if pagerd.visual_mode
             visual_str_id = pagerd.visual_mode_line + pagerd.start_row - 1
 
-            # If the line is already selected, we will deselect it.
-            ids = findall(==(visual_str_id), pagerd.visual_mode_selected_lines)
+            # If the line is already selected, we will deselect it. Notice that a line can only
+            # be in the list once, so `findfirst` is enough and does not allocate.
+            id = findfirst(==(visual_str_id), pagerd.visual_mode_selected_lines)
 
-            if !isempty(ids)
-                deleteat!(pagerd.visual_mode_selected_lines, ids)
-            else
+            if isnothing(id)
                 push!(pagerd.visual_mode_selected_lines, visual_str_id)
+            else
+                deleteat!(pagerd.visual_mode_selected_lines, id)
             end
+
+            # Without this, marking a line produced no feedback until the user happened to
+            # press another key.
+            _request_redraw!(pagerd)
         end
 
     elseif event == :yank
