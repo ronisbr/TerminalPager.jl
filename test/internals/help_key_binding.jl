@@ -8,6 +8,39 @@ using TerminalPager: _extract_identifier
 
 const Mapping = Pair{String, String}
 
+"""
+    CursorState
+
+Minimal stand-in for a REPL line-edit state, exposing only the buffer the cursor lives in.
+
+# Fields
+
+- `buf::IOBuffer`: Buffer holding the REPL input, positioned at the cursor.
+"""
+struct CursorState
+    buf::IOBuffer
+end
+
+"""
+    CursorState(input::AbstractString, cursor_characters::Int) -> CursorState
+
+Create a state holding `input` with the cursor after `cursor_characters - 1` characters.
+
+# Arguments
+
+- `input::AbstractString`: REPL input text.
+- `cursor_characters::Int`: One-based character position of the cursor.
+"""
+function CursorState(input::AbstractString, cursor_characters::Int)
+    buf = IOBuffer()
+    write(buf, input)
+    seek(buf, nextind(input, 0, cursor_characters) - 1)
+    return CursorState(buf)
+end
+
+REPL.LineEdit.buffer(state::CursorState) = state.buf
+REPL.LineEdit.input_string(state::CursorState) = String(take!(copy(state.buf)))
+
 @testset "Help Shortcut Registration" begin
     function create_mode()
         escapes = Dict{Char, Any}('O' => Dict{Char, Any}())
@@ -334,4 +367,38 @@ end
     # == Real World Examples ===============================================================
 
     test("cl.platform().id |> unsafe_string", "unsafe_string")
+end
+
+@testset "Cursor Character Position" begin
+    # `IOBuffer.ptr` is a byte pointer. Passing it straight to `_extract_identifier`, which
+    # expects a character position, made `F1` and `ALT-h` show the help of the wrong token
+    # whenever the input contained non-ASCII characters.
+    for (input, cursor) in (
+        ("abc = 1", 1),
+        ("abc = 1", 4),
+        ("abc = 1", 8),
+        ("αβγ = 1", 1),
+        ("αβγ = 1", 2),
+        ("αβγ = 1", 4),
+        ("αβγ = 1", 8),
+        ("α + sin", 8),
+        ("界界 = 1", 3),
+        ("", 1),
+    )
+        state = CursorState(input, cursor)
+        @test TerminalPager._cursor_character_position(state) == cursor
+    end
+
+    # The identifier under the cursor must be found for non-ASCII input as well.
+    @test TerminalPager._extract_identifier(
+        "αβγ = 1", TerminalPager._cursor_character_position(CursorState("αβγ = 1", 4))
+    ) == "αβγ"
+
+    @test TerminalPager._extract_identifier(
+        "α + sin", TerminalPager._cursor_character_position(CursorState("α + sin", 8))
+    ) == "sin"
+
+    @test TerminalPager._extract_identifier(
+        "abc = 1", TerminalPager._cursor_character_position(CursorState("abc = 1", 4))
+    ) == "abc"
 end

@@ -254,6 +254,33 @@ function _show_extended_help(identifier::AbstractString, mod::Module)
 end
 
 """
+    _cursor_character_position(s::Any) -> Int
+
+Return the cursor position of a REPL line-edit state as a character index.
+
+`IOBuffer.ptr` is a one-based **byte** pointer, whereas `_extract_identifier` expects a
+character position. Passing the byte pointer directly made `F1` and `ALT-h` show the help of the
+wrong token whenever the input contained non-ASCII characters.
+
+# Arguments
+
+- `s::Any`: Current REPL line-edit state.
+"""
+function _cursor_character_position(s)
+    buf = buffer(s)
+    byte_position = buf.ptr
+    input = input_string(s)
+
+    byte_position <= 1 && return 1
+
+    # Count the characters before the cursor. Notice that the byte pointer can be one past the
+    # end of the input, which must map to one past its last character.
+    last_byte = min(byte_position - 1, ncodeunits(input))
+
+    return length(input, 1, last_byte) + 1
+end
+
+"""
     _show_pager_cursor(f::Any, s::Any) -> Symbol
 
 Show information about the identifier under the cursor in the REPL by calling `f`.
@@ -265,8 +292,7 @@ Show information about the identifier under the cursor in the REPL by calling `f
 """
 function _show_pager_cursor(f, s)
     input = input_string(s)
-    cursor_position = buffer(s).ptr
-    identifier = _extract_identifier(input, cursor_position)
+    identifier = _extract_identifier(input, _cursor_character_position(s))
 
     isempty(identifier) && return :ok
 
