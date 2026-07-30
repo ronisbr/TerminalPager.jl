@@ -850,11 +850,17 @@ function _pager_event_process!(pagerd::Pager)
 
         # Do not search if the regex is empty.
         if !isempty(cmd_input)
-            match_regex = Regex(cmd_input)
-            _find_matches!(pagerd, match_regex)
-            _change_active_match!(pagerd, true)
-            _move_view_to_match!(pagerd)
-            pagerd.mode = :searching
+            match_regex = _try_regex(cmd_input)
+
+            if isnothing(match_regex)
+                _print_cmd_message!(pagerd, "Invalid regex!"; crayon = crayon"red bold")
+                _read_keystroke!(pagerd.input)
+            else
+                _find_matches!(pagerd, match_regex)
+                _change_active_match!(pagerd, true)
+                _move_view_to_match!(pagerd)
+                pagerd.mode = :searching
+            end
         end
 
         _request_redraw!(pagerd)

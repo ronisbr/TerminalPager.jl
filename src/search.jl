@@ -88,6 +88,26 @@ function _ordered_search_matches(search_matches::SearchMatches, num_lines::Int)
 end
 
 """
+    _try_regex(str::AbstractString) -> Union{Nothing, Regex}
+
+Compile `str` into a regular expression, returning `nothing` if it is not valid.
+
+# Arguments
+
+- `str::AbstractString`: Pattern typed by the user.
+"""
+function _try_regex(str::AbstractString)
+    # PCRE throws when the pattern is malformed, e.g. when the user types `/[`. There is no
+    # `tryparse(Regex, ...)` in Base, so we must catch the error here. Otherwise, it escapes
+    # the pager main loop and tears down the session.
+    return try
+        Regex(str)
+    catch
+        nothing
+    end
+end
+
+"""
     _move_view_to_match!(pagerd::Pager) -> Nothing
 
 Move the viewport so that the active search match is visible.
