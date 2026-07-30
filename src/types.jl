@@ -107,6 +107,41 @@ struct SearchMatch
 end
 
 """
+    FrameCache
+
+Store what was last painted on the screen so that a redraw only emits the rows that changed.
+
+The invariant is that, while `valid` is `true`, `bytes[row_first[i]:row_last[i]]` is exactly
+what is on screen row `i` for every `i` in `1:num_rows`. An empty row is represented by
+`row_last[i] < row_first[i]`.
+
+# Fields
+
+- `bytes::Vector{UInt8}`: Snapshot of the rows currently on screen.
+- `row_first::Vector{Int}`: First index of each snapshot row in `bytes`.
+- `row_last::Vector{Int}`: Last index of each snapshot row in `bytes`, inclusive.
+- `num_rows::Int`: Number of rows the snapshot describes.
+- `new_first::Vector{Int}`: Scratch line table for the frame being painted.
+- `new_last::Vector{Int}`: Scratch line table for the frame being painted.
+- `out::IOBuffer`: Reused buffer assembling everything sent to the terminal.
+- `valid::Bool`: Whether the snapshot describes the screen.
+- `cmd_bytes::Vector{UInt8}`: Snapshot of the command line row.
+- `cmd_valid::Bool`: Whether `cmd_bytes` describes the command line row.
+"""
+Base.@kwdef mutable struct FrameCache
+    bytes::Vector{UInt8} = UInt8[]
+    row_first::Vector{Int} = Int[]
+    row_last::Vector{Int} = Int[]
+    num_rows::Int = 0
+    new_first::Vector{Int} = Int[]
+    new_last::Vector{Int} = Int[]
+    out::IOBuffer = IOBuffer(; sizehint = 8192)
+    valid::Bool = false
+    cmd_bytes::Vector{UInt8} = UInt8[]
+    cmd_valid::Bool = false
+end
+
+"""
     Pager
 
 Store the mutable state for one pager session.
@@ -139,6 +174,7 @@ Store the mutable state for one pager session.
 - `visual_mode::Bool`: Whether visual selection mode is active.
 - `visual_mode_line::Int`: Active visual line relative to the viewport.
 - `visual_mode_selected_lines::Vector{Int}`: Selected source-line indices.
+- `frame_cache::FrameCache`: State supporting the incremental redraw.
 """
 Base.@kwdef mutable struct Pager
     term::REPL.Terminals.TTYTerminal
@@ -167,4 +203,5 @@ Base.@kwdef mutable struct Pager
     visual_mode::Bool = false
     visual_mode_line::Int = 1
     visual_mode_selected_lines::Vector{Int} = Int[]
+    frame_cache::FrameCache = FrameCache()
 end

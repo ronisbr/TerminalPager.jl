@@ -20,6 +20,11 @@ function _view!(pagerd::Pager)
     # Get the necessary variables.
     active_search_match_id = pagerd.active_search_match_id
     buf = pagerd.buf
+
+    # `_redraw!` reads the frame from `buf` without consuming it, so that the storage is
+    # reused across frames. Hence, we must reset the buffer here.
+    truncate(buf.io, 0)
+    seekstart(buf.io)
     display_config = pagerd.display_config
     frozen_columns = pagerd.frozen_columns
     frozen_rows = pagerd.frozen_rows

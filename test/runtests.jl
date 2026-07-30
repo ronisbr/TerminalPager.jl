@@ -33,6 +33,7 @@ function _create_pagerd(str::AbstractString)
 end
 
 include("./internals/screen.jl")
+include("./internals/redraw.jl")
 include("./internals/key_bindings.jl")
 include("./internals/key_processing.jl")
 include("./internals/view.jl")

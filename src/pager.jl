@@ -68,6 +68,9 @@ function _update_display_size!(p::Pager)
 
     if newdsize != p.display_size
         p.display_size = newdsize
+
+        # The terminal dropped or revealed rows, so we no longer know what is on screen.
+        _invalidate_frame!(p)
         _request_redraw!(p)
     end
 
@@ -859,6 +862,9 @@ function _pager_event_process!(pagerd::Pager)
 
     elseif event == :help
         _help!(pagerd)
+
+        # The nested pager repainted the whole screen.
+        _invalidate_frame!(pagerd)
         _request_redraw!(pagerd)
 
     elseif event == :search
@@ -1028,57 +1034,249 @@ function _assemble_yank_text(lines::AbstractVector{<:AbstractString}, line_ids)
 end
 
 """
+    _invalidate_frame!(pagerd::Pager) -> Nothing
+
+Discard the frame snapshot, forcing the next redraw to repaint every row.
+
+This must be called whenever something other than [`_redraw!`](@ref) writes to the rows above
+the command line.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _invalidate_frame!(pagerd::Pager)
+    frame_cache = pagerd.frame_cache
+    frame_cache.valid = false
+    frame_cache.cmd_valid = false
+    return nothing
+end
+
+"""
+    _frame_bytes(io::IOBuffer) -> Tuple{Any, Int}
+
+Return the storage backing the bytes written to `io` and how many of them are valid.
+
+The storage is a `Vector{UInt8}` up to Julia 1.11 and a `Memory{UInt8}` afterwards. In both
+cases, `pointer(storage, i)` is valid, which is all the redraw path needs. Notice that we
+must not use `take!` here, because it hands over the storage and forces `io` to allocate a
+new one for the next frame.
+
+# Arguments
+
+- `io::IOBuffer`: Buffer holding a rendered frame.
+"""
+_frame_bytes(io::IOBuffer) = (io.data, io.size)
+
+"""
+    _bytes_equal(a, ai::Int, b, bi::Int, n::Int) -> Bool
+
+Return whether the `n` bytes of `a` starting at `ai` equal those of `b` starting at `bi`.
+
+# Arguments
+
+- `a`: First byte storage.
+- `ai::Int`: One-based first index in `a`.
+- `b`: Second byte storage.
+- `bi::Int`: One-based first index in `b`.
+- `n::Int`: Number of bytes to compare.
+"""
+function _bytes_equal(a, ai::Int, b, bi::Int, n::Int)
+    n <= 0 && return true
+
+    return GC.@preserve a b (
+        ccall(
+            :memcmp,
+            Cint,
+            (Ptr{UInt8}, Ptr{UInt8}, Csize_t),
+            pointer(a, ai),
+            pointer(b, bi),
+            n,
+        ) == 0
+    )
+end
+
+"""
+    _scan_frame_rows!(frame_cache::FrameCache, data, num_bytes::Int, max_rows::Int) -> Int
+
+Fill the scratch row table of `frame_cache` from the newline positions in `data`.
+
+Return the number of rows found, which is at most `max_rows`.
+
+# Arguments
+
+- `frame_cache::FrameCache`: Cache whose scratch row table is filled.
+- `data`: Byte storage holding the rendered frame.
+- `num_bytes::Int`: Number of valid bytes in `data`.
+- `max_rows::Int`: Maximum number of rows the screen can show.
+"""
+function _scan_frame_rows!(frame_cache::FrameCache, data, num_bytes::Int, max_rows::Int)
+    new_first = frame_cache.new_first
+    new_last = frame_cache.new_last
+
+    empty!(new_first)
+    empty!(new_last)
+
+    num_rows = 0
+    row_first = 1
+
+    @inbounds for i in 1:num_bytes
+        data[i] == UInt8('\n') || continue
+
+        num_rows += 1
+        push!(new_first, row_first)
+        push!(new_last, i - 1)
+        row_first = i + 1
+
+        num_rows >= max_rows && return num_rows
+    end
+
+    # The last row is not terminated by a newline.
+    if row_first <= num_bytes + 1
+        num_rows += 1
+        push!(new_first, row_first)
+        push!(new_last, num_bytes)
+    end
+
+    return min(num_rows, max_rows)
+end
+
+"""
     _redraw!(pagerd::Pager) -> Nothing
 
-Write the prepared view buffer to the terminal and clear the redraw request.
+Write the rows of the prepared view buffer that changed to the terminal.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to redraw.
 """
 function _redraw!(pagerd::Pager)
-    buf = pagerd.buf
+    frame_cache = pagerd.frame_cache
     term = pagerd.term
-    display_size = _get_pager_display_size(pagerd)
+    max_rows = _get_pager_display_size(pagerd)[1]
 
-    # We will split the lines to make sure that every line is cleaned. We will not use the
-    # ANSI escape sequence `\e[2J` because it adds new lines to the screen.
-    str = String(take!(buf.io))
-    lines = split(str, '\n')
-    num_lines = length(lines)
+    data, num_bytes = _frame_bytes(pagerd.buf.io)
+    num_rows = _scan_frame_rows!(frame_cache, data, num_bytes, max_rows)
 
-    # To improve the speed, it is advisable to create an intermediate buffer to write
-    # everything and then flush to the terminal.
-    ibuf = IOBuffer()
+    new_first = frame_cache.new_first
+    new_last = frame_cache.new_last
+    snapshot = frame_cache.bytes
+    row_first = frame_cache.row_first
+    row_last = frame_cache.row_last
+    valid = frame_cache.valid
 
-    @inbounds for i in 1:num_lines
-        _clear_to_eol(ibuf)
-        write(ibuf, lines[i], '\n')
+    # If the whole frame is unchanged, we do not need to touch the terminal at all.
+    if valid &&
+        (num_rows == frame_cache.num_rows) &&
+        (num_bytes == length(snapshot)) &&
+        _bytes_equal(snapshot, 1, data, 1, num_bytes)
+        pagerd.redraw = false
+        return nothing
     end
 
-    # Clear the rest of the screen.
-    for i in (num_lines + 1):display_size[1]
-        _move_cursor(ibuf, i, 1)
-        _clear_to_eol(ibuf)
+    out = frame_cache.out
+    truncate(out, 0)
+    seekstart(out)
+
+    # We must not use the ANSI escape sequence `\e[2J` to clear the screen because it adds new
+    # lines to it. Hence, every row we paint is cleared to the end of the line.
+    previous_row = -1
+
+    @inbounds for i in 1:num_rows
+        row_size = new_last[i] - new_first[i] + 1
+
+        if valid &&
+            (i <= frame_cache.num_rows) &&
+            (row_last[i] - row_first[i] + 1 == row_size) &&
+            _bytes_equal(snapshot, row_first[i], data, new_first[i], row_size)
+            continue
+        end
+
+        if i == previous_row + 1
+            # A carriage return also cancels the pending-wrap state left by a row that filled
+            # the display width.
+            write(out, "\r\n")
+        else
+            _move_cursor(out, i, 1)
+
+            # `textview` always leaves the SGR state at its default, but we reset it anyway.
+            # Otherwise, a row painted out of order could erase to the end of the line with a
+            # colored background.
+            write(out, _CRAYON_RESET)
+        end
+
+        _clear_to_eol(out)
+        row_size > 0 && GC.@preserve data unsafe_write(
+            out, pointer(data, new_first[i]), UInt(row_size)
+        )
+
+        previous_row = i
     end
 
-    # Now, we can flush everything to the terminal.
+    # Clear the rows that were painted before but are not part of this frame. If the snapshot
+    # is not valid, we do not know what is on screen, so we must clear everything.
+    last_stale = valid ? min(frame_cache.num_rows, max_rows) : max_rows
+
+    for i in (num_rows + 1):last_stale
+        _move_cursor(out, i, 1)
+        write(out, _CRAYON_RESET)
+        _clear_to_eol(out)
+    end
+
+    # The snapshot will not describe the screen until the frame is flushed and stored. Hence,
+    # a failure in between forces a full repaint instead of leaving a stale snapshot.
+    frame_cache.valid = false
 
     cursor_hidden = false
     try
-        # Hide the cursor when drawing the buffer.
+        # Hide the cursor while drawing the frame. Notice that the flag is set before the
+        # write, because a failing write can still have reached the terminal. Hence, we must
+        # show the cursor again in that case.
         cursor_hidden = true
         _hide_cursor(term.out_stream)
 
-        # Move the cursor to the beginning of the screen and write everything.
-        _move_cursor(term.out_stream, 1, 1)
-        write(term.out_stream, take!(ibuf))
+        # Everything is written to the terminal at once. Otherwise, we could see tearing.
+        out_data, out_size = _frame_bytes(out)
+        out_size > 0 &&
+            GC.@preserve out_data unsafe_write(
+            term.out_stream, pointer(out_data, 1), UInt(out_size)
+        )
     finally
         cursor_hidden && _show_cursor(term.out_stream)
     end
 
+    _store_frame!(frame_cache, data, num_bytes, num_rows)
+
     # Indicate that the redraw request was accomplished.
     pagerd.redraw = false
+
+    return nothing
+end
+
+"""
+    _store_frame!(frame_cache::FrameCache, data, num_bytes::Int, num_rows::Int) -> Nothing
+
+Record the frame in `data` as what is currently on screen.
+
+# Arguments
+
+- `frame_cache::FrameCache`: Cache to update.
+- `data`: Byte storage holding the rendered frame.
+- `num_bytes::Int`: Number of valid bytes in `data`.
+- `num_rows::Int`: Number of rows that were painted.
+"""
+function _store_frame!(frame_cache::FrameCache, data, num_bytes::Int, num_rows::Int)
+    snapshot = frame_cache.bytes
+    resize!(snapshot, num_bytes)
+    num_bytes > 0 && copyto!(snapshot, 1, data, 1, num_bytes)
+
+    resize!(frame_cache.row_first, num_rows)
+    resize!(frame_cache.row_last, num_rows)
+    copyto!(frame_cache.row_first, 1, frame_cache.new_first, 1, num_rows)
+    copyto!(frame_cache.row_last, 1, frame_cache.new_last, 1, num_rows)
+
+    frame_cache.num_rows = num_rows
+    frame_cache.valid = true
 
     return nothing
 end
