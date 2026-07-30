@@ -42,6 +42,72 @@ end
     @test isnothing(TerminalPager._try_regex("a{2,1}"))
 end
 
+@testset "Search Starts At The Viewport" begin
+    lines = ["match" ; ["filler $i" for i in 1:20] ; "match" ; ["tail $i" for i in 1:5]]
+    pagerd = _create_modal_pagerd(lines, "")
+
+    # From the top of the text, the first match in document order is selected.
+    pagerd.start_row = 1
+    TerminalPager._find_matches!(pagerd, r"match")
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.num_matches == 2
+    @test pagerd.ordered_search_matches[pagerd.active_search_match_id].line == 1
+
+    # Searching from below the first match must select the next one instead of jumping back to
+    # the top of the text, which is what `less` does.
+    pagerd.start_row = 10
+    TerminalPager._find_matches!(pagerd, r"match")
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.ordered_search_matches[pagerd.active_search_match_id].line == 22
+
+    # Exactly on a match, that match is selected.
+    pagerd.start_row = 22
+    TerminalPager._find_matches!(pagerd, r"match")
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.ordered_search_matches[pagerd.active_search_match_id].line == 22
+
+    # Below every match, the navigation wraps to the first one.
+    pagerd.start_row = 25
+    TerminalPager._find_matches!(pagerd, r"match")
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.ordered_search_matches[pagerd.active_search_match_id].line == 1
+
+    # No match at all must not select anything.
+    TerminalPager._find_matches!(pagerd, r"nothing_here")
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.num_matches == 0
+    @test pagerd.active_search_match_id == 0
+end
+
+@testset "Search Viewport Bounds" begin
+    # A match ending exactly at the right edge of the view used to be considered visible,
+    # because the last column was computed one too far to the right.
+    lines = [repeat("x", 40) * "needle" * repeat("y", 40)]
+    pagerd = _create_modal_pagerd(lines, "")
+    pagerd.display_size = (10, 20)
+    pagerd.start_column = 1
+
+    TerminalPager._find_matches!(pagerd, r"needle")
+    TerminalPager._change_active_match!(pagerd, true)
+    TerminalPager._move_view_to_match!(pagerd)
+
+    match = pagerd.ordered_search_matches[1]
+    last_column = match.column + match.width - 1
+    view_last_column = pagerd.start_column + pagerd.display_size[2] - 1
+
+    @test pagerd.start_column <= match.column
+    @test last_column <= view_last_column
+
+    # A zero-width match must not produce an end column before its start column.
+    pagerd = _create_modal_pagerd(["abc", "def"], "")
+    pagerd.display_size = (10, 20)
+    TerminalPager._find_matches!(pagerd, r"^")
+    TerminalPager._change_active_match!(pagerd, true)
+    @test isnothing(TerminalPager._move_view_to_match!(pagerd))
+    @test pagerd.start_column >= 1
+    @test pagerd.start_row >= 1
+end
+
 @testset "Invalid Search Pattern" begin
     lines = ["first line", "second line", "third line"]
 

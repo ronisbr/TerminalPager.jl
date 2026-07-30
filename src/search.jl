@@ -57,7 +57,13 @@ function _find_matches!(pagerd::Pager, regex::Regex)
     pagerd.search_matches = search_matches
     pagerd.ordered_search_matches = ordered_search_matches
     pagerd.num_matches = num_matches
-    pagerd.active_search_match_id = 0
+
+    # Start the navigation just before the first match at or after the top of the current view,
+    # so that the following `_change_active_match!` selects it. Otherwise, searching always
+    # jumped back to the top of the text, unlike `less`. If every match is above the view, we
+    # fall back to the first one.
+    first_id = findfirst(m -> m.line >= pagerd.start_row, ordered_search_matches)
+    pagerd.active_search_match_id = isnothing(first_id) ? 0 : first_id - 1
 
     return nothing
 end
@@ -135,9 +141,11 @@ function _move_view_to_match!(pagerd::Pager)
         cols -= _ruler_width(pagerd.num_lines)
     end
 
-    # Compute the last row and columns that is displayed.
+    # Compute the last row and column that is displayed. Both are inclusive: `end_col` used to
+    # be the first column past the viewport, so a match ending exactly at the right edge was
+    # considered visible and the view never scrolled to it.
     end_row = (start_row - 1) + (rows - frozen_rows)
-    end_col = start_column + (cols - frozen_columns)
+    end_col = (start_column - 1) + (cols - frozen_columns)
 
     # Get the active match.
     hl_i = active_search_match_id
@@ -146,7 +154,10 @@ function _move_view_to_match!(pagerd::Pager)
     match = ordered_search_matches[hl_i]
     hl_line = match.line
     hl_col_beg = match.column
-    hl_col_end = hl_col_beg + match.width - 1
+
+    # A zero-width match, for example the one produced by `r"^"`, would otherwise have an end
+    # column before its start column.
+    hl_col_end = hl_col_beg + max(match.width, 1) - 1
 
     # Check if the highlight row is visible.
     if (hl_line < start_row)
