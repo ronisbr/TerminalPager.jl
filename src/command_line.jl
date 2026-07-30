@@ -209,25 +209,33 @@ Read and edit one command from the pager input.
 """
 function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
-    term = pagerd.term
     display_size = pagerd.display_size
 
-    # Initialize variables.
-    cmd = ""
-    cmd_width = 0
-    cursor_pos = 1
-    prefix_size = textwidth(prefix)
+    # The command is edited as a vector of characters. Rebuilding a `String` at every keypress
+    # made the cursor position and the string disagree whenever they were tracked separately.
+    chars = Char[]
+    cursor = 1
+    prefix_width = textwidth(prefix)
     redraw = true
 
     while true
         if redraw
-            # Clear command line.
-            _move_cursor(term.out_stream, display_size[1], 1)
-            _clear_to_eol(term.out_stream)
-            write(term.out_stream, prefix * cmd)
+            out = _screen_buffer!(pagerd)
 
-            # Restore the cursor position.
-            _move_cursor(term.out_stream, display_size[1], cursor_pos + prefix_size)
+            # Clear the command line and write the prompt and the command.
+            _move_cursor(out, display_size[1], 1)
+            _clear_to_eol(out)
+            write(out, prefix)
+
+            for character in chars
+                write(out, character)
+            end
+
+            _move_cursor(out, display_size[1], _cmd_cursor_column(
+                chars, cursor, prefix_width, display_size[2]
+            ))
+
+            _flush_screen!(pagerd)
 
             redraw = false
         end
@@ -238,46 +246,95 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             break
 
         elseif k.value == "<backspace>"
-            if cmd_width > 0
-                cmd = first(cmd, cmd_width - 1)
-                cmd_width -= 1
-                cursor_pos -= 1
-                redraw = true
-            else
+            if isempty(chars)
                 break
+            elseif cursor > 1
+                # Delete the character before the cursor, not the last one.
+                deleteat!(chars, cursor - 1)
+                cursor -= 1
+                redraw = true
+            end
+
+        elseif k.value == "<delete>"
+            if cursor <= length(chars)
+                deleteat!(chars, cursor)
+                redraw = true
             end
 
         elseif k.value == "<left>"
-            if cursor_pos > 1
-                cursor_pos -= 1
-                _cursor_back(term.out_stream)
+            if cursor > 1
+                cursor -= 1
+                redraw = true
             end
 
         elseif k.value == "<right>"
-            if cursor_pos < cmd_width + 1
-                cursor_pos += 1
-                _cursor_forward(term.out_stream)
+            if cursor <= length(chars)
+                cursor += 1
+                redraw = true
             end
 
         elseif k.value == "<home>"
-            cursor_pos = 1
-            _move_cursor(term.out_stream, display_size[1], cursor_pos + prefix_size)
+            cursor = 1
+            redraw = true
 
         elseif k.value == "<end>"
-            cursor_pos = cmd_width + 1
-            _move_cursor(term.out_stream, display_size[1], cursor_pos + prefix_size)
+            cursor = length(chars) + 1
+            redraw = true
 
-        else
-            cmd =
-                first(cmd, (cursor_pos - 1)) *
-                string(k.value) *
-                last(cmd, cmd_width - (cursor_pos - 1))
-
-            cmd_width += 1
-            cursor_pos += 1
+        elseif _is_printable_keystroke(k)
+            insert!(chars, cursor, only(k.value))
+            cursor += 1
             redraw = true
         end
+
+        # Every other keystroke is ignored. Otherwise, names such as `<up>` or `<F1>` would be
+        # inserted verbatim into the command.
     end
 
-    return cmd
+    return String(chars)
+end
+
+"""
+    _is_printable_keystroke(k::Keystroke) -> Bool
+
+Return whether `k` represents a single printable character that can be typed into a command.
+
+# Arguments
+
+- `k::Keystroke`: Keystroke to inspect.
+"""
+function _is_printable_keystroke(k::Keystroke)
+    (k.alt || k.ctrl) && return false
+    length(k.value) == 1 || return false
+    return isprint(only(k.value))
+end
+
+"""
+    _cmd_cursor_column(chars::Vector{Char}, cursor::Int, prefix_width::Int,
+        display_width::Int) -> Int
+
+Return the display column of the command line cursor.
+
+Notice that the column is a display width and not a character count, so that the cursor stays
+under the insertion point when the command contains wide characters.
+
+# Arguments
+
+- `chars::Vector{Char}`: Characters of the command being edited.
+- `cursor::Int`: One-based insertion index in `chars`.
+- `prefix_width::Int`: Display width of the prompt.
+- `display_width::Int`: Number of columns the terminal has.
+"""
+function _cmd_cursor_column(
+    chars::Vector{Char}, cursor::Int, prefix_width::Int, display_width::Int
+)
+    column = prefix_width + 1
+
+    @inbounds for i in 1:(cursor - 1)
+        column += textwidth(chars[i])
+    end
+
+    # A command longer than the display wraps, and we cannot address the wrapped part. Clamping
+    # keeps the cursor on the command line instead of moving it to an arbitrary position.
+    return min(column, max(1, display_width))
 end
