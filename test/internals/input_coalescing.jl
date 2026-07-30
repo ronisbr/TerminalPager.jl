@@ -675,6 +675,25 @@ end
     @test coalesced > 1
     @test size_queries == 1
 
+    # The time budget must bound the coalescing loop, not the display size query. Otherwise a
+    # slow query, or the compilation of `display_size_function` on its first call, consumes the
+    # whole budget and no keystroke is coalesced at all. This used to make the assertion above
+    # fail on the slower CI runners, depending on how fast the closure was compiled.
+    slow = _create_pagerd(join(fill("line", 200), '\n'))
+    slow.input = TerminalPager.PagerInput(ControlledInput(repeat("j", 40); advertised = 40))
+    slow.cropped_lines = 180
+    slow_action = process_with_crop!(slow, TerminalPager._try_read_keystroke!(slow.input))
+
+    @test TerminalPager._coalesce_navigation!(
+        slow, slow_action; display_size_function = function (_stream)
+            # Burn more than the default budget of 4 ms.
+            start = time_ns()
+            while time_ns() - start < 6_000_000
+            end
+            return slow.display_size
+        end
+    ) > 1
+
     # Stale viewport positions at short-line and enlarged-display edges use a real view
     # after every reference action.
     assert_sequential_equivalent(

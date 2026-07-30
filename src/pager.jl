@@ -818,7 +818,6 @@ function _coalesce_navigation!(
     group = _navigation_group(first_action)
     isnothing(group) && return 1
     count = 1
-    start_time = time_ns()
 
     # The display size is queried once per burst instead of once per action. On a real terminal
     # this is a `TIOCGWINSZ` system call, and issuing up to `max_actions` of them consumed a
@@ -826,6 +825,11 @@ function _coalesce_navigation!(
     # coalesced. A resize during the burst is handled by `_update_display_size!` on the next
     # iteration of the main loop, and the burst itself is bounded by `max_ns`.
     display_size_function(pagerd.term.out_stream) == pagerd.display_size || return count
+
+    # The budget must bound the loop below, so the clock starts only after the display size was
+    # obtained. Otherwise a slow query, or the compilation of `display_size_function` on its
+    # first call, is charged to the budget and no keystroke is coalesced at all.
+    start_time = time_ns()
 
     while count < max_actions && time_ns() - start_time < max_ns
         key = _try_read_keystroke!(pagerd.input)
