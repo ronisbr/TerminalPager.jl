@@ -7,7 +7,49 @@
 include("keycodes.jl")
 
 const _MAX_KEYSTROKE_BYTES = 32
-const _KEYCODE_BYTES = [(collect(codeunits(code)), key) for (code, key) in keycodes]
+
+# The escape sequences are matched by packing their bytes into an integer, so that a keypress
+# costs a handful of dictionary lookups instead of a linear scan over the whole table. Scanning
+# it took roughly 700 array comparisons per arrow key, because the decoder runs again after
+# every byte that arrives.
+#
+# The packing uses one byte per sequence byte plus the length in the highest byte, which makes
+# it unambiguous. It only works because every sequence in `keycodes` is short.
+const _MIN_KEYCODE_BYTES = minimum(ncodeunits, keys(keycodes))
+const _MAX_KEYCODE_BYTES = maximum(ncodeunits, keys(keycodes))
+
+@assert _MAX_KEYCODE_BYTES <= 7 "A keycode does not fit in the packed representation."
+
+"""
+    _pack_keycode(bytes, len::Int) -> UInt64
+
+Pack the first `len` bytes of `bytes` and `len` itself into a single integer.
+
+# Arguments
+
+- `bytes`: Byte storage holding an escape sequence.
+- `len::Int`: Number of leading bytes to pack, at most `_MAX_KEYCODE_BYTES`.
+"""
+@inline function _pack_keycode(bytes, len::Int)
+    packed = UInt64(len) << 56
+
+    @inbounds for i in 1:len
+        packed |= UInt64(bytes[i]) << (8 * (i - 1))
+    end
+
+    return packed
+end
+
+const _KEYCODE_EXACT = Dict{UInt64, Keystroke}(
+    _pack_keycode(codeunits(code), ncodeunits(code)) => key for (code, key) in keycodes
+)
+
+# Every proper prefix of every sequence, so that an incomplete sequence is recognized without
+# scanning the table either.
+const _KEYCODE_PREFIXES = Set{UInt64}(
+    _pack_keycode(codeunits(code), len) for code in keys(keycodes) for
+    len in 1:(ncodeunits(code) - 1)
+)
 
 """
     _decode_keystroke(prefix::Vector{UInt8}) ->
@@ -46,21 +88,20 @@ Decode an escape-sequence prefix without performing IO.
 - `prefix::Vector{UInt8}`: Buffered bytes beginning with an escape byte.
 """
 function _decode_escape(prefix::Vector{UInt8})
-    for (code, key) in _KEYCODE_BYTES
-        length(prefix) >= length(code) || continue
-        if @views prefix[1:length(code)] == code
-            return :complete, key, length(code)
-        end
+    num_bytes = length(prefix)
+
+    # No sequence in the table is a prefix of another one, hence at most one length can match.
+    for len in _MIN_KEYCODE_BYTES:min(num_bytes, _MAX_KEYCODE_BYTES)
+        key = get(_KEYCODE_EXACT, _pack_keycode(prefix, len), nothing)
+        isnothing(key) || return :complete, key, len
     end
 
-    for (code, _) in _KEYCODE_BYTES
-        length(prefix) < length(code) || continue
-        if @views prefix == code[1:length(prefix)]
+    if num_bytes < _MAX_KEYCODE_BYTES
+        _pack_keycode(prefix, num_bytes) ∈ _KEYCODE_PREFIXES &&
             return :incomplete, nothing, 0
-        end
     end
 
-    length(prefix) == 1 && return :incomplete, nothing, 0
+    num_bytes == 1 && return :incomplete, nothing, 0
 
     offset = length(prefix) >= 2 && prefix[2] == 0x1b ? 2 : 1
     if length(prefix) >= offset + 2 && prefix[offset + 1] in (0x5b, 0x4f)
@@ -134,7 +175,20 @@ Convert one ASCII or control byte into a keystroke.
 
 - `byte::UInt8`: ASCII or control byte to convert.
 """
-function _ascii_keystroke(byte::UInt8)
+_ascii_keystroke(byte::UInt8) = @inbounds _ASCII_KEYSTROKES[byte + 1]
+
+"""
+    _build_ascii_keystroke(byte::UInt8) -> Keystroke
+
+Build the keystroke for one ASCII or control byte.
+
+This is only used to fill `_ASCII_KEYSTROKES` when the package is loaded.
+
+# Arguments
+
+- `byte::UInt8`: ASCII or control byte to convert.
+"""
+function _build_ascii_keystroke(byte::UInt8)
     value = if byte == 0x04
         "<eot>"
     elseif byte == 0x09
@@ -148,8 +202,13 @@ function _ascii_keystroke(byte::UInt8)
     else
         string(Char(byte))
     end
+
     return Keystroke(; raw = string(UInt32(byte)), value = value)
 end
+
+# Every ASCII keystroke is precomputed, so that a keypress is a table lookup. Building them on
+# demand allocated roughly 100 bytes at every keypress.
+const _ASCII_KEYSTROKES = Keystroke[_build_ascii_keystroke(UInt8(i)) for i in 0x00:0x7f]
 
 """
     _valid_utf8(bytes::Vector{UInt8}) -> Bool
@@ -180,7 +239,18 @@ Format bytes using the legacy raw-keystroke representation.
 
 - `bytes::Vector{UInt8}`: Bytes to format.
 """
-_raw_bytes(bytes::Vector{UInt8}) = join(string.(bytes), ", ")
+function _raw_bytes(bytes::Vector{UInt8})
+    isempty(bytes) && return ""
+
+    io = IOBuffer()
+
+    @inbounds for i in eachindex(bytes)
+        i > 1 && write(io, ", ")
+        _write_decimal(io, Int(bytes[i]))
+    end
+
+    return String(take!(io))
+end
 
 """
     _try_append_available!(input::PagerInput) -> Bool
@@ -242,7 +312,11 @@ function _read_keystroke!(input::PagerInput)
         status, key, consumed = _decode_keystroke(input.prefix)
         status === :complete && return _take_decoded!(input, key, consumed)
 
-        if input.prefix == UInt8[0x1b]
+        # A lone escape byte is ambiguous: it can be the ESC key or the beginning of an escape
+        # sequence. Hence, we look ahead without blocking instead of waiting for a byte that
+        # may never arrive. Notice that comparing against `UInt8[0x1b]` would allocate a
+        # vector at every iteration of this loop.
+        if (length(input.prefix) == 1) && (@inbounds input.prefix[1] == 0x1b)
             _try_append_available!(input) ||
                 return _take_decoded!(input, Keystroke(; raw = "\e", value = "<esc>"), 1)
         else

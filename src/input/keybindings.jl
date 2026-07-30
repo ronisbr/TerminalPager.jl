@@ -4,8 +4,10 @@
 #
 ############################################################################################
 
-# Dictionary with the default bindings.
-const _DEFAULT_KEYBINDINGS = Dict{Tuple{Union{Symbol, String}, Bool, Bool, Bool}, Symbol}(
+# Dictionary with the default bindings. Notice that the key type must stay concrete:
+# `Tuple{Union{Symbol, String}, Bool, Bool, Bool}` is not `isbits`, so every lookup has to
+# dereference a boxed tuple. `_pager_action` only ever builds `String` keys anyway.
+const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("q", false, false, false) => :quit,
     ("?", false, false, false) => :help,
     ("<up>", false, false, false) => :up,

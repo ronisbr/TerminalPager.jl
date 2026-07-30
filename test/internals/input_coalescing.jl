@@ -652,6 +652,29 @@ end
     ) == 1
     @test geometry_stream.reads == 1
 
+    # On a real terminal, the display size is a `TIOCGWINSZ` system call. It must be queried
+    # once per burst, not once per coalesced action, otherwise it consumes a noticeable part of
+    # the time budget and reduces how many keystrokes can be coalesced.
+    size_queries = 0
+    counting = _create_pagerd(join(fill("line", 200), '\n'))
+    counting.input = TerminalPager.PagerInput(
+        ControlledInput(repeat("j", 40); advertised = 40)
+    )
+    counting.cropped_lines = 180
+    counting_key = TerminalPager._try_read_keystroke!(counting.input)
+    counting_action = process_with_crop!(counting, counting_key)
+    coalesced = TerminalPager._coalesce_navigation!(
+        counting,
+        counting_action;
+        display_size_function = stream -> begin
+            size_queries += 1
+            return counting.display_size
+        end,
+    )
+
+    @test coalesced > 1
+    @test size_queries == 1
+
     # Stale viewport positions at short-line and enlarged-display edges use a real view
     # after every reference action.
     assert_sequential_equivalent(
