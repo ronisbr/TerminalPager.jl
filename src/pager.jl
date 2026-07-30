@@ -120,7 +120,10 @@ function _pager(
     _raw_runner = _with_raw_mode,
     kwargs...,
 )
-    lines = String.(split(str, '\n'))
+    # `split` yields `SubString`s, and both `_pager_content_fits` and `TextViewLayout` accept
+    # them. Copying every line into a `String` here duplicated the whole text before the first
+    # frame was shown.
+    lines = split(str, '\n')
     display_size = displaysize(stdout)::Tuple{Int, Int}
     if auto && _pager_content_fits(lines, display_size)
         print(str)
@@ -219,7 +222,7 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
 - `input::Union{Nothing, PagerInput}`: Input state associated with the terminal
     input stream, or `nothing` to create one.
     (**Default**: `nothing`)
-- `lines::Union{Nothing, Vector{String}}`: Raw lines used when no layout is
+- `lines::Union{Nothing, AbstractVector{<:AbstractString}}`: Raw lines used when no layout is
     supplied.
     (**Default**: `nothing`)
 - `text_layout::Union{Nothing, TextViewLayout}`: Prepared layout used directly
@@ -245,7 +248,7 @@ function _pager!(
     show_ruler::Bool = false,
     use_alternate_screen_buffer::Bool = false,
     input::Union{Nothing, PagerInput} = nothing,
-    lines::Union{Nothing, Vector{String}} = nothing,
+    lines::Union{Nothing, AbstractVector{<:AbstractString}} = nothing,
     text_layout::Union{Nothing, TextViewLayout} = nothing,
     _layout_factory = TextViewLayout,
     manage_cursor_key_mode::Bool = true,
@@ -256,7 +259,7 @@ function _pager!(
     elseif !isnothing(lines)
         lines
     else
-        String.(split(str, '\n'))
+        split(str, '\n')
     end
 
     # Get the display size and make sure it is type stable.
@@ -374,6 +377,14 @@ function _pager_content_fits(
 )
     display_size[1] - 2 >= length(lines) || return false
     return all(line -> printable_textwidth(line) <= display_size[2], lines)
+end
+
+function _pager_content_fits(layout::TextViewLayout, display_size::Tuple{Int, Int})
+    display_size[1] - 2 >= length(layout) || return false
+
+    # The layout already measured every line while it was prepared, so there is no need to scan
+    # the text again. This is the path every `pager>` REPL command takes.
+    return all(width -> width <= display_size[2], layout._printable_widths)
 end
 
 """

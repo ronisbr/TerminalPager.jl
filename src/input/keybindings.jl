@@ -59,6 +59,20 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
 # improve startup time.
 const _KEYBINDINGS = copy(_DEFAULT_KEYBINDINGS)
 
+# Bumped whenever `_KEYBINDINGS` changes, so that everything derived from it, such as the help
+# screen, knows that it must be rebuilt.
+const _KEYBINDINGS_GENERATION = Ref(0)
+
+"""
+    _keybindings_changed!() -> Nothing
+
+Mark everything derived from `_KEYBINDINGS` as outdated.
+"""
+function _keybindings_changed!()
+    _KEYBINDINGS_GENERATION[] += 1
+    return nothing
+end
+
 """
     delete_keybinding(key::String; alt::Bool = false, ctrl::Bool = false,
         shift::Bool = false) -> Nothing
@@ -84,8 +98,8 @@ For more information about how specify `key` see [`set_keybinding`](@ref).
 function delete_keybinding(
     key::String; alt::Bool = false, ctrl::Bool = false, shift::Bool = false
 )
-    dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
-    delete!(_KEYBINDINGS, dict_key)
+    delete!(_KEYBINDINGS, (key, alt, ctrl, shift))
+    _keybindings_changed!()
     return nothing
 end
 
@@ -109,6 +123,8 @@ function _apply_mode_keybindings!(
     else
         _KEYBINDINGS[("<eot>", false, false, false)] = :quit_eot
     end
+
+    _keybindings_changed!()
 
     return nothing
 end
@@ -167,7 +183,7 @@ keywords `alt`, `ctrl`, and `shift`.
 function set_keybinding(
     key::String, action::Symbol; alt::Bool = false, ctrl::Bool = false, shift::Bool = false
 )
-    dict_key = (key isa Char ? string(key) : key, alt, ctrl, shift)
-    _KEYBINDINGS[dict_key] = action
+    _KEYBINDINGS[(key, alt, ctrl, shift)] = action
+    _keybindings_changed!()
     return nothing
 end

@@ -19,6 +19,12 @@ const _AVAILABLE_PREFERENCES = Dict{String, Any}(
     "visual_mode_active_line_background" => "44",
 )
 
+# Reading a preference goes through the TOML-backed `Preferences.jl` storage, which takes
+# roughly 50 µs. Opening a pager reads five of them, and every `pager>` command reads two more.
+# Since preferences cannot change without going through the functions below, the values are
+# cached here.
+const _PREFERENCE_CACHE = Dict{String, Any}()
+
 ############################################################################################
 #                                     Public Functions                                     #
 ############################################################################################
@@ -39,6 +45,8 @@ function drop_all_preferences!()
         @delete_preferences!(pref)
     end
 
+    _invalidate_preference_cache!()
+
     return nothing
 end
 
@@ -57,6 +65,7 @@ function drop_preference!(pref::String)
     pref ∉ keys(_AVAILABLE_PREFERENCES) &&
         throw(ArgumentError("$pref is not a valid preference."))
     @delete_preferences!(pref)
+    _invalidate_preference_cache!()
     return nothing
 end
 
@@ -79,6 +88,7 @@ julia> TerminalPager.set_preference!("visual_mode_line_background", "44")
 function set_preference!(pref::String, value)
     validated_value = _validate_preference(pref, value)
     @set_preferences!(pref => validated_value)
+    _invalidate_preference_cache!()
     return nothing
 end
 
@@ -96,8 +106,23 @@ Return the configured value for `pref`, or its built-in default when it is not s
 - `pref::String`: Name of a supported preference.
 """
 function _get_preference(pref::String)
-    value = @load_preference(pref, _AVAILABLE_PREFERENCES[pref])
-    return _validate_preference(pref, value)
+    cached = get(_PREFERENCE_CACHE, pref, nothing)
+    isnothing(cached) || return cached
+
+    value = _validate_preference(pref, @load_preference(pref, _AVAILABLE_PREFERENCES[pref]))
+    _PREFERENCE_CACHE[pref] = value
+
+    return value
+end
+
+"""
+    _invalidate_preference_cache!() -> Nothing
+
+Drop every cached preference value.
+"""
+function _invalidate_preference_cache!()
+    empty!(_PREFERENCE_CACHE)
+    return nothing
 end
 
 """

@@ -4,6 +4,19 @@
 #
 ############################################################################################
 
+############################################################################################
+#                                        Constants                                         #
+############################################################################################
+
+# The help screen only depends on the keybindings. Hence, everything derived from them is
+# cached and rebuilt when `_KEYBINDINGS_GENERATION` changes.
+const _ACTION_KEYBINDINGS = Dict{Symbol, String}()
+const _ACTION_KEYBINDINGS_GENERATION = Ref(-1)
+
+# One cache entry per color support, holding the generation it was built for, the help text,
+# and its prepared layout.
+const _HELP_CACHE = Dict{Bool, Tuple{Int, String, TextViewLayout}}()
+
 """
     _help!(pagerd::Pager) -> Nothing
 
@@ -14,7 +27,7 @@ Open a new pager with the help.
 - `pagerd::Pager`: Parent pager state whose terminal and input are reused.
 """
 function _help!(pagerd::Pager)
-    help_str = _help_string(get(pagerd.term.out_stream, :color, true)::Bool)
+    help_str, help_layout = _help_screen(get(pagerd.term.out_stream, :color, true)::Bool)
 
     _pager!(
         pagerd.term,
@@ -23,10 +36,35 @@ function _help!(pagerd::Pager)
         hashelp = false,
         has_visual_mode = false,
         input = pagerd.input,
+        text_layout = help_layout,
         manage_cursor_key_mode = false,
     )
 
     return nothing
+end
+
+"""
+    _help_screen(use_color::Bool) -> Tuple{String, TextViewLayout}
+
+Return the help text and its prepared layout, rebuilding them only when the keybindings change.
+
+# Arguments
+
+- `use_color::Bool`: Decorate the help screen with ANSI escape sequences.
+"""
+function _help_screen(use_color::Bool)
+    generation = _KEYBINDINGS_GENERATION[]
+    cached = get(_HELP_CACHE, use_color, nothing)
+
+    if !isnothing(cached) && (cached[1] == generation)
+        return cached[2], cached[3]
+    end
+
+    help_str = _help_string(use_color)
+    help_layout = TextViewLayout(split(help_str, '\n'))
+    _HELP_CACHE[use_color] = (generation, help_str, help_layout)
+
+    return help_str, help_layout
 end
 
 """
@@ -237,18 +275,38 @@ Return a comma-separated description of every keybinding assigned to `action`.
 
 - `action::Symbol`: Pager action whose keybindings are described.
 """
-function _getkb(action::Symbol)
-    kb = [_kbtostr(k) for (k, v) in _KEYBINDINGS if v == action]
-    num_kb = length(kb)
+_getkb(action::Symbol) = get(_action_keybindings(), action, "")
 
-    str = ""
+"""
+    _action_keybindings() -> Dict{Symbol, String}
 
-    @inbounds for i in 1:num_kb
-        str *= kb[i]
-        i != num_kb && (str *= ", ")
+Return a description of the keybindings of every action, keyed by action.
+
+The result is cached until the keybindings change. Building it scanned `_KEYBINDINGS` once per
+action, which the help screen did 27 times every time it was opened.
+
+The descriptions of each action are sorted, so that the help screen does not depend on the
+iteration order of `_KEYBINDINGS`.
+"""
+function _action_keybindings()
+    generation = _KEYBINDINGS_GENERATION[]
+    _ACTION_KEYBINDINGS_GENERATION[] == generation && return _ACTION_KEYBINDINGS
+
+    descriptions = Dict{Symbol, Vector{String}}()
+
+    for (kb, action) in _KEYBINDINGS
+        push!(get!(() -> String[], descriptions, action), _kbtostr(kb))
     end
 
-    return str
+    empty!(_ACTION_KEYBINDINGS)
+
+    for (action, keys) in descriptions
+        _ACTION_KEYBINDINGS[action] = join(sort!(keys), ", ")
+    end
+
+    _ACTION_KEYBINDINGS_GENERATION[] = generation
+
+    return _ACTION_KEYBINDINGS
 end
 
 """
