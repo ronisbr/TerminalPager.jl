@@ -84,6 +84,54 @@ end
     @test (@allocated _loop_decode_arrow(arrow, 5000)) / 5000 < 64
 end
 
+@testset "Control Key Combinations" begin
+    # `set_keybinding` documents a `ctrl` keyword, but the decoder reported every control byte
+    # with `ctrl = false` and the raw control character as its value, so a CTRL binding could
+    # never match.
+    named = Dict(
+        0x04 => "<eot>", 0x09 => "<tab>", 0x0a => "<enter>", 0x0d => "<enter>",
+        0x15 => "<shiftin>",
+    )
+
+    for byte in 0x01:0x1a
+        key = TerminalPager._ascii_keystroke(byte)
+
+        if haskey(named, byte)
+            @test key.value == named[byte]
+            @test key.ctrl == false
+        else
+            @test key.ctrl == true
+            @test key.value == string(Char(byte - 0x01 + UInt8('a')))
+            @test !key.alt
+            @test !key.shift
+        end
+    end
+
+    @test TerminalPager._ascii_keystroke(0x01).value == "a"
+    @test TerminalPager._ascii_keystroke(0x03).value == "c"
+    @test TerminalPager._ascii_keystroke(0x1a).value == "z"
+
+    # A CTRL binding must now resolve to its action.
+    try
+        TerminalPager.set_keybinding("a", :quit; ctrl = true)
+        @test TerminalPager._pager_action(TerminalPager._ascii_keystroke(0x01)) == :quit
+    finally
+        TerminalPager.reset_keybindings()
+    end
+
+    # ALT combined with CTRL must keep both modifiers.
+    status, key, _ = TerminalPager._decode_keystroke(UInt8[0x1b, 0x01])
+    @test status == :complete
+    @test key.value == "a"
+    @test key.alt
+    @test key.ctrl
+
+    # Bytes outside the control letter range are unchanged.
+    @test TerminalPager._ascii_keystroke(0x00).ctrl == false
+    @test TerminalPager._ascii_keystroke(0x1c).ctrl == false
+    @test TerminalPager._ascii_keystroke(UInt8('a')).ctrl == false
+end
+
 @testset "Raw Keystroke Bytes" begin
     # `raw` is only used for diagnostics, but its format must not change.
     @test TerminalPager._raw_bytes(UInt8[]) == ""

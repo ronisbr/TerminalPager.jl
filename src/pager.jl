@@ -912,9 +912,20 @@ function _pager_event_process!(pagerd::Pager)
             _read_keystroke!(pagerd.input)
         else
             if !isnothing(frozen_rows)
+                # The clamped field value must be used here, not the raw parsed one, and the
+                # first visible row must stay inside the text.
                 pagerd.frozen_rows = max(0, frozen_rows)
-                pagerd.start_row = max(pagerd.start_row, frozen_rows + 1)
+                pagerd.start_row = clamp(
+                    pagerd.start_row,
+                    pagerd.frozen_rows + 1,
+                    max(pagerd.frozen_rows + 1, pagerd.num_lines),
+                )
                 pagerd.visual_mode_line = 1
+
+                # The crop counters describe the previous layout, so they must be recomputed by
+                # the next `_view!` instead of being reused by the movement handling.
+                pagerd.cropped_lines = 0
+                pagerd.cropped_columns = 0
             end
 
             cmd_input = _read_cmd!(
@@ -928,7 +939,9 @@ function _pager_event_process!(pagerd::Pager)
 
             elseif !isnothing(frozen_columns)
                 pagerd.frozen_columns = max(0, frozen_columns)
-                pagerd.start_column = max(pagerd.start_column, frozen_columns + 1)
+                pagerd.start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
+                pagerd.cropped_lines = 0
+                pagerd.cropped_columns = 0
             end
         end
 
@@ -956,8 +969,10 @@ function _pager_event_process!(pagerd::Pager)
             ruler_spacing = _ruler_width(pagerd.num_lines)
 
             if pagerd.cropped_columns ≤ ruler_spacing
-                pagerd.start_column -= ruler_spacing
-                pagerd.start_column < 1 && (pagerd.start_column = 1)
+                # The reclaimed columns must not push the view into the frozen region.
+                pagerd.start_column = max(
+                    pagerd.start_column - ruler_spacing, pagerd.frozen_columns + 1, 1
+                )
             end
         end
 

@@ -189,21 +189,27 @@ This is only used to fill `_ASCII_KEYSTROKES` when the package is loaded.
 - `byte::UInt8`: ASCII or control byte to convert.
 """
 function _build_ascii_keystroke(byte::UInt8)
-    value = if byte == 0x04
-        "<eot>"
-    elseif byte == 0x09
-        "<tab>"
-    elseif byte in (0x0a, 0x0d)
-        "<enter>"
-    elseif byte == 0x15
-        "<shiftin>"
-    elseif byte == 0x7f
-        "<backspace>"
-    else
-        string(Char(byte))
+    # These control bytes have their own names for historical reasons, and the `vi` key bindings
+    # refer to them. Notice that `<shiftin>` is a misnomer: `0x15` is NAK, which is what CTRL-U
+    # sends, whereas SHIFT-IN is `0x0f`.
+    byte == 0x04 && return Keystroke(; raw = string(UInt32(byte)), value = "<eot>")
+    byte == 0x09 && return Keystroke(; raw = string(UInt32(byte)), value = "<tab>")
+    byte == 0x15 && return Keystroke(; raw = string(UInt32(byte)), value = "<shiftin>")
+    byte == 0x7f && return Keystroke(; raw = string(UInt32(byte)), value = "<backspace>")
+
+    if byte in (0x0a, 0x0d)
+        return Keystroke(; raw = string(UInt32(byte)), value = "<enter>")
     end
 
-    return Keystroke(; raw = string(UInt32(byte)), value = value)
+    # Every other control byte in this range is a CTRL combination with a letter. Reporting it
+    # with `ctrl = false` and the raw control character as the value made the documented `ctrl`
+    # keyword of `set_keybinding` impossible to match.
+    if 0x01 <= byte <= 0x1a
+        letter = Char(byte - 0x01 + UInt8('a'))
+        return Keystroke(; raw = string(UInt32(byte)), value = string(letter), ctrl = true)
+    end
+
+    return Keystroke(; raw = string(UInt32(byte)), value = string(Char(byte)))
 end
 
 # Every ASCII keystroke is precomputed, so that a keypress is a table lookup. Building them on
