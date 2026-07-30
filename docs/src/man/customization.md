@@ -31,23 +31,23 @@ The available preferences are:
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
     string. (**Default** = `string(crayon"black bg:light_gray")`)
 - `"always_use_alternate_screen_buffer_in_repl_mode"`: If `true`, we will always use the
-    alternate screen buffer when showing the pager in REPL mode. (**Default** = false)
+    alternate screen buffer when showing the pager in REPL mode. (**Default** = `false`)
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
     the terminal is not compatible with XTerm. (**Default** = `false`)
 - `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, when the pager is exited in REPL
     mode, the output will be copied to the clipboard. Notice that the decorations (ANSI
     sequences) will be removed. (**Default** = `false`)
-- `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
-    Notice that this change only takes effect when a new Julia session is initialized.
-    (**Default** = "default")
+- `"pager_mode"`: If it is `"vi"`, some keybindings are modified to match the behavior of
+    Vi. Notice that this change only takes effect when a new Julia session is initialized.
+    (**Default** = `"default"`)
 - `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
-    selected lines in the visual mode. (**Default** = "100")
+    selected lines in the visual mode. (**Default** = `"100"`)
 - `"visual_mode_active_line_background"`: `String` with the ANSI code of the background for
-    the active line in the visual mode. (**Default** = "44")
+    the active line in the visual mode. (**Default** = `"44"`)
 
-For example, if the user wants to change the active search decoration to blue, they should
-do:
+For example, if the user wants to change the active search decoration to a red background,
+they should do:
 
 ```julia
 julia> using TerminalPager.Crayons

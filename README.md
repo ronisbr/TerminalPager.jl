@@ -8,7 +8,7 @@
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.8368511-DB2777?style=flat-square&logo=doi&logoColor=white&labelColor=475569)](https://zenodo.org/doi/10.5281/zenodo.8368511)
 
 This package contains a pager written 100% in Julia. It can be used to scroll through
-content that does not fit in the screen. It was developed based on the Linux command `less`.
+content that does not fit on the screen. It was developed based on the Linux command `less`.
 
 ## Quick installation
 

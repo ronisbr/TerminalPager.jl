@@ -159,12 +159,20 @@ keywords `alt`, `ctrl`, and `shift`.
     "<keypad_plus>", "<keypad_minus>", "<keypad_slash>", "<keypad_equal>",
     "<keypad_0>", "<keypad_1>", "<keypad_2>", "<keypad_3>", "<keypad_4>",
     "<keypad_5>", "<keypad_6>", "<keypad_7>", "<keypad_8>", "<keypad_9>",
-    "<delete>", "<pageup>", "<pagedown>", "<tab>"
+    "<delete>", "<pageup>", "<pagedown>", "<tab>", "<enter>", "<esc>",
+    "<backspace>", "<eot>", "<shiftin>"
+
+`"<eot>"` is CTRL-D and `"<shiftin>"` is CTRL-U. Every other CTRL combination with a letter must
+be selected with the keyword `ctrl` instead, for example
+`set_keybinding("a", :quit; ctrl = true)`.
 
 `action` can be one of the following symbols:
 
-    :quit, :help, :up, :down, :left, :right, :fastup, :fastdown, :fastleft,
-    :fastright :bol, :eol, :pageup, :pagedown, :home, :end
+    :quit, :quit_eot, :help, :up, :down, :left, :right, :fastup, :fastdown,
+    :fastleft, :fastright, :bol, :eol, :pageup, :pagedown, :halfpageup,
+    :halfpagedown, :home, :end, :search, :next_match, :previous_match,
+    :quit_search, :change_freeze, :change_title_rows, :toggle_ruler,
+    :toggle_visual_mode, :select_visual_mode_line, :yank
 
 # Arguments
 

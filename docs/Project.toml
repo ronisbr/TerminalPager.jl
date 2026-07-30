@@ -1,5 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+TerminalPager = "0c614874-6106-40ed-a7c2-2f1cd0bff883"
 
 [compat]
 Documenter = "1"

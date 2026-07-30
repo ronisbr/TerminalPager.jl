@@ -1,6 +1,3 @@
-const pgup = string(Char(0x153))
-const pgdown = string(Char(0x152))
-
 const keycodes = Dict(
     "\eOA" => Keystroke("\eOA", "<up>", false, false, false),
     "\e[1;2A" => Keystroke("\e[1;2A", "<up>", false, false, true),
@@ -120,9 +117,5 @@ const keycodes = Dict(
     "\e\e[5~" => Keystroke("\e\e[5~", "<pageup>", true, false, false),
     "\e[6~" => Keystroke("\e[6~", "<pagedown>", false, false, false),
     "\e\e[6~" => Keystroke("\e\e[6~", "<pagedown>", true, false, false),
-    "\e" * pgup => Keystroke("\e" * pgup, "<pageup>", true, false, false),
-    "\e" * pgdown => Keystroke("\e" * pgdown, "<pagedown>", true, false, false),
     "\e[Z" => Keystroke("\e[Z", "<tab>", false, false, true),
 )
-
-const nocharval = typemax(UInt32)

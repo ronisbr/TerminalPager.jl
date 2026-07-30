@@ -72,8 +72,9 @@ Clear `io` and move its cursor to the first row and column.
 
 # Keywords
 
-- `newlines::Bool`: Clear the terminal with a single escape sequence, which adds new lines to
-    the screen, instead of overwriting each display line.
+- `newlines::Bool`: If `true`, clear the terminal with a single escape sequence, which adds new
+    lines to the screen and hence preserves its history. If `false`, overwrite each display line
+    instead, which keeps the screen in place.
     (**Default**: `false`)
 """
 function _clear_screen(@nospecialize(io::IO); newlines::Bool = false)

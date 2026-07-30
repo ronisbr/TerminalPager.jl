@@ -8,7 +8,7 @@ end
 ```
 
 This package contains a pager written 100% in Julia. It can be used to scroll through
-content that does not fit in the screen. It was developed based on the Linux command `less`.
+content that does not fit on the screen. It was developed based on the Linux command `less`.
 
 ## Installation
 
@@ -35,7 +35,8 @@ information, see the documentation of the package
 
 ```@contents
 Pages = [
-    "man/usage.md"
+    "man/usage.md",
+    "man/customization.md"
 ]
 Depth = 2
 ```

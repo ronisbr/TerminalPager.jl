@@ -2,7 +2,7 @@
 
 ## Getting started
 
-The pager is called using the function `pager`. If the input object is not a
+The pager is called using the function `pager`. If the input object is not an
 `AbstractString`, then it will be rendered using `show` with `MIME"text/plain"`.  Thus, you
 can browse a large matrix, for example, using:
 
@@ -35,10 +35,9 @@ julia> @help write
 ![](../assets/dpr_01.png)
 
 You can hit `<Alt> + h` or `<F1>` on any REPL input to get extended help about the identifier
-the cursor currently is above. After you ended the `pager`, you are back with the REPL input
-you have already written. If you are in a new argument of a method call, the pager will
-print extended help about the function instead to help you complete the method's argument
-list.
+the cursor is currently on. After you exit the pager, you return to the REPL input you had
+already typed. If you are in a new argument of a method call, the pager prints extended help
+about the function instead, to help you complete the method's argument list.
 
 ### `@stdout_to_pager`
 

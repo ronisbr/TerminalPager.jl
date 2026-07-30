@@ -137,13 +137,13 @@ function _help_string(use_color::Bool)
     help_str = """
                  $(_cb)TerminalPager.jl $(PKG_VERSION)$(_d)
 
-                 The pager can execute some type of actions as shown in the following.
-                 The key bindings of
-                 each actions can be changed using the function $(_c)set_keybinding$(_d).
+                 The pager can execute several types of actions, as shown below. The key
+                 bindings of each action can be changed using the function
+                 $(_c)set_keybinding$(_d).
 
-                 Some actions are only available if a feature is enabled. The set of
-                 enabled features can
-                 be selected using the keyword $(_c)features$(_d) when calling the pager.
+                 Some actions are only available if a feature is enabled. The enabled
+                 features depend on how the pager was called and on the object being
+                 displayed.
 
                $(_b)                                          General$(_d)
                $(_y)  :help$(_d)
@@ -154,7 +154,7 @@ function _help_string(use_color::Bool)
                    Quit the pager.
                $(_c)    Keybindings: $(kb_quit)$(_d)
                $(_y)  :quit_eot$(_d)
-                   This is an special quit action design for the
+                   This is a special quit action designed for the
                    $(_c)END OF TRANSMISSION (^D)$(_d) keycode. If we are in a search
                    operation, then it quits the search. If not, then it
                    quits the pager.
@@ -189,16 +189,16 @@ function _help_string(use_color::Bool)
                    Move the display ten columns to the right.
                $(_c)    Keybindings: $(kb_fastright)$(_d)
                $(_y)  :pageup$(_d)
-                   Move the display one page up (a page has the same size of the view).
+                   Move the display one page up (a page has the same size as the view).
                $(_c)    Keybindings: $(kb_pageup)$(_d)
                $(_y)  :pagedown$(_d)
-                   Move the display one page down (a page has the same size of the view).
+                   Move the display one page down (a page has the same size as the view).
                $(_c)    Keybindings: $(kb_pagedown)$(_d)
                $(_y)  :halfpageup$(_d)
-                   Move the display half page up (a page has the same size of the view).
+                   Move the display half page up (a page has the same size as the view).
                $(_c)    Keybindings: $(kb_hpageup)$(_d)
                $(_y)  :halfpagedown$(_d)
-                   Move the display half page down (a page has the same size of the view).
+                   Move the display half page down (a page has the same size as the view).
                $(_c)    Keybindings: $(kb_hpagedown)$(_d)
                $(_y)  :bol$(_d)
                    Move the display to the first column.
@@ -228,12 +228,12 @@ function _help_string(use_color::Bool)
                $(_c)    Keybindings: $(kb_quit_search)$(_d)
 
                $(_b)                                       Freezing Data$(_d)
-               $(_g)  These actions requires the feature :change_freeze.
+               $(_g)  These actions require the feature :change_freeze.
                $(_y)  :change_freeze$(_d)
                    Two values will be requested in the command line. The first is the
-                   number of columns and the second is the number of rows that will be
-                   frozen. If the value is equal or lower
-                   than 0, then no row or column will be frozen.
+                   number of rows and the second is the number of columns that will be
+                   frozen. If a value is equal to or lower than 0, then no row or column
+                   will be frozen.
                $(_c)    Keybindings: $(kb_change_freeze)$(_d)
                $(_y)  :change_title_rows$(_d)
                    Define the number of rows within the frozen rows that will be
@@ -242,11 +242,11 @@ function _help_string(use_color::Bool)
                $(_c)    Keybindings: $(kb_change_title_rows)$(_d)
 
                $(_b)                                        Visual Mode$(_d)
-               $(_g)  These actions requires the feature :visual_mode.
+               $(_g)  These actions require the feature :visual_mode.
                $(_y)  :toggle_visual_mode$(_d)
                    Toggle visual mode, where a visual line is displayed on the screen.
                    In this mode, the
-                   movements are slight modified to be relative to the visual line.
+                   movements are slightly modified to be relative to the visual line.
                $(_c)    Keybindings: $(kb_toggle_visual_mode)$(_d)
                $(_y)  :select_visual_mode_line$(_d)
                    Mark the current visual line. Notice if the line is already marked,

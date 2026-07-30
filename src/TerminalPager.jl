@@ -36,7 +36,10 @@ include("./types.jl")
 ############################################################################################
 
 const CSI = "\x1b["
-const PKG_VERSION = v"0.6.0"
+
+# The version is read from the project, otherwise the help screen shows a stale one whenever a
+# new version is released.
+const PKG_VERSION = pkgversion(@__MODULE__)
 
 # Define reusable crayons.
 const _CRAYON_B = string(crayon"bold")
@@ -127,7 +130,10 @@ The user can define custom preferences using the function
     globally blocked, regardless of the keyword options. This modification is helpful when
     the terminal is not compatible with XTerm.
     (**Default**: `false`)
-- `"pager_mode"`: If it is "vi", some keywords are modified to match the behavior of Vi.
+- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, the output shown in the pager in REPL
+    mode is also copied to the system clipboard, without any decoration.
+    (**Default**: `false`)
+- `"pager_mode"`: If it is `"vi"`, some keybindings are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
     (**Default**: `"default"`)
 - `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
