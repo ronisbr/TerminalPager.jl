@@ -14,23 +14,44 @@ Open a new pager with the help.
 - `pagerd::Pager`: Parent pager state whose terminal and input are reused.
 """
 function _help!(pagerd::Pager)
-    # Unpack values.
-    term = pagerd.term
+    help_str = _help_string(get(pagerd.term.out_stream, :color, true)::Bool)
 
-    if get(term.out_stream, :color, true)::Bool
+    _pager!(
+        pagerd.term,
+        help_str;
+        display_config = pagerd.display_config,
+        hashelp = false,
+        has_visual_mode = false,
+        input = pagerd.input,
+        manage_cursor_key_mode = false,
+    )
+
+    return nothing
+end
+
+"""
+    _help_string(use_color::Bool) -> String
+
+Assemble the pager help screen from the current key bindings.
+
+# Arguments
+
+- `use_color::Bool`: Decorate the help screen with ANSI escape sequences.
+"""
+function _help_string(use_color::Bool)
+    if use_color
         _b = _CRAYON_B
         _c = _CRAYON_C
         _cb = _CRAYON_CB
         _d = _CRAYON_RESET
         _g = _CRAYON_G
-        _r = _CRAYON_R
         _y = _CRAYON_Y
     else
         _b = ""
         _c = ""
+        _cb = ""
         _d = ""
         _g = ""
-        _r = ""
         _y = ""
     end
 
@@ -200,17 +221,7 @@ function _help!(pagerd::Pager)
                $(_c)    Keybindings: $(kb_yank)$(_d)
                """
 
-    _pager!(
-        pagerd.term,
-        help_str;
-        display_config = pagerd.display_config,
-        hashelp = false,
-        has_visual_mode = false,
-        input = pagerd.input,
-        manage_cursor_key_mode = false,
-    )
-
-    return nothing
+    return help_str
 end
 
 ############################################################################################

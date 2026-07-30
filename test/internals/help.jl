@@ -40,6 +40,26 @@ using TerminalPager: _get_help
     @test occursin("Perhaps you meant eachindex", str)
 end
 
+@testset "Help Screen" begin
+    colored = TerminalPager._help_string(true)
+    @test occursin("TerminalPager.jl", colored)
+    @test occursin('\e', colored)
+
+    # The colorless branch used to leave `_cb` undefined, so pressing `?` in a pager whose
+    # output stream has `:color => false` threw an `UndefVarError`.
+    plain = TerminalPager._help_string(false)
+    @test occursin("TerminalPager.jl", plain)
+    @test !occursin('\e', plain)
+
+    # Every action documented in the help screen must list at least one keybinding, so a
+    # renamed action cannot silently produce an empty "Keybindings:" entry.
+    for line in eachsplit(plain, '\n')
+        if occursin("Keybindings:", line)
+            @test !isempty(strip(last(split(line, "Keybindings:"))))
+        end
+    end
+end
+
 # Tests for evaluating help in a specific module (see issue #90). Define a module with a
 # documented binding to check that `_get_help` looks in the given module, and separately
 # document a `Main`-level function to check the fallback from a non-`Main` active module.
