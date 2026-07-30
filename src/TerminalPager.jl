@@ -182,10 +182,7 @@ Apply mode-dependent keybindings and initialize REPL integrations.
 """
 function __init__()
     # Modify the key bindings if the user wants `vi` mode.
-    if _get_preference("pager_mode") == "vi"
-        _keybindings[("<eot>", false, false, false)] = :halfpagedown
-        _keybindings[("<shiftin>", false, false, false)] = :halfpageup
-    end
+    _apply_mode_keybindings!()
 
     if isdefined(Base, :active_repl)
         _init_pager_repl_mode(Base.active_repl)

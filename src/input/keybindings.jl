@@ -88,6 +88,30 @@ function delete_keybinding(
 end
 
 """
+    _apply_mode_keybindings!(get_preference::F = _get_preference) -> Nothing where
+        {F <: Function}
+
+Apply the key bindings that depend on the `pager_mode` preference to `_KEYBINDINGS`.
+
+# Arguments
+
+- `get_preference::F`: Callable preference getter used to read `pager_mode`.
+    (**Default**: `_get_preference`)
+"""
+function _apply_mode_keybindings!(
+    get_preference::F = _get_preference
+) where {F <: Function}
+    if get_preference("pager_mode") == "vi"
+        _KEYBINDINGS[("<eot>", false, false, false)] = :halfpagedown
+        _KEYBINDINGS[("<shiftin>", false, false, false)] = :halfpageup
+    else
+        _KEYBINDINGS[("<eot>", false, false, false)] = :quit_eot
+    end
+
+    return nothing
+end
+
+"""
     reset_keybindings() -> Nothing
 
 Reset key bindings to the original ones.
@@ -97,12 +121,7 @@ function reset_keybindings()
     merge!(_KEYBINDINGS, _DEFAULT_KEYBINDINGS)
 
     # Key bindings that depend on the mode.
-    if _get_preference("pager_mode") == "vi"
-        _KEYBINDINGS[("<eot>", false, false, false)] = :halfpagedown
-        _KEYBINDINGS[("<shiftin>", false, false, false)] = :halfpageup
-    else
-        _KEYBINDINGS[("<eot>", false, false, false)] = :quit_eot
-    end
+    _apply_mode_keybindings!()
 
     return nothing
 end
