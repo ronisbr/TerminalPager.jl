@@ -8,6 +8,32 @@
 #
 ############################################################################################
 
+# The pager mode is meant for interactive use only. We warn the user once per session if it
+# is used from a script.
+const PRINTED_REPL_WARNING = Ref(false)
+
+"""
+    _warn_repl_mode_noninteractive!(interactive::Bool = isinteractive()) -> Nothing
+
+Warn once per session that the pager REPL mode is not meant for non-interactive use.
+
+# Arguments
+
+- `interactive::Bool`: Whether the current session is interactive.
+    (**Default**: `isinteractive()`)
+"""
+function _warn_repl_mode_noninteractive!(interactive::Bool = isinteractive())
+    if !interactive && !PRINTED_REPL_WARNING[]
+        @warn(
+            "The pager mode is intended for interactive use only and should not be used " *
+                "from scripts."
+        )
+        PRINTED_REPL_WARNING[] = true
+    end
+
+    return nothing
+end
+
 """
     _create_pager_repl_mode(
         repl::REPL.AbstractREPL,
@@ -241,13 +267,7 @@ Execute `input` in pager REPL mode and display its standard output.
 - `input::String`: Command text to evaluate.
 """
 function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
-    if !isinteractive() && !PRINTED_REPL_WARNING[]
-        @warn(
-            "The pager mode is intended for interactive use only and should not be used " *
-                "from scripts."
-        )
-        PRINTED_REPL_WARNING[] = true
-    end
+    _warn_repl_mode_noninteractive!()
 
     # The `stdout` will be redirected inside the try/catch. Hence, we need to store the old
     # one to restore it if everything fails.
