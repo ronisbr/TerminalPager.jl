@@ -4,6 +4,56 @@
 #
 ############################################################################################
 
+############################################################################################
+#                                        Constants                                         #
+############################################################################################
+
+# The command line hints are constant except for the numbers in them. Assembling them at every
+# frame allocated roughly 950 bytes per keystroke.
+const _CMD_HINT = "(↑ ↓ ← →:move, q:quit)"
+const _CMD_HINT_HELP = "(↑ ↓ ← →:move, ?:help, q:quit)"
+const _CMD_MATCH_PREFIX = "(match "
+const _CMD_MATCH_INFIX = " of "
+const _CMD_NO_MATCH = "(no match found)"
+const _CMD_ERROR = "ERROR"
+
+const _CMD_HINT_WIDTH = textwidth(_CMD_HINT)
+const _CMD_HINT_HELP_WIDTH = textwidth(_CMD_HINT_HELP)
+
+# Width of "(match  of )", that is, everything but the two numbers.
+const _CMD_MATCH_WIDTH = textwidth(_CMD_MATCH_PREFIX) + textwidth(_CMD_MATCH_INFIX) + 1
+
+# Padding is written from a slice of this string, so that right-aligning the hint does not
+# allocate a full-width string at every frame.
+const _BLANKS = " "^512
+
+############################################################################################
+#                                    Private Functions                                     #
+############################################################################################
+
+"""
+    _write_blanks(io::IO, n::Int) -> Int
+
+Write `n` spaces to `io` without allocating.
+
+# Arguments
+
+- `io::IO`: Output stream to update.
+- `n::Int`: Number of spaces to write.
+"""
+function _write_blanks(io::IO, n::Int)
+    n <= 0 && return 0
+
+    written = 0
+
+    while written < n
+        chunk = min(n - written, length(_BLANKS))
+        written += GC.@preserve _BLANKS unsafe_write(io, pointer(_BLANKS), UInt(chunk))
+    end
+
+    return written
+end
+
 """
     _print_cmd_message!(pagerd::Pager, msg::String;
         crayon::Crayon = Crayon()) -> Nothing
@@ -58,63 +108,87 @@ function _redraw_cmd_line!(pagerd::Pager)
     num_lines = pagerd.num_lines
     cropped_lines = pagerd.cropped_lines
     mode = pagerd.mode
-    features = pagerd.features
 
-    if get(term.out_stream, :color, true)::Bool
-        _d = _CRAYON_RESET
-        _g = _CRAYON_G
-    else
-        _d = ""
-        _g = ""
-    end
-
-    # Compute the information considering the current mode.
-    if mode == :view
-        cmd_help = "(↑ ↓ ← →:move, "
-
-        if :help ∈ features
-            cmd_help *= "?:help, "
-        end
-
-        cmd_help *= "q:quit)"
-
-    elseif mode == :searching
-        active_search_match_id = pagerd.active_search_match_id
-        num_matches = pagerd.num_matches
-
-        # Check if there are matches.
-        if num_matches > 0
-            cmd_help =
-                "(match " *
-                string(active_search_match_id) *
-                " of " *
-                string(num_matches) *
-                ")"
-        else
-            cmd_help = "(no match found)"
-        end
-
-    else
-        cmd_help = "ERROR"
-    end
+    use_color = get(term.out_stream, :color, true)::Bool
 
     # Compute the scroll position. Notice that an empty text has nothing left to scroll, so
     # we must not divide by `num_lines` here.
-    percentage = num_lines > 0 ? round(Int, 100 * (1 - cropped_lines / num_lines)) : 100
-    cmd_help *= " " * lpad(string(percentage), 3) * "%"
-
-    lcmd_help = length(cmd_help)
-
-    if display_size[2] > (lcmd_help + 4)
-        cmd_aligned = " "^(display_size[2] - lcmd_help - 1) * _g * cmd_help * _d
+    percentage = if num_lines > 0
+        clamp(round(Int, 100 * (1 - cropped_lines / num_lines)), 0, 100)
     else
-        cmd_aligned = ""
+        100
     end
 
-    # Move the cursor to the last line and print the command line.
-    _move_cursor(term.out_stream, display_size[1], 1)
-    write(term.out_stream, ":" * cmd_aligned)
-    _move_cursor(term.out_stream, display_size[1], 2)
+    # Compute the information considering the current mode. Everything except the numbers is
+    # constant, so we only need the width of the hint here.
+    hint_width = 0
+    match_id = 0
+    num_matches = 0
+
+    if mode == :view
+        hint_width = if :help ∈ pagerd.features
+            _CMD_HINT_HELP_WIDTH
+        else
+            _CMD_HINT_WIDTH
+        end
+
+    elseif mode == :searching
+        match_id = pagerd.active_search_match_id
+        num_matches = pagerd.num_matches
+
+        hint_width = if num_matches > 0
+            _CMD_MATCH_WIDTH + ndigits(match_id) + ndigits(num_matches)
+        else
+            length(_CMD_NO_MATCH)
+        end
+
+    else
+        hint_width = length(_CMD_ERROR)
+    end
+
+    # The scroll position is always rendered as " NNN%", with the number right-aligned in
+    # three columns. Since it is a percentage, it never needs more than three digits.
+    hint_width += 5
+
+    out = _screen_buffer!(pagerd)
+
+    # Move the cursor to the last line and write the command line.
+    _move_cursor(out, display_size[1], 1)
+    write(out, UInt8(':'))
+
+    if display_size[2] > (hint_width + 4)
+        _write_blanks(out, display_size[2] - hint_width - 1)
+        use_color && write(out, _CRAYON_G)
+
+        if mode == :view
+            write(out, :help ∈ pagerd.features ? _CMD_HINT_HELP : _CMD_HINT)
+
+        elseif mode == :searching
+            if num_matches > 0
+                write(out, _CMD_MATCH_PREFIX)
+                _write_decimal(out, match_id)
+                write(out, _CMD_MATCH_INFIX)
+                _write_decimal(out, num_matches)
+                write(out, UInt8(')'))
+            else
+                write(out, _CMD_NO_MATCH)
+            end
+
+        else
+            write(out, _CMD_ERROR)
+        end
+
+        write(out, UInt8(' '))
+        _write_blanks(out, max(0, 3 - ndigits(percentage)))
+        _write_decimal(out, percentage)
+        write(out, UInt8('%'))
+
+        use_color && write(out, _CRAYON_RESET)
+    end
+
+    _move_cursor(out, display_size[1], 2)
+
+    _flush_screen!(pagerd)
 
     return nothing
 end

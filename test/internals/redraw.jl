@@ -27,7 +27,10 @@ mutable struct RedrawSink <: IO
     color::Bool
 end
 
-RedrawSink(; color::Bool = false) = RedrawSink(IOBuffer(), 0, 0, color)
+# The buffer is pre-grown, so that its own reallocation is not attributed to the redraw when
+# measuring allocations.
+RedrawSink(; color::Bool = false) =
+    RedrawSink(IOBuffer(; sizehint = 1 << 22), 0, 0, color)
 
 function Base.write(sink::RedrawSink, byte::UInt8)
     sink.bytes += 1
@@ -439,7 +442,19 @@ end
     TerminalPager._view!(pagerd)
     @test (@allocated TerminalPager._redraw!(pagerd)) < 512
 
-    @test (@allocated _loop_redraw_cmd_line(pagerd, 500)) / 500 < 1024
+    # The command line is constant except for the numbers in it.
+    @test (@allocated _loop_redraw_cmd_line(pagerd, 500)) == 0
+
+    # Every frame reaches the terminal in a single write. Otherwise, tearing is visible.
+    _take_output!(pagerd.term.out_stream)
+    pagerd.start_row = 20
+    TerminalPager._view!(pagerd)
+    TerminalPager._redraw!(pagerd)
+    TerminalPager._redraw_cmd_line!(pagerd)
+
+    # One write to hide the cursor, one for the frame, one to show it, and one for the
+    # command line.
+    @test pagerd.term.out_stream.writes == 4
 end
 
 @testset "Frame Byte Access" begin

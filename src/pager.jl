@@ -1046,9 +1046,7 @@ the command line.
 - `pagerd::Pager`: Pager state to update.
 """
 function _invalidate_frame!(pagerd::Pager)
-    frame_cache = pagerd.frame_cache
-    frame_cache.valid = false
-    frame_cache.cmd_valid = false
+    pagerd.frame_cache.valid = false
     return nothing
 end
 
@@ -1067,6 +1065,58 @@ new one for the next frame.
 - `io::IOBuffer`: Buffer holding a rendered frame.
 """
 _frame_bytes(io::IOBuffer) = (io.data, io.size)
+
+"""
+    _screen_buffer!(pagerd::Pager) -> IOBuffer
+
+Return the reusable buffer that assembles everything sent to the terminal, after resetting it.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose buffer is returned.
+"""
+function _screen_buffer!(pagerd::Pager)
+    out = pagerd.frame_cache.out
+    truncate(out, 0)
+    seekstart(out)
+    return out
+end
+
+"""
+    _flush_screen!(pagerd::Pager) -> Nothing
+
+Send everything assembled in the reusable screen buffer to the terminal in a single write.
+
+Writing each piece separately would issue one system call per piece, which can show tearing.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to flush.
+"""
+function _flush_screen!(pagerd::Pager)
+    data, num_bytes = _frame_bytes(pagerd.frame_cache.out)
+    num_bytes > 0 && _write_all(pagerd.term.out_stream, data, num_bytes)
+    return nothing
+end
+
+"""
+    _write_all(io::IO, data, num_bytes::Int) -> Nothing
+
+Write the first `num_bytes` bytes of `data` to `io`.
+
+Notice that this function returns `nothing`. `TTYTerminal` declares its streams as `IO`, so a
+`write` to them is a dynamic dispatch whose `Int` return value would have to be boxed.
+
+# Arguments
+
+- `io::IO`: Output stream to update.
+- `data`: Byte storage to write from.
+- `num_bytes::Int`: Number of bytes to write.
+"""
+function _write_all(io::IO, data, num_bytes::Int)
+    GC.@preserve data unsafe_write(io, pointer(data, 1), UInt(num_bytes))
+    return nothing
+end
 
 """
     _bytes_equal(a, ai::Int, b, bi::Int, n::Int) -> Bool
@@ -1174,9 +1224,7 @@ function _redraw!(pagerd::Pager)
         return nothing
     end
 
-    out = frame_cache.out
-    truncate(out, 0)
-    seekstart(out)
+    out = _screen_buffer!(pagerd)
 
     # We must not use the ANSI escape sequence `\e[2J` to clear the screen because it adds new
     # lines to it. Hence, every row we paint is cleared to the end of the line.
@@ -1235,12 +1283,7 @@ function _redraw!(pagerd::Pager)
         cursor_hidden = true
         _hide_cursor(term.out_stream)
 
-        # Everything is written to the terminal at once. Otherwise, we could see tearing.
-        out_data, out_size = _frame_bytes(out)
-        out_size > 0 &&
-            GC.@preserve out_data unsafe_write(
-            term.out_stream, pointer(out_data, 1), UInt(out_size)
-        )
+        _flush_screen!(pagerd)
     finally
         cursor_hidden && _show_cursor(term.out_stream)
     end

@@ -125,8 +125,6 @@ what is on screen row `i` for every `i` in `1:num_rows`. An empty row is represe
 - `new_last::Vector{Int}`: Scratch line table for the frame being painted.
 - `out::IOBuffer`: Reused buffer assembling everything sent to the terminal.
 - `valid::Bool`: Whether the snapshot describes the screen.
-- `cmd_bytes::Vector{UInt8}`: Snapshot of the command line row.
-- `cmd_valid::Bool`: Whether `cmd_bytes` describes the command line row.
 """
 Base.@kwdef mutable struct FrameCache
     bytes::Vector{UInt8} = UInt8[]
@@ -137,8 +135,6 @@ Base.@kwdef mutable struct FrameCache
     new_last::Vector{Int} = Int[]
     out::IOBuffer = IOBuffer(; sizehint = 8192)
     valid::Bool = false
-    cmd_bytes::Vector{UInt8} = UInt8[]
-    cmd_valid::Bool = false
 end
 
 """
