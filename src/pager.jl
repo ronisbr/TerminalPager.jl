@@ -27,6 +27,22 @@ function _get_pager_display_size(p::Pager)
 end
 
 """
+    _ruler_width(num_lines::Int) -> Int
+
+Return the number of columns the line-number ruler occupies for `num_lines` lines.
+
+# Arguments
+
+- `num_lines::Int`: Number of lines in the pager text.
+"""
+function _ruler_width(num_lines::Int)
+    # This must match how `StringManipulation.textview` sizes the ruler. Notice that
+    # `ndigits` is defined for 0, whereas `floor(Int, log10(num_lines))` throws an
+    # `InexactError` for an empty text.
+    return ndigits(num_lines) + 3
+end
+
+"""
     _request_redraw!(p::Pager) -> Bool
 
 Mark `p` for redraw and return the assigned value, `true`.
@@ -929,7 +945,7 @@ function _pager_event_process!(pagerd::Pager)
         # If the ruler is hidden, we must verify if the screen is on the right edge to fix
         # the `start_column`.
         if !pagerd.show_ruler
-            ruler_spacing = floor(Int, log10(abs(pagerd.num_lines))) + 4
+            ruler_spacing = _ruler_width(pagerd.num_lines)
 
             if pagerd.cropped_columns ≤ ruler_spacing
                 pagerd.start_column -= ruler_spacing

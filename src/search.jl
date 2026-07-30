@@ -132,8 +132,7 @@ function _move_view_to_match!(pagerd::Pager)
     # If we show the ruler, the amount of available columns to draw data must be reduced to
     # take into account its width.
     if show_ruler
-        ruler_spacing = floor(Int, log10(abs(pagerd.num_lines))) + 4
-        cols -= ruler_spacing
+        cols -= _ruler_width(pagerd.num_lines)
     end
 
     # Compute the last row and columns that is displayed.

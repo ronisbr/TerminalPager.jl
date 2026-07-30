@@ -98,9 +98,10 @@ function _redraw_cmd_line!(pagerd::Pager)
         cmd_help = "ERROR"
     end
 
-    # Compute the scroll position.
-    pos = lpad(string(round(Int, 100 * (1 - cropped_lines / num_lines))), 3)
-    cmd_help *= " " * pos * "%"
+    # Compute the scroll position. Notice that an empty text has nothing left to scroll, so
+    # we must not divide by `num_lines` here.
+    percentage = num_lines > 0 ? round(Int, 100 * (1 - cropped_lines / num_lines)) : 100
+    cmd_help *= " " * lpad(string(percentage), 3) * "%"
 
     lcmd_help = length(cmd_help)
 
