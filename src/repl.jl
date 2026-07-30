@@ -308,8 +308,10 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             cmd *= lines[i] * "\n"
             ast = Base.parse_input_line(cmd)
 
-            # If the command is incomplete, we need to wait for another line.
-            !isnothing(ast) && ast.head == :incomplete && continue
+            # If the command is incomplete, we need to wait for another line. Notice that
+            # `parse_input_line` does not always return an `Expr`, so we must check that before
+            # reading its head.
+            isa(ast, Expr) && (ast.head == :incomplete) && continue
 
             # We will use `REPL.eval_on_backend` to evaluate the expression. This function
             # returns two values: the object returned by the expression, and a boolean value

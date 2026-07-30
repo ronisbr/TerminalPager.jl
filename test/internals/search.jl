@@ -42,6 +42,37 @@ end
     @test isnothing(TerminalPager._try_regex("a{2,1}"))
 end
 
+@testset "Ordered Match Index Strategies" begin
+    # The index is built by sorting the matched lines when they are sparse, and by walking the
+    # lines when almost every one of them matches. Both must produce the same result.
+    for (num_lines, matched) in (
+        (1_000, (5, 999)),
+        (1_000, Tuple(1:1_000)),
+        (1_000, Tuple(1:100:1_000)),
+        (10, Tuple(1:10)),
+        (10, (10,)),
+        (10, ()),
+    )
+        matches = TerminalPager.SearchMatches(
+            line => [(line, 2), (line + 1, 3)] for line in matched
+        )
+        ordered = TerminalPager._ordered_search_matches(matches, num_lines)
+
+        @test length(ordered) == 2 * length(matched)
+        @test issorted(ordered; by = m -> (m.line, m.index_in_line))
+
+        for match in ordered
+            @test match.line in matched
+            @test 1 <= match.index_in_line <= 2
+        end
+    end
+
+    # Lines beyond the text must be ignored, as before.
+    matches = TerminalPager.SearchMatches(5 => [(1, 1)], 500 => [(1, 1)])
+    @test length(TerminalPager._ordered_search_matches(matches, 10)) == 1
+    @test isempty(TerminalPager._ordered_search_matches(TerminalPager.SearchMatches(), 10))
+end
+
 @testset "Search Starts At The Viewport" begin
     lines = ["match" ; ["filler $i" for i in 1:20] ; "match" ; ["tail $i" for i in 1:5]]
     pagerd = _create_modal_pagerd(lines, "")

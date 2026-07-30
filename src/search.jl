@@ -81,16 +81,51 @@ Build search-navigation metadata in document and within-line order.
 """
 function _ordered_search_matches(search_matches::SearchMatches, num_lines::Int)
     ordered_matches = SearchMatch[]
+    isempty(search_matches) && return ordered_matches
+
     sizehint!(ordered_matches, sum(length, values(search_matches); init = 0))
 
-    for line in 1:num_lines
-        haskey(search_matches, line) || continue
-        for (index_in_line, match) in enumerate(search_matches[line])
-            push!(ordered_matches, SearchMatch(line, index_in_line, match[1], match[2]))
+    # Matches are usually sparse, in which case sorting the lines that actually have one is much
+    # cheaper than probing the dictionary once per line of the text: finding two matches in a
+    # text with one million lines used to require one million hash lookups. When almost every
+    # line matches, however, walking the lines in order avoids the sort entirely.
+    if 8 * length(search_matches) >= num_lines
+        for line in 1:num_lines
+            matches = get(search_matches, line, nothing)
+            isnothing(matches) && continue
+            _push_line_matches!(ordered_matches, line, matches)
+        end
+    else
+        for line in sort!(collect(keys(search_matches)))
+            line <= num_lines || continue
+            _push_line_matches!(ordered_matches, line, search_matches[line])
         end
     end
 
     return ordered_matches
+end
+
+"""
+    _push_line_matches!(ordered_matches::Vector{SearchMatch}, line::Int,
+        matches::Vector{Tuple{Int, Int}}) -> Nothing
+
+Append every match of one source line, in within-line order.
+
+# Arguments
+
+- `ordered_matches::Vector{SearchMatch}`: Vector to append to.
+- `line::Int`: One-based source line index.
+- `matches::Vector{Tuple{Int, Int}}`: Column and width of each match in the line.
+"""
+function _push_line_matches!(
+    ordered_matches::Vector{SearchMatch}, line::Int, matches::Vector{Tuple{Int, Int}}
+)
+    @inbounds for index_in_line in eachindex(matches)
+        column, width = matches[index_in_line]
+        push!(ordered_matches, SearchMatch(line, index_in_line, column, width))
+    end
+
+    return nothing
 end
 
 """
