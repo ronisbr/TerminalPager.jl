@@ -91,7 +91,7 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # == Key Mappings ======================================================================
 
     # We want to support all the default keymap prefixes.
-    prefix_prompt, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
+    _, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
 
     # We also want to support reverse searching.
     skeymap = @static if VERSION >= v"1.13-"
@@ -106,7 +106,7 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
     # Assign `?` as the key map to switch to pager help mode.
     help_mode_transition_keymap = Dict{Any, Any}(
         '?' => function (s, args...)
-            # We must only switch to pager mode if `|` is typed at the beginning
+            # We must only switch to the pager help mode if `?` is typed at the beginning
             # of the line.
             if isempty(s) || (position(LineEdit.buffer(s)) == 0)
                 buf = copy(LineEdit.buffer(s))
@@ -182,8 +182,10 @@ function _create_pager_help_repl_mode(
     hp.mode_mapping[:pager_help] = tp_help_mode
     tp_help_mode.hist = hp
 
-    # We want to support all the default keymap prefixes.
-    prefix_prompt, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
+    # We want to support all the default keymap prefixes. Notice that the prompt must be
+    # `tp_help_mode`, otherwise the prefix history keymap of the help mode transitions using the
+    # pager prompt.
+    _, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_help_mode)
 
     # We also want to support reverse searching.
     skeymap = @static if VERSION >= v"1.13-"
@@ -277,7 +279,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Create a buffer that will replace `stdout`. Notice that we add a context key
         # called `bypass_pager` with value `true`. All the commands we call in this mode
         # will have its output handled to the pager. Hence, if a command also calls a pager,
-        # we must only return the object. Otherwise, the section freezes until the user
+        # we must only return the object. Otherwise, the session freezes until the user
         # press CTRL-D. For more information, see:
         #
         #   https://github.com/ronisbr/TerminalPager.jl/issues/40
@@ -383,7 +385,7 @@ Display help for `input` from pager-help REPL mode.
 - `input::String`: Help query to display.
 """
 function _tp_help_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
-    # We do not need to verify if we are in a interactive environment because this mode is
+    # We do not need to verify if we are in an interactive environment because this mode is
     # only accessible through pager mode, which already checks it.
     try
         # Take everything and display in the pager using the alternate screen buffer to

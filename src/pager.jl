@@ -177,6 +177,9 @@ exception.
 function _with_raw_mode(f, term; raw_function = REPL.Terminals.raw!)
     raw_enabled = false
     try
+        # The flag is deliberately set before the call. A call that throws can still have
+        # changed the terminal, and leaving it in raw mode would break the user's session.
+        # Restoring a terminal that was never changed is harmless.
         raw_enabled = true
         raw_function(term, true)
         return f()
@@ -291,6 +294,8 @@ function _pager!(
 
         # Clear the screen and position the cursor at the top.
         if use_alternate_screen_buffer
+            # As in `_with_raw_mode`, the flag is set before the write, so that a write that
+            # partially reached the terminal is still undone.
             alternate_screen_enabled = true
             _turn_on_alternate_screen_buffer(term.out_stream)
         else

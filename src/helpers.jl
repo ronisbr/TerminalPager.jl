@@ -62,12 +62,15 @@ See also [`pager`](@ref).
 """
 macro stdout_to_pager(ex_in, args...)
     all(x -> Meta.isexpr(x, :(=)), args) || throw(
-        MethodError(
+        ArgumentError(
             "All additional arguments to @stdout_to_pager must be keyword arguments."
         ),
     )
-    # Convert args from macro expressions to keyword arguments.
-    kwargs = map(x -> Expr(:kw, x.args[1], x.args[2]), args)
+
+    # Convert args from macro expressions to keyword arguments. The values must be escaped,
+    # otherwise they are resolved in the scope of this package instead of the caller's, so
+    # `frozen_rows = n` would throw an `UndefVarError`.
+    kwargs = map(x -> Expr(:kw, x.args[1], esc(x.args[2])), args)
 
     ex_out = quote
         hascolor = get(stdout, :color, true)
@@ -84,8 +87,10 @@ macro stdout_to_pager(ex_in, args...)
             $(esc(ex_in))
             Base.eval(:(stdout = $old_stdout))
             pager(String(take!(buf)); $(kwargs...))
-            close(io)
         finally
+            # `close` used to be after the `pager` call inside the `try`, so it was skipped
+            # whenever the pager threw.
+            close(io)
             Base.eval(:(stdout = $old_stdout))
         end
     end
