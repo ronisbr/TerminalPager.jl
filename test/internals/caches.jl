@@ -133,3 +133,14 @@ end
         TerminalPager._pager_content_fits(String.(sub_lines), (10, 40))
     @test TerminalPager.TextViewLayout(sub_lines) isa TerminalPager.TextViewLayout
 end
+
+@testset "Pager Accepts Substrings" begin
+    # `pager(::AbstractString)` used to forward substrings to `_pager`, which only accepts
+    # `String`, throwing a `MethodError`. The automatic mode prints fitting text directly,
+    # so the call below must simply return.
+    sub = SubString("first\nsecond", 1, 12)
+
+    redirect_stdout(devnull) do
+        @test isnothing(pager(sub; auto = true))
+    end
+end

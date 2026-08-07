@@ -172,7 +172,9 @@ function pager(obj::AbstractString; kwargs...)
         return nothing
     end
 
-    return _pager(obj; kwargs...)
+    # `_pager` requires a `String`. The conversion is a no-op for a `String`, whereas any
+    # other subtype, such as a `SubString`, must be copied.
+    return _pager(String(obj); kwargs...)
 end
 
 const less = pager
