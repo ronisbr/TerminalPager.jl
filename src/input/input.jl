@@ -318,11 +318,15 @@ function _read_keystroke!(input::PagerInput)
         status, key, consumed = _decode_keystroke(input.prefix)
         status === :complete && return _take_decoded!(input, key, consumed)
 
-        # A lone escape byte is ambiguous: it can be the ESC key or the beginning of an escape
-        # sequence. Hence, we look ahead without blocking instead of waiting for a byte that
-        # may never arrive. Notice that comparing against `UInt8[0x1b]` would allocate a
-        # vector at every iteration of this loop.
-        if (length(input.prefix) == 1) && (@inbounds input.prefix[1] == 0x1b)
+        # An all-escape prefix is ambiguous: it can be one or two ESC keys or the beginning
+        # of an escape sequence, since `"\e\e"` starts the ALT-modified arrow sequences.
+        # Hence, we look ahead without blocking instead of waiting for a byte that may
+        # never arrive. Waiting used to freeze the pager after two consecutive ESC keys.
+        # Notice that comparing against `UInt8[0x1b]` would allocate a vector at every
+        # iteration of this loop.
+        prefix_length = length(input.prefix)
+
+        if (1 <= prefix_length <= 2) && all(==(0x1b), input.prefix)
             _try_append_available!(input) ||
                 return _take_decoded!(input, Keystroke(; raw = "\e", value = "<esc>"), 1)
         else

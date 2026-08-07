@@ -376,6 +376,24 @@ end
     @test TerminalPager._jlgetch(IOBuffer("\e")).value == "<esc>"
 end
 
+@testset "Double Escape Decoding" begin
+    # `"\e\e"` is a proper prefix of the ALT-modified arrow sequences, so the decoder used
+    # to block waiting for a third byte that may never arrive, freezing the pager after two
+    # consecutive ESC keys.
+    input = TerminalPager.PagerInput(IOBuffer("\e\e"))
+
+    @test TerminalPager._read_keystroke!(input).value == "<esc>"
+    @test TerminalPager._read_keystroke!(input).value == "<esc>"
+    @test isempty(input.prefix)
+
+    # An ALT-modified arrow must still decode when its bytes are buffered.
+    input = TerminalPager.PagerInput(IOBuffer("\e\e[A"))
+    k = TerminalPager._read_keystroke!(input)
+
+    @test k.value == "<up>"
+    @test k.alt == true
+end
+
 """
     process_with_crop!(
         pagerd::TerminalPager.Pager,
