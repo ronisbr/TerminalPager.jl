@@ -134,6 +134,26 @@ end
     @test TerminalPager.TextViewLayout(sub_lines) isa TerminalPager.TextViewLayout
 end
 
+@testset "Auto-Fit Ignores the Trailing Newline" begin
+    # Text ending in a newline yields one trailing empty line after splitting, which does
+    # not occupy a terminal row when printed. Counting it opened the pager one row too
+    # early in automatic mode. This is the normal case in the REPL mode, which always
+    # terminates the rendered output with a newline.
+    lines = split("one\ntwo\nthree\n", '\n')
+    layout = TerminalPager.TextViewLayout(lines)
+
+    @test length(lines) == 4
+    @test TerminalPager._pager_content_fits(lines, (5, 40))
+    @test TerminalPager._pager_content_fits(layout, (5, 40))
+
+    # An empty line in the middle still occupies a row.
+    lines = split("one\n\ntwo\nthree", '\n')
+    layout = TerminalPager.TextViewLayout(lines)
+
+    @test !TerminalPager._pager_content_fits(lines, (5, 40))
+    @test !TerminalPager._pager_content_fits(layout, (5, 40))
+end
+
 @testset "Pager Accepts Substrings" begin
     # `pager(::AbstractString)` used to forward substrings to `_pager`, which only accepts
     # `String`, throwing a `MethodError`. The automatic mode prints fitting text directly,

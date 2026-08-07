@@ -380,16 +380,35 @@ Return whether `lines` fit without opening a pager, reserving two terminal rows.
 function _pager_content_fits(
     lines::AbstractVector{<:AbstractString}, display_size::Tuple{Int, Int}
 )
-    display_size[1] - 2 >= length(lines) || return false
+    display_size[1] - 2 >= _content_fit_rows(lines) || return false
     return all(line -> printable_textwidth(line) <= display_size[2], lines)
 end
 
 function _pager_content_fits(layout::TextViewLayout, display_size::Tuple{Int, Int})
-    display_size[1] - 2 >= length(layout) || return false
+    display_size[1] - 2 >= _content_fit_rows(layout) || return false
 
     # The layout already measured every line while it was prepared, so there is no need to scan
     # the text again. This is the path every `pager>` REPL command takes.
     return all(width -> width <= display_size[2], layout._printable_widths)
+end
+
+"""
+    _content_fit_rows(lines::AbstractVector{<:AbstractString}) -> Int
+
+Return the number of terminal rows required to print `lines`.
+
+Text ending in a newline yields one trailing empty line after splitting, which does not
+occupy a terminal row when printed. Counting it opened the pager one row too early in
+automatic mode.
+
+# Arguments
+
+- `lines::AbstractVector{<:AbstractString}`: Lines to measure.
+"""
+function _content_fit_rows(lines::AbstractVector{<:AbstractString})
+    num_lines = length(lines)
+    (num_lines > 0) && isempty(lines[num_lines]) && return num_lines - 1
+    return num_lines
 end
 
 """
