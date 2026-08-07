@@ -988,15 +988,21 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :toggle_ruler
         pagerd.show_ruler = !pagerd.show_ruler
 
-        # If the ruler is hidden, we must verify if the screen is on the right edge to fix
+        # If the ruler is hidden, we must verify if the screen is near the right edge to fix
         # the `start_column`.
         if !pagerd.show_ruler
             ruler_spacing = _ruler_width(pagerd.num_lines)
 
             if pagerd.cropped_columns ≤ ruler_spacing
-                # The reclaimed columns must not push the view into the frozen region.
+                # Hiding the ruler reclaims `ruler_spacing` columns, of which
+                # `cropped_columns` are filled by the text that was cropped at the right
+                # edge. Scrolling left by the difference fills the rest. Scrolling by the
+                # full ruler width cropped that text again. Notice that the reclaimed
+                # columns must not push the view into the frozen region.
                 pagerd.start_column = max(
-                    pagerd.start_column - ruler_spacing, pagerd.frozen_columns + 1, 1
+                    pagerd.start_column - (ruler_spacing - pagerd.cropped_columns),
+                    pagerd.frozen_columns + 1,
+                    1,
                 )
             end
         end
