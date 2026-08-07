@@ -423,6 +423,13 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     min_row = max(1, frozen_rows + 1)
     min_col = max(1, frozen_columns + 1)
 
+    # A page has the size of the view, which excludes the command line and the frozen rows.
+    # Using the full display height here skipped `frozen_rows` lines at every page movement,
+    # and those lines were never shown. Both values are clamped so that paging always moves
+    # at least one line.
+    page_rows = max(display_size[1] - 1 - frozen_rows, 1)
+    half_page_rows = max(div(display_size[1] - 1 - frozen_rows, 2), 1)
+
     # We should disable the visual line mode if all lines are frozen. Notice that the view has
     # `display_size[1] - 1` rows, because the last one is the command line.
     if (min_row >= num_lines) || (min_row >= display_size[1] - 1)
@@ -567,7 +574,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     elseif action == :pagedown
         if cropped_lines > 0
-            start_row += min(display_size[1] - 1, cropped_lines)
+            start_row += min(page_rows, cropped_lines)
 
             _request_redraw!(pagerd)
         end
@@ -580,7 +587,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     elseif action == :pageup
         if start_row ≠ min_row
-            start_row -= (display_size[1] - 1)
+            start_row -= page_rows
 
             if start_row < min_row
                 start_row = min_row
@@ -596,7 +603,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     elseif action == :halfpagedown
         if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
-            visual_mode_line += div(display_size[1] - 1, 2)
+            visual_mode_line += half_page_rows
 
             # If we passed the last line, we should keep the visual line in the last line,
             # but scroll the view.
@@ -610,14 +617,14 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         else
             if cropped_lines > 0
-                start_row += min(div(display_size[1] - 1, 2), cropped_lines)
+                start_row += min(half_page_rows, cropped_lines)
                 _request_redraw!(pagerd)
             end
         end
 
     elseif action == :halfpageup
         if visual_mode && (visual_mode_line > 1)
-            visual_mode_line -= div(display_size[1] - 1, 2)
+            visual_mode_line -= half_page_rows
 
             if visual_mode_line < 1
                 visual_mode_line = 1
@@ -626,7 +633,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
             _request_redraw!(pagerd)
         else
             if start_row ≠ min_row
-                start_row -= div(display_size[1] - 1, 2)
+                start_row -= half_page_rows
 
                 if start_row < min_row
                     start_row = min_row

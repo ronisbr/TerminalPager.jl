@@ -581,3 +581,45 @@
     @test pagerd.redraw == true
     @test pagerd.event === nothing
 end
+
+@testset "Paging With Frozen Rows" begin
+    # A page must have the size of the view, which excludes the command line and the frozen
+    # rows. Using the full display height skipped lines that were never shown.
+    pagerd = _create_pagerd(join(["line $i" for i in 1:200], '\n'))
+
+    pagerd.display_size = (24, 80)
+    pagerd.frozen_rows  = 3
+
+    # == Page Down =========================================================================
+
+    pagerd.start_row     = 4
+    pagerd.cropped_lines = 100
+
+    TerminalPager._pager_key_process!(pagerd, TerminalPager.Keystroke(; value = "<pagedown>"))
+
+    @test pagerd.start_row == 24
+
+    # == Page Up ===========================================================================
+
+    pagerd.cropped_lines = 80
+
+    TerminalPager._pager_key_process!(pagerd, TerminalPager.Keystroke(; value = "<pageup>"))
+
+    @test pagerd.start_row == 4
+
+    # == Half Page Down ====================================================================
+
+    pagerd.cropped_lines = 100
+
+    TerminalPager._pager_key_process!(pagerd, TerminalPager.Keystroke(; value = "d"))
+
+    @test pagerd.start_row == 14
+
+    # == Half Page Up ======================================================================
+
+    pagerd.cropped_lines = 90
+
+    TerminalPager._pager_key_process!(pagerd, TerminalPager.Keystroke(; value = "u"))
+
+    @test pagerd.start_row == 4
+end
