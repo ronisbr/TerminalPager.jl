@@ -1042,12 +1042,29 @@ function _pager_event_process!(pagerd::Pager)
             yanked_text, num_yanked_lines = _assemble_yank_text(
                 pagerd.text_layout, yanked_lines
             )
-            clipboard(yanked_text)
 
-            _print_cmd_message!(
-                pagerd,
-                num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" : "1 line copied",
-            )
+            # `clipboard` throws when no system clipboard provider is available, for
+            # example in a headless session. The error must not tear down the pager.
+            copied = try
+                clipboard(yanked_text)
+                true
+            catch
+                false
+            end
+
+            if copied
+                _print_cmd_message!(
+                    pagerd,
+                    num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" :
+                        "1 line copied",
+                )
+            else
+                _print_cmd_message!(
+                    pagerd,
+                    "Could not copy to the system clipboard!";
+                    crayon = crayon"red bold",
+                )
+            end
         end
     end
 
