@@ -152,8 +152,11 @@ function _redraw_cmd_line!(pagerd::Pager)
 
     out = _screen_buffer!(pagerd)
 
-    # Move the cursor to the last line and write the command line.
+    # Move the cursor to the last line and write the command line. The row must be cleared
+    # explicitly: on a terminal too narrow for the hint, nothing else overwrites the text
+    # left behind by the command editor.
     _move_cursor(out, display_size[1], 1)
+    _clear_to_eol(out)
     write(out, UInt8(':'))
 
     if display_size[2] > (hint_width + 4)

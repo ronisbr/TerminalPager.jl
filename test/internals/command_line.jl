@@ -85,6 +85,18 @@ end
     @test !TerminalPager._is_printable_keystroke(TerminalPager.Keystroke(; value = ""))
 end
 
+@testset "Command Line Redraw Clears the Row" begin
+    # On a terminal too narrow for the hint, only the prompt is written. Without an explicit
+    # clear, the text left behind by the command editor persisted on the command line.
+    pagerd = _create_modal_pagerd(["x", "y"], "")
+    pagerd.display_size = (10, 30)
+    pagerd.features = [:help]
+
+    TerminalPager._redraw_cmd_line!(pagerd)
+
+    @test occursin("\e[10;1H\e[0K:", String(take!(pagerd.term.out_stream)))
+end
+
 @testset "Command Line Cursor Column" begin
     # The column is a display width, not a character count. A wide character advances the
     # cursor by two columns.
