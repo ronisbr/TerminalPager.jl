@@ -20,8 +20,9 @@ Return the available pager rows and columns after reserving the command line.
 function _get_pager_display_size(p::Pager)
     rows, cols = p.display_size
 
-    # We need to remove one row due to the command line.
-    rows -= 1
+    # We need to remove one row due to the command line. Notice that a degenerate terminal
+    # must not produce a negative number of rows.
+    rows = max(rows - 1, 0)
 
     return rows, cols
 end
@@ -1255,6 +1256,10 @@ function _scan_frame_rows!(frame_cache::FrameCache, data, num_bytes::Int, max_ro
 
     empty!(new_first)
     empty!(new_last)
+
+    # Without this guard, the early return inside the loop below would report one row for
+    # a screen that cannot show any.
+    max_rows <= 0 && return 0
 
     num_rows = 0
     row_first = 1

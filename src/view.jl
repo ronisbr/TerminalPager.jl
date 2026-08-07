@@ -25,6 +25,17 @@ function _view!(pagerd::Pager)
     # reused across frames. Hence, we must reset the buffer here.
     truncate(buf.io, 0)
     seekstart(buf.io)
+
+    # A degenerate display cannot show any content, so rendering must be skipped entirely.
+    # Passing a nonpositive maximum number of lines to `textview` means unbounded, which
+    # would render the whole document into the frame buffer.
+    if (rows <= 0) || (cols <= 0)
+        pagerd.cropped_lines = 0
+        pagerd.cropped_columns = 0
+        _request_redraw!(pagerd)
+        return nothing
+    end
+
     display_config = pagerd.display_config
     frozen_columns = pagerd.frozen_columns
     frozen_rows = pagerd.frozen_rows

@@ -42,3 +42,26 @@ end
     TerminalPager._view!(pagerd)
     TerminalPager._redraw!(pagerd)
 end
+
+@testset "Degenerate Display Sizes" begin
+    # With one terminal row, only the command line fits. Rendering must be skipped:
+    # passing a nonpositive maximum number of lines to `textview` means unbounded, which
+    # would render the whole document into the frame buffer.
+    pagerd = _create_modal_pagerd(["line $i" for i in 1:5], "")
+    pagerd.display_size = (1, 40)
+
+    TerminalPager._view!(pagerd)
+
+    @test pagerd.buf.io.size == 0
+    @test pagerd.cropped_lines == 0
+    @test pagerd.cropped_columns == 0
+
+    TerminalPager._redraw!(pagerd)
+
+    @test pagerd.redraw == false
+    @test pagerd.frame_cache.num_rows == 0
+
+    # The frame row scanner must never report rows for a screen that cannot show any.
+    frame_cache = pagerd.frame_cache
+    @test TerminalPager._scan_frame_rows!(frame_cache, UInt8['a', '\n', 'b'], 3, 0) == 0
+end
