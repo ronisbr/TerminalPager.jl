@@ -52,6 +52,31 @@ end
     @test pagerd.visual_mode == true
 end
 
+@testset "Visual Mode With a Single Selectable Line" begin
+    # With exactly one selectable line, the visual mode must stay enabled so that the line
+    # can be yanked. The forced disable used to fire one line too early.
+    pagerd = _create_redraw_pagerd(["only line"]; display_size = (10, 20))
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+
+    TerminalPager._pager_key_process!(pagerd, TerminalPager.Keystroke(; value = "j"))
+
+    @test pagerd.visual_mode == true
+    @test pagerd.visual_mode_line == 1
+
+    # The forced disable must clear stale selections, exactly as `:toggle_visual_mode` does.
+    pagerd = _create_redraw_pagerd(["a", "b"]; display_size = (10, 20))
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+    push!(pagerd.visual_mode_selected_lines, 1)
+    pagerd.frozen_rows = 5
+
+    TerminalPager._pager_key_process!(pagerd, TerminalPager.Keystroke(; value = "j"))
+
+    @test pagerd.visual_mode == false
+    @test isempty(pagerd.visual_mode_selected_lines)
+end
+
 @testset "Visual Line Marking" begin
     pagerd = _create_redraw_pagerd(["line $i" for i in 1:8]; display_size = (10, 20))
     pagerd.features = [:visual_mode]

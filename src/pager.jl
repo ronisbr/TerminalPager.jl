@@ -430,10 +430,19 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     page_rows = max(display_size[1] - 1 - frozen_rows, 1)
     half_page_rows = max(div(display_size[1] - 1 - frozen_rows, 2), 1)
 
-    # We should disable the visual line mode if all lines are frozen. Notice that the view has
-    # `display_size[1] - 1` rows, because the last one is the command line.
-    if (min_row >= num_lines) || (min_row >= display_size[1] - 1)
-        visual_mode = false
+    # We should disable the visual line mode if there is no selectable line, that is, if all
+    # lines are frozen or if the first content row is beyond the view. Notice that the view
+    # has `display_size[1] - 1` rows, because the last one is the command line, and that at
+    # `min_row == num_lines` exactly one selectable line remains.
+    if (min_row > num_lines) || (min_row > display_size[1] - 1)
+        if visual_mode
+            visual_mode = false
+            visual_mode_line = 1
+
+            # The selections must not survive the forced disable. Otherwise, they reappear
+            # the next time the visual mode is enabled.
+            empty!(pagerd.visual_mode_selected_lines)
+        end
     end
 
     if action == :quit
