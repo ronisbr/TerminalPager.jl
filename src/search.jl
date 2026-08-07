@@ -194,18 +194,27 @@ function _move_view_to_match!(pagerd::Pager)
     # column before its start column.
     hl_col_end = hl_col_beg + max(match.width, 1) - 1
 
-    # Check if the highlight row is visible.
-    if (hl_line < start_row)
-        start_row = max(hl_line, frozen_rows + 1)
-    elseif hl_line > end_row
-        start_row = (hl_line + 1) - (rows - frozen_rows)
+    # A match inside the frozen rows is always visible, so the view must not move
+    # vertically for it. Otherwise, wrapping the search to such a match threw the view back
+    # to the top of the text.
+    if hl_line > frozen_rows
+        # Check if the highlight row is visible.
+        if hl_line < start_row
+            start_row = hl_line
+        elseif hl_line > end_row
+            start_row = (hl_line + 1) - (rows - frozen_rows)
+        end
     end
 
-    # If the highlight is outside the title rows, we can move the view to display it.
-    if title_rows < hl_line
+    # If the highlight is outside the title rows, we can move the view to display it. A
+    # match that ends inside the frozen columns is always visible, so the view must not
+    # move horizontally for it either.
+    if (title_rows < hl_line) && (hl_col_end > frozen_columns)
         # Check if the highlight column is visible.
         if hl_col_beg < start_column
-            start_column = hl_col_beg
+            # The first visible column must not be inside the frozen region. Otherwise, the
+            # state and the screen disagree, and moving left becomes a no-op.
+            start_column = max(hl_col_beg, frozen_columns + 1)
         elseif hl_col_end > end_col
             start_column = (hl_col_end + 1) - (cols - frozen_columns)
         end

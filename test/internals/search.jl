@@ -139,6 +139,52 @@ end
     @test pagerd.start_row >= 1
 end
 
+@testset "Search With Frozen Regions" begin
+    # A match inside the frozen rows is always visible: navigating to it must not move the
+    # view vertically.
+    lines = ["match"; ["filler $i" for i in 1:50]; "match"; ["tail $i" for i in 1:5]]
+    pagerd = _create_modal_pagerd(lines, "")
+    pagerd.frozen_rows = 2
+    pagerd.start_row = 40
+
+    TerminalPager._find_matches!(pagerd, r"match")
+    TerminalPager._change_active_match!(pagerd, true)
+    TerminalPager._move_view_to_match!(pagerd)
+    @test pagerd.ordered_search_matches[pagerd.active_search_match_id].line == 52
+
+    # The next match wraps to line 1, which is frozen and hence always on screen.
+    TerminalPager._change_active_match!(pagerd, true)
+    row_before = pagerd.start_row
+    TerminalPager._move_view_to_match!(pagerd)
+    @test pagerd.ordered_search_matches[pagerd.active_search_match_id].line == 1
+    @test pagerd.start_row == row_before
+
+    # The first visible column must never fall inside the frozen columns.
+    lines = [repeat("x", 4) * "needle" * repeat("y", 60)]
+    pagerd = _create_modal_pagerd(lines, "")
+    pagerd.display_size = (10, 20)
+    pagerd.frozen_columns = 8
+    pagerd.start_column = 30
+
+    TerminalPager._find_matches!(pagerd, r"needle")
+    TerminalPager._change_active_match!(pagerd, true)
+    TerminalPager._move_view_to_match!(pagerd)
+    @test pagerd.start_column == 9
+
+    # A match that ends inside the frozen columns is always visible: the view must not move
+    # horizontally for it.
+    lines = ["ne" * repeat("x", 100)]
+    pagerd = _create_modal_pagerd(lines, "")
+    pagerd.display_size = (10, 20)
+    pagerd.frozen_columns = 8
+    pagerd.start_column = 30
+
+    TerminalPager._find_matches!(pagerd, r"ne")
+    TerminalPager._change_active_match!(pagerd, true)
+    TerminalPager._move_view_to_match!(pagerd)
+    @test pagerd.start_column == 30
+end
+
 @testset "Invalid Search Pattern" begin
     lines = ["first line", "second line", "third line"]
 
