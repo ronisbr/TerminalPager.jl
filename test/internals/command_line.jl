@@ -85,6 +85,32 @@ end
     @test !TerminalPager._is_printable_keystroke(TerminalPager.Keystroke(; value = ""))
 end
 
+@testset "Command Line Does Not Wrap the Screen" begin
+    # A command wider than the terminal used to wrap the last row, scrolling the whole
+    # screen while the frame snapshot still described the old rows. The rendered command is
+    # now truncated at the right edge, while the edited command keeps every character.
+    pagerd = _create_modal_pagerd(["x", "y"], repeat("x", 60) * "\n")
+    pagerd.display_size = (10, 40)
+
+    cmd = TerminalPager._read_cmd!(pagerd)
+    output = String(take!(pagerd.term.out_stream))
+
+    @test cmd == repeat("x", 60)
+
+    # The prompt occupies column 1, so at most 39 characters fit on the row.
+    @test maximum(m -> length(m.match), eachmatch(r"x+", output)) == 39
+
+    # A wide character that does not fit entirely must not be painted at all.
+    pagerd = _create_modal_pagerd(["x", "y"], "ab界\n")
+    pagerd.display_size = (10, 4)
+
+    cmd = TerminalPager._read_cmd!(pagerd)
+    output = String(take!(pagerd.term.out_stream))
+
+    @test cmd == "ab界"
+    @test !occursin("界", output)
+end
+
 @testset "Command Line Redraw Clears the Row" begin
     # On a terminal too narrow for the hint, only the prompt is written. Without an explicit
     # clear, the text left behind by the command editor persisted on the command line.

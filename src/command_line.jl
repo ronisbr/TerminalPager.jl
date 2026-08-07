@@ -230,8 +230,16 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             _clear_to_eol(out)
             write(out, prefix)
 
+            # The command must be truncated at the right edge of the display. Otherwise,
+            # the terminal wraps the last row, the whole screen scrolls, and the frame
+            # snapshot no longer describes what is on it.
+            column = prefix_width + 1
+
             for character in chars
+                character_width = textwidth(character)
+                column + character_width > display_size[2] + 1 && break
                 write(out, character)
+                column += character_width
             end
 
             _move_cursor(
@@ -339,7 +347,7 @@ function _cmd_cursor_column(
         column += textwidth(chars[i])
     end
 
-    # A command longer than the display wraps, and we cannot address the wrapped part. Clamping
-    # keeps the cursor on the command line instead of moving it to an arbitrary position.
+    # A command longer than the display is truncated at the right edge, so the cursor must
+    # be clamped to the command line as well.
     return min(column, max(1, display_width))
 end
