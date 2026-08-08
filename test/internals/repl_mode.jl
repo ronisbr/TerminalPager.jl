@@ -29,6 +29,16 @@
     end
 end
 
+@testset "REPL Command Assembly" begin
+    # The commands were assembled by growing a string, which copied the whole accumulated
+    # command once per line and was quadratic for large pasted blocks.
+    lines = split("a = 1\nb = [1;\n2]\n", '\n'; keepempty = true)
+
+    @test TerminalPager._assemble_repl_command(lines, 1, 1) == "a = 1\n"
+    @test TerminalPager._assemble_repl_command(lines, 2, 3) == "b = [1;\n2]\n"
+    @test TerminalPager._assemble_repl_command(lines, 4, 4) == "\n"
+end
+
 """
     _capture_stdout(f::Function) -> String
 

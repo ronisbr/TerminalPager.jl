@@ -302,21 +302,28 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # First, we need to split the buffer into lines.
         lines = split(input, '\n'; keepempty = true)
 
-        # Variable to assemble the command, which can have multiple lines.
-        cmd = ""
+        # Index of the first line of the command being assembled, which can span multiple
+        # lines.
+        command_first_line = firstindex(lines)
 
         # Variable to indicate that we have an error while evaluating the expression.
         is_error = false
 
         # Loop through the lines.
-        @inbounds for i in eachindex(lines)
-            cmd *= lines[i] * "\n"
+        for i in eachindex(lines)
+            # Assemble the candidate command in a single pass. Growing a string instead
+            # copied the whole accumulated command once per line, which was quadratic for
+            # large pasted blocks.
+            cmd = _assemble_repl_command(lines, command_first_line, i)
             ast = Base.parse_input_line(cmd)
 
             # If the command is incomplete, we need to wait for another line. Notice that
             # `parse_input_line` does not always return an `Expr`, so we must check that before
             # reading its head.
             isa(ast, Expr) && (ast.head == :incomplete) && continue
+
+            # The next command starts after the current line.
+            command_first_line = i + 1
 
             # We will use `REPL.eval_on_backend` to evaluate the expression. This function
             # returns two values: the object returned by the expression, and a boolean value
@@ -345,9 +352,6 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                     write(stdout, '\n')
                 end
             end
-
-            # Clear the current command to receive the next one.
-            cmd = ""
         end
 
         # Restore the old stdout.
@@ -382,6 +386,40 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     end
 
     return nothing
+end
+
+"""
+    _assemble_repl_command(
+        lines::AbstractVector{<:AbstractString},
+        first_line::Int,
+        last_line::Int
+    ) -> String
+
+Assemble the newline-terminated command spanning `lines[first_line:last_line]`.
+
+# Arguments
+
+- `lines::AbstractVector{<:AbstractString}`: Lines of the whole REPL input.
+- `first_line::Int`: One-based index of the first command line.
+- `last_line::Int`: One-based index of the last command line, inclusive.
+"""
+function _assemble_repl_command(
+    lines::AbstractVector{<:AbstractString}, first_line::Int, last_line::Int
+)
+    sizehint = 0
+
+    for i in first_line:last_line
+        sizehint += sizeof(lines[i]) + 1
+    end
+
+    buf = IOBuffer(; sizehint = sizehint)
+
+    for i in first_line:last_line
+        write(buf, lines[i])
+        write(buf, '\n')
+    end
+
+    return String(take!(buf))
 end
 
 """
