@@ -307,7 +307,10 @@ function _show_pager_cursor(f, s)
 
     isempty(identifier) && return :ok
 
-    _with_raw_restoration(Base.active_repl.t) do
+    # The terminal must come from the line-edit state. Reaching for the global
+    # `Base.active_repl` broke the shortcut in any REPL that is not the active one, such
+    # as an embedded REPL.
+    _with_raw_restoration(LineEdit.terminal(s)) do
         # Call the provided functionality with the identifier under the cursor.
         f(identifier)
     end
