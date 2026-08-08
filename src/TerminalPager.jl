@@ -186,6 +186,11 @@ const less = pager
 Apply mode-dependent keybindings and initialize REPL integrations.
 """
 function __init__()
+    # The preference cache is populated while the package is precompiled, and the cached
+    # values are serialized into the compiled image. Drop it here so that a session never
+    # starts with values captured at precompile time.
+    _invalidate_preference_cache!()
+
     # Modify the key bindings if the user wants `vi` mode.
     _apply_mode_keybindings!()
 
