@@ -8,10 +8,19 @@ include("keycodes.jl")
 
 const _MAX_KEYSTROKE_BYTES = 32
 
-# Sentinel keystroke returned while the buffered bytes are still incomplete. Returning
-# `nothing` instead made the decoder return a union of tuple types, which is heap-allocated
-# at the reduced optimization level of this package, costing 80 bytes per keystroke.
+"""
+    _INCOMPLETE_KEYSTROKE
+
+Sentinel keystroke carried by the result of decoding an incomplete byte prefix.
+
+Returning `nothing` for the key instead made the decoder return a union of tuple types,
+which is heap-allocated at the reduced optimization level of this package, costing 80
+bytes per keystroke.
+"""
 const _INCOMPLETE_KEYSTROKE = Keystroke()
+
+# Result returned while the buffered bytes are still incomplete, shared by every return
+# site of the decoder.
 const _DECODE_INCOMPLETE = (:incomplete, _INCOMPLETE_KEYSTROKE, 0)
 
 # The escape sequences are matched by packing their bytes into an integer, so that a keypress
