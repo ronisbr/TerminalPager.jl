@@ -278,6 +278,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     # The `stdout` will be redirected inside the try/catch. Hence, we need to store the old
     # one to restore it if everything fails.
     old_stdout = stdout
+    io = nothing
 
     try
         # Create a buffer that will replace `stdout`. Notice that we add a context key
@@ -368,13 +369,14 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
 
             copy_to_clipboard && clipboard(remove_decorations(str))
         end
-
-        close(io)
     catch err
         Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())
 
     finally
         Base.eval(:(stdout = $old_stdout))
+
+        # `close` used to be inside the `try`, so it was skipped whenever the pager threw.
+        isnothing(io) || close(io)
     end
 
     return nothing
