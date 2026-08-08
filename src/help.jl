@@ -248,21 +248,21 @@ function _help_string(use_color::Bool)
                $(_c)    Keybindings: $(kb_change_freeze)$(_d)
                $(_y)  :change_title_rows$(_d)
                    Define the number of rows within the frozen rows that will be
-                   considered as titles. In
-                   this case, these rows will not scroll horizontally.
+                   considered as titles. In this case, these rows will not scroll
+                   horizontally.
                $(_c)    Keybindings: $(kb_change_title_rows)$(_d)
 
                $(_b)                                        Visual Mode$(_d)
                $(_g)  These actions require the feature :visual_mode.
                $(_y)  :toggle_visual_mode$(_d)
                    Toggle visual mode, where a visual line is displayed on the screen.
-                   In this mode, the
-                   movements are slightly modified to be relative to the visual line.
+                   In this mode, the movements are slightly modified to be relative to
+                   the visual line.
                $(_c)    Keybindings: $(kb_toggle_visual_mode)$(_d)
                $(_y)  :select_visual_mode_line$(_d)
-                   Mark the current visual line. Notice if the line is already marked,
-                   it will be unmarked.
-                   All the lines are unmarked when we exit the visual mode.
+                   Mark the current visual line. Notice that if the line is already
+                   marked, it will be unmarked. All the lines are unmarked when we exit
+                   the visual mode.
                $(_c)    Keybindings: $(kb_select_visual_mode_line)$(_d)
                $(_y)  :yank$(_d)
                    Copy (yank) the selected and current visual lines to the system

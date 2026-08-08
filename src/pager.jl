@@ -950,7 +950,7 @@ function _pager_event_process!(pagerd::Pager)
         pagerd.mode = :view
 
     elseif event == :change_freeze
-        cmd_input = _read_cmd!(pagerd; prefix = "Frozen rows # ($(pagerd.frozen_rows)): ")
+        cmd_input = _read_cmd!(pagerd; prefix = "Frozen rows ($(pagerd.frozen_rows)): ")
         frozen_rows = tryparse(Int, cmd_input; base = 10)
 
         if isnothing(frozen_rows) && !isempty(cmd_input)
@@ -975,7 +975,7 @@ function _pager_event_process!(pagerd::Pager)
             end
 
             cmd_input = _read_cmd!(
-                pagerd; prefix = "Frozen columns # ($(pagerd.frozen_columns)): "
+                pagerd; prefix = "Frozen columns ($(pagerd.frozen_columns)): "
             )
             frozen_columns = tryparse(Int, cmd_input; base = 10)
 
