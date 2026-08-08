@@ -144,6 +144,18 @@ function _validate_preference(pref::String, value)
             "Preference \"$pref\" must be a $expected_type; received $(typeof(value))."
         ),
     )
+
+    # The pager mode only supports two values. Anything else used to be accepted,
+    # persisted, and then silently treated as the default mode.
+    if (pref == "pager_mode") && (value ∉ ("default", "vi"))
+        throw(
+            ArgumentError(
+                "Preference \"pager_mode\" must be \"default\" or \"vi\"; " *
+                    "received \"$value\".",
+            ),
+        )
+    end
+
     return value
 end
 

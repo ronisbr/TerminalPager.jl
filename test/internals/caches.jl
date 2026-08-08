@@ -33,6 +33,13 @@
 
     # A value stored with the wrong type must still be rejected before it is cached.
     @test_throws ArgumentError TerminalPager._validate_preference("pager_mode", true)
+
+    # The pager mode only supports two values. Anything else used to be accepted,
+    # persisted, and then silently treated as the default mode.
+    @test TerminalPager._validate_preference("pager_mode", "default") == "default"
+    @test TerminalPager._validate_preference("pager_mode", "vi") == "vi"
+    @test_throws ArgumentError TerminalPager._validate_preference("pager_mode", "vim")
+    @test_throws ArgumentError TerminalPager._validate_preference("pager_mode", "VI")
 end
 
 @testset "Key Binding Generation" begin
