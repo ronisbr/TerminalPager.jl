@@ -1,6 +1,67 @@
 TerminalPager.jl
 ================
 
+Version 0.7.1
+-------------
+
+- ![Enhancement][badge-enhancement] Reading a keystroke no longer allocates: the decoder
+  returns a concrete tuple and the pending keystroke is loaded only once, removing 80 bytes
+  and a dynamic dispatch per keystroke. Other small hot-path overheads were also removed
+  from the redraw, the escape decoder, and the UTF-8 validation.
+- ![Enhancement][badge-enhancement] The preference storage is concretely typed, removing
+  dynamic dispatch from the pager session setup and from the REPL mode.
+- ![Enhancement][badge-enhancement] The view renders with concrete visual-overlay
+  arguments, saving roughly 300 bytes per frame when the visual mode is off.
+- ![Enhancement][badge-enhancement] Commands pasted into the `pager>` prompt are assembled
+  in linear time instead of quadratically in the number of lines.
+- ![Enhancement][badge-enhancement] The help screen text no longer has ragged mid-sentence
+  line breaks, and the freeze prompts match the title rows prompt.
+- ![Bugfix][badge-bugfix] Page and half-page movements scroll by the size of the view,
+  which excludes the frozen rows. They used to scroll by the full display height, skipping
+  lines that were never shown when rows were frozen.
+- ![Bugfix][badge-bugfix] The visual mode is no longer force-disabled when exactly one
+  selectable line remains, so a one-line document can be yanked. The forced disable also
+  clears stale selections now.
+- ![Bugfix][badge-bugfix] Navigating to a search match inside the frozen rows or columns no
+  longer moves the view, and the first visible column can no longer land inside the frozen
+  columns, which made moving left a permanent no-op.
+- ![Bugfix][badge-bugfix] The command line row is cleared before being repainted, so the
+  typed search pattern no longer persists on terminals too narrow for the hint.
+- ![Bugfix][badge-bugfix] A command wider than the terminal is truncated at the display
+  edge instead of wrapping the last row, which scrolled the whole screen and corrupted the
+  incremental redraw.
+- ![Bugfix][badge-bugfix] A failing system clipboard no longer tears down the pager
+  session. The yank reports the failure on the command line instead.
+- ![Bugfix][badge-bugfix] Hiding the ruler reclaims only the columns not needed by text
+  cropped at the right edge, so the view no longer over-scrolls nor crops that text again.
+- ![Bugfix][badge-bugfix] `pager` accepts any `AbstractString`. Paging a `SubString` used
+  to throw a `MethodError`.
+- ![Bugfix][badge-bugfix] The automatic mode no longer counts the trailing newline of the
+  output as a row, so output that exactly fits the display is printed instead of opening
+  the pager.
+- ![Bugfix][badge-bugfix] A terminal with a single row no longer renders the whole document
+  into the frame buffer.
+- ![Bugfix][badge-bugfix] Pressing ESC twice no longer freezes the input until a third key
+  arrives.
+- ![Bugfix][badge-bugfix] Loading the package from a basic or stream REPL, for example on a
+  dumb terminal, no longer throws nor leaks a task that polls forever.
+- ![Bugfix][badge-bugfix] The help fallback from the REPL active module to `Main` no longer
+  duplicates the search preamble in the output.
+- ![Bugfix][badge-bugfix] The `F1` and `Alt + h` shortcuts query help with the source text
+  of unhandled syntax nodes instead of their s-expression form, such as `(vect 1 2)`. They
+  also restore raw mode on the terminal of the prompt state, fixing them in embedded REPLs.
+- ![Bugfix][badge-bugfix] Applying the default `pager_mode` after the vi mode removes the
+  vi-only CTRL-U binding.
+- ![Bugfix][badge-bugfix] CTRL-D at the `pager?>` prompt aborts the mode instead of paging
+  the Julia help welcome text.
+- ![Bugfix][badge-bugfix] `TerminalPager.set_preference!` rejects unsupported `pager_mode`
+  values instead of silently treating them as the default mode.
+- ![Bugfix][badge-bugfix] The object rendering honors the color support of the terminal
+  instead of always emitting ANSI escapes, and the help screen reads the color flag from
+  the session rendering context.
+- ![Bugfix][badge-bugfix] `TerminalPager.debug_keycode` no longer misreports escape
+  sequences nor staircases its output in raw mode.
+
 Version 0.7.0
 -------------
 
