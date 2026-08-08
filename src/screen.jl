@@ -18,8 +18,6 @@ const _CURSOR_HOME = "$(CSI)1;1H"
 const _CURSOR_KEYS_OFF = "$(CSI)?1l"
 const _CURSOR_KEYS_ON = "$(CSI)?1h"
 const _HIDE_CURSOR = "$(CSI)?25l"
-const _RESTORE_CURSOR = "$(CSI)u"
-const _SAVE_CURSOR = "$(CSI)s"
 const _SHOW_CURSOR = "$(CSI)?25h"
 
 # Parameterized escape sequences are assembled from precomputed pieces. Building them with
@@ -62,73 +60,21 @@ function _write_decimal(io::IO, n::Int)
 end
 
 """
-    _clear_screen(io::IO; newlines::Bool = false) -> Nothing
+    _clear_screen(io::IO) -> Nothing
 
 Clear `io` and move its cursor to the first row and column.
+
+Notice that the clearing uses a single escape sequence, which adds new lines to the
+terminal and hence preserves its history.
 
 # Arguments
 
 - `io::IO`: Output stream that represents the terminal screen.
-
-# Keywords
-
-- `newlines::Bool`: If `true`, clear the terminal with a single escape sequence, which adds new
-    lines to the screen and hence preserves its history. If `false`, overwrite each display line
-    instead, which keeps the screen in place.
-    (**Default**: `false`)
 """
-function _clear_screen(@nospecialize(io::IO); newlines::Bool = false)
-    if newlines
-        write(io, _CLEAR_SCREEN)
-
-    else
-        dsize::Tuple{Int, Int} = displaysize(io)
-
-        for i in 1:dsize[1]
-            _move_cursor(io, i, 1)
-            _clear_to_eol(io)
-        end
-    end
-
+function _clear_screen(@nospecialize(io::IO))
+    write(io, _CLEAR_SCREEN)
     write(io, _CURSOR_HOME)
-
     return nothing
-end
-
-"""
-    _cursor_back(io::IO, i::Int = 1) -> Int
-
-Move the cursor in `io` backward by `i` columns.
-
-# Arguments
-
-- `io::IO`: Terminal output stream to update.
-- `i::Int`: Number of columns to move.
-    (**Default**: `1`)
-"""
-function _cursor_back(io::IO, i::Int = 1)
-    n = write(io, CSI)
-    n += _write_decimal(io, i)
-    n += write(io, UInt8('D'))
-    return n
-end
-
-"""
-    _cursor_forward(io::IO, i::Int = 1) -> Int
-
-Move the cursor in `io` forward by `i` columns.
-
-# Arguments
-
-- `io::IO`: Terminal output stream to update.
-- `i::Int`: Number of columns to move.
-    (**Default**: `1`)
-"""
-function _cursor_forward(io::IO, i::Int = 1)
-    n = write(io, CSI)
-    n += _write_decimal(io, i)
-    n += write(io, UInt8('C'))
-    return n
 end
 
 """
@@ -178,28 +124,6 @@ function _move_cursor(io::IO, i::Int, j::Int)
     n += write(io, UInt8('H'))
     return n
 end
-
-"""
-    _restore_cursor(io::IO) -> Int
-
-Restore the saved cursor position in `io`.
-
-# Arguments
-
-- `io::IO`: Terminal output stream to update.
-"""
-_restore_cursor(@nospecialize(io::IO)) = write(io, _RESTORE_CURSOR)
-
-"""
-    _save_cursor(io::IO) -> Int
-
-Save the current cursor position in `io`.
-
-# Arguments
-
-- `io::IO`: Terminal output stream to update.
-"""
-_save_cursor(@nospecialize(io::IO)) = write(io, _SAVE_CURSOR)
 
 """
     _show_cursor(io::IO) -> Int

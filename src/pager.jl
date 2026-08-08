@@ -300,7 +300,7 @@ function _pager!(
             alternate_screen_enabled = true
             _turn_on_alternate_screen_buffer(term.out_stream)
         else
-            _clear_screen(term.out_stream; newlines = true)
+            _clear_screen(term.out_stream)
         end
 
         # The pager is divided into a view buffer and command line. Everything in the view

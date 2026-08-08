@@ -17,8 +17,6 @@ using Markdown
 using Preferences
 using StringManipulation
 
-import Base: convert, string
-
 # The performance of TerminalPager.jl does not improve with many compiler optimizations.
 # Hence, we disable them to improve compile time.
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optlevel"))
