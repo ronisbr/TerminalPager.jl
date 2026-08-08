@@ -312,10 +312,15 @@ Read one keystroke, blocking one byte at a time and honoring pending boundary in
 - `input::PagerInput`: Input state to consume.
 """
 function _read_keystroke!(input::PagerInput)
-    if !isnothing(input.pending)
-        key = input.pending
+    # The pending field must be loaded exactly once. The compiler cannot refine the type of
+    # a mutable field across two loads, so testing and reading it separately made this
+    # function return a union, turning the key processing of the main loop into a dynamic
+    # dispatch at every keystroke.
+    pending = input.pending
+
+    if !isnothing(pending)
         input.pending = nothing
-        return key
+        return pending
     end
 
     while true
@@ -349,10 +354,12 @@ Read one already-buffered keystroke without blocking, retaining incomplete prefi
 - `input::PagerInput`: Input state to inspect and consume.
 """
 function _try_read_keystroke!(input::PagerInput)
-    if !isnothing(input.pending)
-        key = input.pending
+    # See `_read_keystroke!` for why the pending field must be loaded exactly once.
+    pending = input.pending
+
+    if !isnothing(pending)
         input.pending = nothing
-        return key
+        return pending
     end
 
     while true
