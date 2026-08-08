@@ -37,14 +37,8 @@ function _view!(pagerd::Pager)
     end
 
     display_config = pagerd.display_config
-    frozen_columns = pagerd.frozen_columns
-    frozen_rows = pagerd.frozen_rows
-    text_layout = pagerd.text_layout
-    search_matches = pagerd.search_matches
-    show_ruler = pagerd.show_ruler
     start_column = pagerd.start_column
     start_row = pagerd.start_row
-    title_rows = pagerd.title_rows
 
     # Make sure that the argument values are correct. The sanitized values must be written back,
     # otherwise the invalid ones are reused by the key processing, by the search, and by the
@@ -59,8 +53,6 @@ function _view!(pagerd::Pager)
         pagerd.start_column = start_column
     end
 
-    active_highlight = display_config.active_search_decoration
-    inactive_highlight = display_config.inactive_search_decoration
     vm_active_line_background = display_config.visual_mode_active_line_background
     vm_line_background = display_config.visual_mode_line_background
 
@@ -71,7 +63,10 @@ function _view!(pagerd::Pager)
         (active_match.line, active_match.index_in_line)
     end
 
-    if pagerd.visual_mode
+    # The render call is issued once per branch so that the visual arguments are concrete
+    # at each call site. Selecting them into union-typed locals first cost roughly 300
+    # bytes per frame in boxing.
+    cropped_lines, cropped_columns = if pagerd.visual_mode
         # These buffers are reused across frames. Otherwise, every frame allocates one vector
         # per selected line.
         visual_lines = pagerd.visual_lines
@@ -86,30 +81,12 @@ function _view!(pagerd::Pager)
             push!(visual_lines, line)
             push!(visual_line_backgrounds, vm_line_background)
         end
-    else
-        visual_lines = nothing
-        visual_line_backgrounds = ""
-    end
 
-    # Render the view.
-    cropped_lines, cropped_columns = textview(
-        buf,
-        text_layout,
-        (start_row, -1, start_column, -1);
-        active_highlight = active_highlight,
-        active_match = 0,
-        active_match_location = active_match_location,
-        frozen_columns_at_beginning = frozen_columns,
-        frozen_lines_at_beginning = frozen_rows,
-        highlight = inactive_highlight,
-        maximum_number_of_columns = cols,
-        maximum_number_of_lines = rows,
-        search_matches = search_matches,
-        show_ruler = show_ruler,
-        title_lines = title_rows,
-        visual_lines = visual_lines,
-        visual_line_backgrounds = visual_line_backgrounds,
-    )
+        _render_view(pagerd, rows, cols, active_match_location, visual_lines,
+            visual_line_backgrounds)
+    else
+        _render_view(pagerd, rows, cols, active_match_location, nothing, "")
+    end
 
     # Write the information to the structure.
     pagerd.cropped_columns = cropped_columns
@@ -119,4 +96,51 @@ function _view!(pagerd::Pager)
     _request_redraw!(pagerd)
 
     return nothing
+end
+
+"""
+    _render_view(pagerd::Pager, rows::Int, cols::Int,
+        active_match_location::NTuple{2, Int}, visual_lines::Union{Nothing, Vector{Int}},
+        visual_line_backgrounds::Union{String, Vector{String}}) -> Tuple{Int, Int}
+
+Render the viewport of `pagerd` into its view buffer and return the crop counters.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to render.
+- `rows::Int`: Number of available view rows.
+- `cols::Int`: Number of available view columns.
+- `active_match_location::NTuple{2, Int}`: Line and in-line index of the active match.
+- `visual_lines::Union{Nothing, Vector{Int}}`: Lines rendered with a visual background.
+- `visual_line_backgrounds::Union{String, Vector{String}}`: Background of each entry of
+    `visual_lines`.
+"""
+function _render_view(
+    pagerd::Pager,
+    rows::Int,
+    cols::Int,
+    active_match_location::NTuple{2, Int},
+    visual_lines::Union{Nothing, Vector{Int}},
+    visual_line_backgrounds::Union{String, Vector{String}},
+)
+    display_config = pagerd.display_config
+
+    return textview(
+        pagerd.buf,
+        pagerd.text_layout,
+        (pagerd.start_row, -1, pagerd.start_column, -1);
+        active_highlight = display_config.active_search_decoration,
+        active_match = 0,
+        active_match_location = active_match_location,
+        frozen_columns_at_beginning = pagerd.frozen_columns,
+        frozen_lines_at_beginning = pagerd.frozen_rows,
+        highlight = display_config.inactive_search_decoration,
+        maximum_number_of_columns = cols,
+        maximum_number_of_lines = rows,
+        search_matches = pagerd.search_matches,
+        show_ruler = pagerd.show_ruler,
+        title_lines = pagerd.title_rows,
+        visual_lines = visual_lines,
+        visual_line_backgrounds = visual_line_backgrounds,
+    )
 end
