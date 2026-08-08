@@ -127,22 +127,18 @@ Render help for `f` in `mod`, falling back to `Main` when the binding is not fou
     (**Default**: `Base.active_module()`)
 """
 function _get_help(f::AbstractString, mod::Module = Base.active_module())
-    # Create a buffer that will replace `stdout`.
-    buf = IOBuffer()
-    io = IOContext(
-        IOContext(buf, stdout), :displaysize => displaysize(stdout), :limit => false
-    )
-
-    # Evaluate the AST, which returns a Markdown object.
-    response = if ccall(:jl_generating_output, Cint, ()) == 1
+    # Evaluate the AST, which returns the preamble printed by the help mode and a Markdown
+    # object.
+    preamble, response = if ccall(:jl_generating_output, Cint, ()) == 1
         # If we are precompiling, just return a sample markdown. We still invoke
         # `REPL.helpmode` so that it gets precompiled via the precompile workload, but
         # skip `Core.eval` because evaluating the resulting AST into a module during
         # precompilation is not desirable. The `mod` argument does not affect which method
         # instance is compiled (`Module` is a concrete type), so we simply let `helpmode`
         # use its default.
-        Base.invokelatest(TerminalPager.REPL.helpmode, io, f)
+        Base.invokelatest(TerminalPager.REPL.helpmode, _help_render_io(IOBuffer()), f)
 
+        "",
         md"""
         # Header
 
@@ -170,21 +166,22 @@ function _get_help(f::AbstractString, mod::Module = Base.active_module())
         # object mimicking the REPL's "no documentation found" output instead of
         # propagating any error.
         try
-            response = _eval_helpmode(io, f, mod)
-            if mod !== Main && _is_not_found_response(response)
+            attempt = _helpmode_attempt(f, mod)
+            if mod !== Main && _is_not_found_response(attempt[2])
                 try
-                    response = _eval_helpmode(io, f, Main)
+                    attempt = _helpmode_attempt(f, Main)
                 catch err
                     err isa UndefVarError || rethrow()
                 end
             end
-            response
+            attempt
         catch err
             err isa UndefVarError || rethrow()
             try
-                mod === Main ? rethrow() : _eval_helpmode(io, f, Main)
+                mod === Main ? rethrow() : _helpmode_attempt(f, Main)
             catch err2
                 err2 isa UndefVarError || rethrow()
+                "",
                 Markdown.parse(
                     "No documentation found.\n\n" *
                     "Binding `$(lstrip(f, '?'))` does not exist.",
@@ -193,15 +190,51 @@ function _get_help(f::AbstractString, mod::Module = Base.active_module())
         end
     end
 
-    # Render the output.
+    # Render the winning attempt. Notice that only its own preamble is written, so a
+    # fallback to `Main` does not show the preamble of the failed attempt as well.
+    buf = IOBuffer()
+    io = _help_render_io(buf)
+
+    write(io, preamble)
     show(io, MIME("text/plain"), response)
     write(io, '\n')
 
-    str = String(take!(buf))
+    return String(take!(buf))
+end
 
-    close(io)
+"""
+    _help_render_io(buf::IOBuffer) -> IOContext
 
-    return str
+Wrap `buf` with the stream properties used to evaluate and render help.
+
+# Arguments
+
+- `buf::IOBuffer`: Buffer that receives the help output.
+"""
+function _help_render_io(buf::IOBuffer)
+    return IOContext(
+        IOContext(buf, stdout), :displaysize => displaysize(stdout), :limit => false
+    )
+end
+
+"""
+    _helpmode_attempt(f::AbstractString, mod::Module) -> Tuple{String, Any}
+
+Run `REPL.helpmode` for `f` in `mod` and return the printed preamble and the response.
+
+`REPL.helpmode` writes a preamble, such as the search suggestions, to the passed stream as
+a side effect. Every attempt uses its own buffer here. Rendering all the attempts into one
+shared buffer duplicated the preamble whenever the help fell back to `Main`.
+
+# Arguments
+
+- `f::AbstractString`: Help query to evaluate.
+- `mod::Module`: Module in which to evaluate the help query.
+"""
+function _helpmode_attempt(f::AbstractString, mod::Module)
+    buf = IOBuffer()
+    response = _eval_helpmode(_help_render_io(buf), f, mod)
+    return String(take!(buf)), response
 end
 
 """

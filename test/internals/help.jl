@@ -108,6 +108,11 @@ main_only_documented_function() = 1
     # error).
     str = _get_help("binding_that_does_not_exist_anywhere", HelpModuleTest)
     @test occursin("No documentation found", str)
+
+    # The fallback to `Main` used to render the preamble written by `helpmode`, such as
+    # the search suggestions, once per attempt, duplicating it in the output.
+    str = _get_help("eachindexx", HelpModuleTest)
+    @test count("Perhaps you meant", str) == 1
 end
 
 @testset "Help Screen Version" begin
