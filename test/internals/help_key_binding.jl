@@ -59,6 +59,11 @@ REPL.LineEdit.input_string(state::CursorState) = String(take!(copy(state.buf)))
         @test escapes['h'] === TerminalPager._show_pager_help
         @test !haskey(escapes, 'H')
     end
+
+    # A REPL without a keymap interface, such as the basic REPL used on a dumb terminal,
+    # must be skipped. The registration task used to poll for the interface forever.
+    task = TerminalPager._register_shortcuts(escapes -> nothing, "not a REPL")
+    @test timedwait(() -> istaskdone(task), 10.0) == :ok
 end
 
 """

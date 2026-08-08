@@ -203,6 +203,10 @@ function _register_shortcuts(f, repl)
     # When `atreplinit` is called, `repl.interface` is still undefined. Use `@async` to
     # finish initialization first.
     @async begin
+        # Non-line-edit REPLs, such as the basic REPL used on a dumb terminal, have no
+        # keymap interface at all, so polling for one below would never terminate.
+        hasfield(typeof(repl), :interface) || return nothing
+
         # According to tests, this while loop is currently not needed. However, as long as
         # we don't know whether this is guaranteed, better be safe than sorry. If this is
         # not needed, it only evaluates the condition once at runtime without actually

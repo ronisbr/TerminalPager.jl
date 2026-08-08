@@ -189,8 +189,27 @@ function __init__()
     _apply_mode_keybindings!()
 
     if isdefined(Base, :active_repl)
-        _init_pager_repl_mode(Base.active_repl)
-        _register_help_shortcuts(Base.active_repl)
+        repl = Base.active_repl
+
+        # Non-line-edit REPLs, such as the basic REPL used on a dumb terminal, have no
+        # keymap interface. Initializing the pager mode there broke package loading, and
+        # the shortcut registration leaked a task that never terminates.
+        if isinteractive() && repl isa REPL.LineEditREPL
+            if isdefined(repl, :interface)
+                _init_pager_repl_mode(repl)
+            else
+                # The package can be loaded from another `atreplinit` hook, in which case
+                # the REPL is active but its interface is not set up yet.
+                @async begin
+                    while !isdefined(repl, :interface)
+                        sleep(0.1)
+                    end
+                    _init_pager_repl_mode(repl)
+                end
+            end
+
+            _register_help_shortcuts(repl)
+        end
     else
         atreplinit() do repl
             if isinteractive() && repl isa REPL.LineEditREPL
@@ -204,9 +223,9 @@ function __init__()
                     end
                     _init_pager_repl_mode(repl)
                 end
-            end
 
-            _register_help_shortcuts(repl)
+                _register_help_shortcuts(repl)
+            end
         end
     end
 
