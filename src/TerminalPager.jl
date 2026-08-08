@@ -143,7 +143,10 @@ For more information, see: [`TerminalPager.set_preference!`](@ref),
 [`TerminalPager.drop_preference!`](@ref), and [`TerminalPager.drop_all_preferences!`](@ref).
 """
 function pager(obj::Any; kwargs...)
-    str = sprint(show, MIME"text/plain"(), obj; context = :color => true)
+    # The color support of the current output must be honored. Rendering with color
+    # unconditionally showed raw ANSI escapes on terminals without color support.
+    hascolor = get(stdout, :color, true)::Bool
+    str = sprint(show, MIME"text/plain"(), obj; context = :color => hascolor)
     return pager(str; kwargs...)
 end
 
