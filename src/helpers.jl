@@ -12,7 +12,7 @@ const _HELP_GETTER = Ref{Any}()
 """
     @help(f)
 
-Open the documentation of the function, macro or other object `f` in pager.
+Open the documentation of the function, macro, or other object `f` in the pager.
 
 # Arguments
 
@@ -246,6 +246,7 @@ Show help for `f` in a pager, reporting errors in the same way as the public `@h
 
 - `f::AbstractString`: Help query to display.
 - `mod::Module`: Module in which to evaluate the help query first.
+    (**Default**: `Base.active_module()`)
 """
 function _show_help(f::AbstractString, mod::Module = Base.active_module())
     try

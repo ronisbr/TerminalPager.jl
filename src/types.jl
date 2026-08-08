@@ -121,8 +121,8 @@ what is on screen row `i` for every `i` in `1:num_rows`. An empty row is represe
 - `row_first::Vector{Int}`: First index of each snapshot row in `bytes`.
 - `row_last::Vector{Int}`: Last index of each snapshot row in `bytes`, inclusive.
 - `num_rows::Int`: Number of rows the snapshot describes.
-- `new_first::Vector{Int}`: Scratch line table for the frame being painted.
-- `new_last::Vector{Int}`: Scratch line table for the frame being painted.
+- `new_first::Vector{Int}`: First index of each row of the frame being painted.
+- `new_last::Vector{Int}`: Last index of each row of the frame being painted, inclusive.
 - `out::IOBuffer`: Reused buffer assembling everything sent to the terminal.
 - `valid::Bool`: Whether the snapshot describes the screen.
 """

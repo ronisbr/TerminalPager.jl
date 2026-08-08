@@ -58,6 +58,10 @@ end
 
 Drop the preference `pref`.
 
+# Arguments
+
+- `pref::String`: Name of a supported preference.
+
 # Examples
 
 ```julia

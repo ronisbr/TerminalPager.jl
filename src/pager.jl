@@ -257,7 +257,8 @@ function _pager!(
     _layout_factory = TextViewLayout,
     manage_cursor_key_mode::Bool = true,
 )
-    # Split once and reuse the result for auto-fit and layout construction.
+    # Reuse a supplied layout or line vector; the raw text is split only when neither is
+    # available, and the result feeds both the auto-fit check and the layout construction.
     source_lines = if !isnothing(text_layout)
         text_layout
     elseif !isnothing(lines)
@@ -303,8 +304,8 @@ function _pager!(
             _clear_screen(term.out_stream)
         end
 
-        # The pager is divided into a view buffer and command line. Everything in the view
-        # buffer is written to this buffer and then flushed to the screen.
+        # The pager is divided into a view and a command line. Everything in the view is
+        # written to this buffer and then flushed to the screen.
         iobuf = IOBuffer()
         hascolor = get(stdout, :color, true)::Bool
         buf = IOContext(iobuf, :color => hascolor)
@@ -1177,7 +1178,8 @@ end
 
 Send everything assembled in the reusable screen buffer to the terminal in a single write.
 
-Writing each piece separately would issue one system call per piece, which can show tearing.
+Writing each piece separately would issue one system call per piece, which can cause
+tearing.
 
 # Arguments
 

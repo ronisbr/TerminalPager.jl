@@ -55,8 +55,8 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("y", false, false, false) => :yank,
 )
 
-# Dictionary with the current keybindings, it is initialized here with the default values to
-# improve startup time.
+# Dictionary with the current keybindings. It is initialized here with the default values
+# to improve startup time.
 const _KEYBINDINGS = copy(_DEFAULT_KEYBINDINGS)
 
 # Bumped whenever `_KEYBINDINGS` changes, so that everything derived from it, such as the help
@@ -77,10 +77,10 @@ end
     delete_keybinding(key::String; alt::Bool = false, ctrl::Bool = false,
         shift::Bool = false) -> Nothing
 
-Delete the keybinding `key`. The modifiers keys can be selected using the keywords `alt`,
+Delete the keybinding `key`. The modifier keys can be selected using the keywords `alt`,
 `ctrl`, and `shift`.
 
-For more information about how specify `key` see [`set_keybinding`](@ref).
+For more information about how to specify `key`, see [`set_keybinding`](@ref).
 
 # Arguments
 
@@ -138,7 +138,7 @@ end
 """
     reset_keybindings() -> Nothing
 
-Reset key bindings to the original ones.
+Reset the key bindings to the original ones.
 """
 function reset_keybindings()
     empty!(_KEYBINDINGS)
@@ -154,7 +154,7 @@ end
     set_keybinding(key::String, action::Symbol; alt::Bool = false,
         ctrl::Bool = false, shift::Bool = false) -> Nothing
 
-Set key binding `key` to the action `action`. The modifiers keys can be selected using the
+Set key binding `key` to the action `action`. The modifier keys can be selected using the
 keywords `alt`, `ctrl`, and `shift`.
 
 `key` can contain a character or one of the following special key names:

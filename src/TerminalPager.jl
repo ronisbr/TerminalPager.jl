@@ -95,7 +95,7 @@ Call the pager to show the output of the object `obj`.
     (**Default**: `true`)
 - `has_visual_mode::Bool`: Allow the user to use visual mode.
     (**Default**: `true`)
-- `show_ruler::Bool`: If `true`, a vertical ruler is shown at the pager with the line
+- `show_ruler::Bool`: If `true`, a vertical ruler is shown in the pager with the line
     numbers.
     (**Default**: `false`)
 - `use_alternate_screen_buffer::Bool`: If `true`, the pager will use the alternate screen
@@ -163,8 +163,8 @@ Show the text in `obj` using the terminal pager.
 """
 function pager(obj::AbstractString; kwargs...)
     # If we have a context key called `bypass_pager` with the value `true`, we must not call
-    # the pager because we are in the pager> REPL mode. Hence, if we call the pager, it
-    # locks the screen until the user types CTRL-D. For more information, see:
+    # the pager because we are in the pager> REPL mode. Otherwise, the pager locks the
+    # screen until the user types CTRL-D. For more information, see:
     #
     #   https://github.com/ronisbr/TerminalPager.jl/issues/40
     #

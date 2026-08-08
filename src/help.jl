@@ -293,8 +293,8 @@ _getkb(action::Symbol) = get(_action_keybindings(), action, "")
 
 Return a description of the keybindings of every action, keyed by action.
 
-The result is cached until the keybindings change. Building it scanned `_KEYBINDINGS` once per
-action, which the help screen did 27 times every time it was opened.
+The result is cached until the keybindings change. Without the cache, opening the help
+screen scanned `_KEYBINDINGS` once per action, that is, 27 times.
 
 The descriptions of each action are sorted, so that the help screen does not depend on the
 iteration order of `_KEYBINDINGS`.

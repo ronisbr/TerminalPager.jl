@@ -176,9 +176,9 @@ function _move_view_to_match!(pagerd::Pager)
         cols -= _ruler_width(pagerd.num_lines)
     end
 
-    # Compute the last row and column that is displayed. Both are inclusive: `end_col` used to
-    # be the first column past the viewport, so a match ending exactly at the right edge was
-    # considered visible and the view never scrolled to it.
+    # Compute the last row and column that is displayed. Both are inclusive: `end_col` used
+    # to be the first column past the viewport, so a match ending one column past the right
+    # edge was considered visible and the view never scrolled to it.
     end_row = (start_row - 1) + (rows - frozen_rows)
     end_col = (start_column - 1) + (cols - frozen_columns)
 

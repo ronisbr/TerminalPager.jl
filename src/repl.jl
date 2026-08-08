@@ -198,7 +198,7 @@ function _create_pager_help_repl_mode(
         LineEdit.setup_search_keymap(hp)[2]
     end
 
-    # Key mappings used in the pager mode:
+    # Key mappings used in the pager help mode:
     mk = REPL.mode_keymap(main)
 
     tp_help_mode.repl = repl
@@ -283,9 +283,9 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     try
         # Create a buffer that will replace `stdout`. Notice that we add a context key
         # called `bypass_pager` with value `true`. All the commands we call in this mode
-        # will have its output handled to the pager. Hence, if a command also calls a pager,
-        # we must only return the object. Otherwise, the session freezes until the user
-        # press CTRL-D. For more information, see:
+        # will have their output handed to the pager. Hence, if a command also calls a
+        # pager, we must only return the object. Otherwise, the session freezes until the
+        # user presses CTRL-D. For more information, see:
         #
         #   https://github.com/ronisbr/TerminalPager.jl/issues/40
         buf = IOBuffer()

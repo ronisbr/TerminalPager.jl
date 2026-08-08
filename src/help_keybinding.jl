@@ -109,15 +109,9 @@ Ascend to the most specific SyntaxNode containing all the information needed for
 - `node::SyntaxNode`: Syntax node from which to ascend.
 """
 function _ascend(node::SyntaxNode)
-    """
-        is_macro_part(n::SyntaxNode) -> Bool
-
-    Return whether `n` represents part of a macro name for the active Julia version.
-
-    # Arguments
-
-    - `n::SyntaxNode`: Syntax node to inspect.
-    """
+    # Return whether `n` represents part of a macro name for the active Julia version.
+    # Notice that this cannot be a docstring: a string literal inside a function body is
+    # a discarded expression, not documentation.
     function is_macro_part(n)
         @static if VERSION >= v"1.13-"
             kind(n) == K"Identifier" &&

@@ -40,7 +40,7 @@ function _register_about_shortcut(repl)
 end
 
 """
-    _show_pager_about(s::Any, _key::Any, _context::Any) -> Nothing
+    _show_pager_about(s::Any, _key::Any, _context::Any) -> Symbol
 
 Show `about` of the identifier under the cursor in the REPL.
 

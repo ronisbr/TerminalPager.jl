@@ -23,8 +23,8 @@ const _CMD_HINT_HELP_WIDTH = textwidth(_CMD_HINT_HELP)
 # Width of "(match  of )", that is, everything but the two numbers.
 const _CMD_MATCH_WIDTH = textwidth(_CMD_MATCH_PREFIX) + textwidth(_CMD_MATCH_INFIX) + 1
 
-# Padding is written from a slice of this string, so that right-aligning the hint does not
-# allocate a full-width string at every frame.
+# Padding is written directly from the bytes of this string, so that right-aligning the
+# hint does not allocate a full-width string at every frame.
 const _BLANKS = " "^512
 
 ############################################################################################
