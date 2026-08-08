@@ -372,6 +372,13 @@ end
     # == Real World Examples ===============================================================
 
     test("cl.platform().id |> unsafe_string", "unsafe_string")
+
+    # == Fallback Nodes ====================================================================
+
+    # Unhandled interior nodes must produce their source text. The s-expression rendering,
+    # such as "(vect 1 2)", is not a valid help query.
+    test("[1, 2]", 3, "[1, 2]")
+    test("x = 1", 3, "x = 1")
 end
 
 @testset "Cursor Character Position" begin

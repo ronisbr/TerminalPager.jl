@@ -169,7 +169,14 @@ function _helpstring(x::SyntaxNode)
     kind(x) in KSet"char Char" && return "Char"
     kind(x) in KSet"cmdstring CmdString" && return "@cmd"
     (kind(x) == K"->" || is_keyword(x)) && return untokenize(kind(x))
-    return string(x)
+
+    # A leaf renders as its value, which is correct for identifiers and also restores the
+    # `@` of macro names, whose source span excludes it. An interior node, however, renders
+    # as its s-expression form, such as `(vect 1 2)`, which is not a valid help query, so
+    # its source text is used instead.
+    x.children === nothing && return string(x)
+
+    return sourcetext(x)
 end
 
 """
