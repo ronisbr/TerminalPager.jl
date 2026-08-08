@@ -120,6 +120,14 @@ function _apply_mode_keybindings!(get_preference::F = _get_preference) where {F 
         _KEYBINDINGS[("<shiftin>", false, false, false)] = :halfpageup
     else
         _KEYBINDINGS[("<eot>", false, false, false)] = :quit_eot
+
+        # The vi mode also binds CTRL-U, which has no default binding. Switching back must
+        # remove it, unless the user has meanwhile reassigned the key to another action.
+        shiftin_key = ("<shiftin>", false, false, false)
+
+        if get(_KEYBINDINGS, shiftin_key, nothing) === :halfpageup
+            delete!(_KEYBINDINGS, shiftin_key)
+        end
     end
 
     _keybindings_changed!()

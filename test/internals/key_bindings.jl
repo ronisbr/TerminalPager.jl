@@ -109,6 +109,20 @@ end
 
         @test TerminalPager._KEYBINDINGS[("<eot>", false, false, false)] == :halfpagedown
         @test TerminalPager._KEYBINDINGS[("<shiftin>", false, false, false)] == :halfpageup
+
+        # Switching back to the default mode must remove the vi-only CTRL-U binding, which
+        # used to survive the switch.
+        TerminalPager._apply_mode_keybindings!(default_getter)
+
+        @test TerminalPager._KEYBINDINGS[("<eot>", false, false, false)] == :quit_eot
+        @test !haskey(TerminalPager._KEYBINDINGS, ("<shiftin>", false, false, false))
+
+        # A user reassignment of the key must survive the switch, however.
+        TerminalPager._apply_mode_keybindings!(vi_getter)
+        TerminalPager.set_keybinding("<shiftin>", :quit)
+        TerminalPager._apply_mode_keybindings!(default_getter)
+
+        @test TerminalPager._KEYBINDINGS[("<shiftin>", false, false, false)] == :quit
     finally
         TerminalPager.reset_keybindings()
     end
