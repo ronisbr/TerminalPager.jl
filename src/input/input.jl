@@ -8,6 +8,12 @@ include("keycodes.jl")
 
 const _MAX_KEYSTROKE_BYTES = 32
 
+# Sentinel keystroke returned while the buffered bytes are still incomplete. Returning
+# `nothing` instead made the decoder return a union of tuple types, which is heap-allocated
+# at the reduced optimization level of this package, costing 80 bytes per keystroke.
+const _INCOMPLETE_KEYSTROKE = Keystroke()
+const _DECODE_INCOMPLETE = (:incomplete, _INCOMPLETE_KEYSTROKE, 0)
+
 # The escape sequences are matched by packing their bytes into an integer, so that a keypress
 # costs a handful of dictionary lookups instead of a linear scan over the whole table. Scanning
 # it took roughly 700 array comparisons per arrow key, because the decoder runs again after
@@ -52,18 +58,19 @@ const _KEYCODE_PREFIXES = Set{UInt64}(
 )
 
 """
-    _decode_keystroke(prefix::Vector{UInt8}) ->
-        Tuple{Symbol, Union{Nothing, Keystroke}, Int}
+    _decode_keystroke(prefix::Vector{UInt8}) -> Tuple{Symbol, Keystroke, Int}
 
 Decode one package-owned byte prefix without reading from an input stream. The status is
-`:complete` or `:incomplete`; the integer is the number of bytes consumed by one key.
+`:complete` or `:incomplete`; the integer is the number of bytes consumed by one key. An
+incomplete result carries the sentinel [`_INCOMPLETE_KEYSTROKE`](@ref) and zero consumed
+bytes.
 
 # Arguments
 
 - `prefix::Vector{UInt8}`: Buffered bytes beginning with the next keystroke.
 """
 function _decode_keystroke(prefix::Vector{UInt8})
-    isempty(prefix) && return :incomplete, nothing, 0
+    isempty(prefix) && return _DECODE_INCOMPLETE
     if length(prefix) >= _MAX_KEYSTROKE_BYTES
         return (
             :complete,
@@ -78,8 +85,7 @@ function _decode_keystroke(prefix::Vector{UInt8})
 end
 
 """
-    _decode_escape(prefix::Vector{UInt8}) ->
-        Tuple{Symbol, Union{Nothing, Keystroke}, Int}
+    _decode_escape(prefix::Vector{UInt8}) -> Tuple{Symbol, Keystroke, Int}
 
 Decode an escape-sequence prefix without performing IO.
 
@@ -97,18 +103,17 @@ function _decode_escape(prefix::Vector{UInt8})
     end
 
     if num_bytes < _MAX_KEYCODE_BYTES
-        _pack_keycode(prefix, num_bytes) ∈ _KEYCODE_PREFIXES &&
-            return :incomplete, nothing, 0
+        _pack_keycode(prefix, num_bytes) ∈ _KEYCODE_PREFIXES && return _DECODE_INCOMPLETE
     end
 
-    num_bytes == 1 && return :incomplete, nothing, 0
+    num_bytes == 1 && return _DECODE_INCOMPLETE
 
     offset = length(prefix) >= 2 && prefix[2] == 0x1b ? 2 : 1
     if length(prefix) >= offset + 2 && prefix[offset + 1] in (0x5b, 0x4f)
         final_index = findfirst(
             byte -> 0x40 <= byte <= 0x7e, @view(prefix[(offset + 2):end])
         )
-        isnothing(final_index) && return :incomplete, nothing, 0
+        isnothing(final_index) && return _DECODE_INCOMPLETE
         consumed = offset + 1 + final_index
         bytes = prefix[1:consumed]
         return (
@@ -117,7 +122,7 @@ function _decode_escape(prefix::Vector{UInt8})
     end
 
     status, scalar, consumed = _decode_scalar(prefix, 2)
-    status === :incomplete && return status, nothing, 0
+    status === :incomplete && return _DECODE_INCOMPLETE
     scalar.value == "<undefined>" && return status, scalar, consumed + 1
     key = Keystroke(;
         raw = "\e" * scalar.raw,
@@ -130,8 +135,7 @@ function _decode_escape(prefix::Vector{UInt8})
 end
 
 """
-    _decode_scalar(prefix::Vector{UInt8}, offset::Int) ->
-        Tuple{Symbol, Union{Nothing, Keystroke}, Int}
+    _decode_scalar(prefix::Vector{UInt8}, offset::Int) -> Tuple{Symbol, Keystroke, Int}
 
 Decode one ASCII/control or UTF-8 scalar beginning at `offset`.
 
@@ -141,7 +145,7 @@ Decode one ASCII/control or UTF-8 scalar beginning at `offset`.
 - `offset::Int`: One-based byte index where decoding starts.
 """
 function _decode_scalar(prefix::Vector{UInt8}, offset::Int)
-    length(prefix) < offset && return :incomplete, nothing, 0
+    length(prefix) < offset && return _DECODE_INCOMPLETE
     first_byte = prefix[offset]
     first_byte < 0x80 && return :complete, _ascii_keystroke(first_byte), 1
 
@@ -156,7 +160,7 @@ function _decode_scalar(prefix::Vector{UInt8}, offset::Int)
         return :complete, key, 1
     end
 
-    length(prefix) - offset + 1 < num_bytes && return :incomplete, nothing, 0
+    length(prefix) - offset + 1 < num_bytes && return _DECODE_INCOMPLETE
     bytes = prefix[offset:(offset + num_bytes - 1)]
     if !_valid_utf8(bytes)
         key = Keystroke(; raw = _raw_bytes(bytes), value = "<undefined>")

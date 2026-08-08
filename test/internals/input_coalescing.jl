@@ -207,10 +207,10 @@ key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
             status, key, _ = TerminalPager._decode_keystroke(prefix)
             if haskey(TerminalPager.keycodes, String(prefix))
                 @test status == :complete
-                @test !isnothing(key)
+                @test key !== TerminalPager._INCOMPLETE_KEYSTROKE
             else
                 @test status == :incomplete
-                @test isnothing(key)
+                @test key === TerminalPager._INCOMPLETE_KEYSTROKE
             end
         end
     end
