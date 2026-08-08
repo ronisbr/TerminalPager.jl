@@ -30,8 +30,7 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
 
     # Use the cursor position to find the byte index in the input string to search for.
     # This might virtually shift the cursor position to match the intended identifier.
-    # This collaterates (moving sideways) the AST or enters a branch if out-of-tree.
-    search_index = _collaterate(input_str, cursor_pos)
+    search_index = _adjust_search_index(input_str, cursor_pos)
 
     # Find the most specific syntax node containing `search_index` by descending the AST.
     descendant = _descend(head, search_index)
@@ -46,16 +45,16 @@ function _extract_identifier(input::AbstractString, cursor_pos::Integer)::String
 end
 
 """
-    _collaterate(input::String, cursor_pos::Integer) -> Int
+    _adjust_search_index(input::String, cursor_pos::Integer) -> Int
 
-Based on cursor position, collaterate (branch) to the intended token's index.
+Convert the cursor position to the byte index of the token the cursor refers to.
 
 # Arguments
 
 - `input::String`: REPL input text to inspect.
 - `cursor_pos::Integer`: Character cursor position in `input`.
 """
-function _collaterate(input::String, cursor_pos::Integer)
+function _adjust_search_index(input::String, cursor_pos::Integer)
     # Some operations seem to be easier to do on the character level than on the AST,
     # so do them here.
     # Convert character cursor position to byte index to cover multi-byte code points.
