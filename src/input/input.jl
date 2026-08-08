@@ -96,9 +96,16 @@ Decode an escape-sequence prefix without performing IO.
 function _decode_escape(prefix::Vector{UInt8})
     num_bytes = length(prefix)
 
-    # No sequence in the table is a prefix of another one, hence at most one length can match.
-    for len in _MIN_KEYCODE_BYTES:min(num_bytes, _MAX_KEYCODE_BYTES)
-        key = get(_KEYCODE_EXACT, _pack_keycode(prefix, len), nothing)
+    # No sequence in the table is a prefix of another one, hence at most one length can
+    # match. The packed representation is extended one byte at a time instead of being
+    # rebuilt from scratch for every candidate length.
+    packed_bytes = UInt64(0)
+
+    @inbounds for len in 1:min(num_bytes, _MAX_KEYCODE_BYTES)
+        packed_bytes |= UInt64(prefix[len]) << (8 * (len - 1))
+        len < _MIN_KEYCODE_BYTES && continue
+
+        key = get(_KEYCODE_EXACT, packed_bytes | (UInt64(len) << 56), nothing)
         isnothing(key) || return :complete, key, len
     end
 
@@ -230,7 +237,11 @@ Return whether `bytes` is one valid two- to four-byte UTF-8 scalar.
 - `bytes::Vector{UInt8}`: Candidate encoded scalar.
 """
 function _valid_utf8(bytes::Vector{UInt8})
-    all(byte -> 0x80 <= byte <= 0xbf, @view(bytes[2:end])) || return false
+    # An indexed loop avoids building a closure over a view on every non-ASCII keypress.
+    @inbounds for i in 2:length(bytes)
+        0x80 <= bytes[i] <= 0xbf || return false
+    end
+
     first_byte = bytes[1]
     second_byte = bytes[2]
     first_byte == 0xe0 && second_byte < 0xa0 && return false

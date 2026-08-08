@@ -140,7 +140,9 @@ Clear `io` from the cursor through the end of the current line.
 
 - `io::IO`: Terminal output stream to update.
 """
-_clear_to_eol(@nospecialize(io::IO)) = write(io, _CLEAR_TO_EOL)
+# Notice that this function must specialize: the redraw path calls it once per painted row
+# with a concrete buffer, and the generic method would dispatch dynamically at every call.
+_clear_to_eol(io::IO) = write(io, _CLEAR_TO_EOL)
 
 """
     _hide_cursor(io::IO) -> Int

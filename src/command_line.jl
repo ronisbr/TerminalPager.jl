@@ -74,7 +74,7 @@ function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon
     term = pagerd.term
     display_size = pagerd.display_size
 
-    if get(term.out_stream, :color, true)
+    if get(term.out_stream, :color, true)::Bool
         _d = _CRAYON_RESET
         _h = string(crayon)
     else
