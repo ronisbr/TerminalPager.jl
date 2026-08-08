@@ -27,7 +27,10 @@ Open a new pager with the help.
 - `pagerd::Pager`: Parent pager state whose terminal and input are reused.
 """
 function _help!(pagerd::Pager)
-    help_str, help_layout = _help_screen(get(pagerd.term.out_stream, :color, true)::Bool)
+    # The color flag must come from the session view buffer, which is the single source of
+    # truth for the session rendering. The terminal stream of a programmatically built
+    # pager does not necessarily carry the flag.
+    help_str, help_layout = _help_screen(get(pagerd.buf, :color, true)::Bool)
 
     _pager!(
         pagerd.term,
