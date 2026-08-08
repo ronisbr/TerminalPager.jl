@@ -34,6 +34,10 @@
     # A value stored with the wrong type must still be rejected before it is cached.
     @test_throws ArgumentError TerminalPager._validate_preference("pager_mode", true)
 
+    # The preference storage is concretely typed, so reads must not infer as Any.
+    @test (@inferred Union{Bool, String} TerminalPager._get_preference("pager_mode")) isa
+        String
+
     # The pager mode only supports two values. Anything else used to be accepted,
     # persisted, and then silently treated as the default mode.
     @test TerminalPager._validate_preference("pager_mode", "default") == "default"

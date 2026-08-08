@@ -8,7 +8,10 @@
 #                                        Constants                                         #
 ############################################################################################
 
-const _AVAILABLE_PREFERENCES = Dict{String, Any}(
+# The value type must stay a small concrete union. With `Any`, every preference read
+# inferred as `Any`, which made the session options in `_pager!` and in the REPL mode
+# dynamically dispatched.
+const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, String}}(
     "active_search_decoration" => string(crayon"black bg:yellow"),
     "inactive_search_decoration" => string(crayon"black bg:light_gray"),
     "always_use_alternate_screen_buffer_in_repl_mode" => false,
@@ -23,7 +26,7 @@ const _AVAILABLE_PREFERENCES = Dict{String, Any}(
 # roughly 50 µs. Opening a pager reads five of them, and every `pager>` command reads two more.
 # Since preferences cannot change without going through the functions below, the values are
 # cached here.
-const _PREFERENCE_CACHE = Dict{String, Any}()
+const _PREFERENCE_CACHE = Dict{String, Union{Bool, String}}()
 
 ############################################################################################
 #                                     Public Functions                                     #
@@ -135,7 +138,7 @@ Validate a known preference against the type of its built-in default.
 - `pref::String`: Name of a supported preference.
 - `value::Any`: Candidate preference value.
 """
-function _validate_preference(pref::String, value)
+function _validate_preference(pref::String, value)::Union{Bool, String}
     haskey(_AVAILABLE_PREFERENCES, pref) ||
         throw(ArgumentError("$pref is not a valid preference."))
     expected_type = typeof(_AVAILABLE_PREFERENCES[pref])

@@ -282,7 +282,7 @@ function _pager!(
         throw(ArgumentError("PagerInput must own the pager terminal input stream."))
 
     # Check if we should block the alternate screen buffer.
-    block_alternate_screen_buffer = _get_preference("block_alternate_screen_buffer")
+    block_alternate_screen_buffer = _get_preference("block_alternate_screen_buffer")::Bool
     use_alternate_screen_buffer &= !block_alternate_screen_buffer
 
     cursor_key_mode_enabled = false

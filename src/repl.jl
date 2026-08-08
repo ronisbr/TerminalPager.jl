@@ -357,9 +357,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             # Check if we need to use the alternate screen.
             use_alternate_screen_buffer = _get_preference(
                 "always_use_alternate_screen_buffer_in_repl_mode"
-            )
+            )::Bool
 
-            copy_to_clipboard = _get_preference("copy_stdout_to_clipboard_in_repl_mode")
+            copy_to_clipboard = _get_preference(
+                "copy_stdout_to_clipboard_in_repl_mode"
+            )::Bool
 
             # Take everything and display in the pager using `auto` mode. In this case, the
             # pager will only be called if there is not space in the display to show
