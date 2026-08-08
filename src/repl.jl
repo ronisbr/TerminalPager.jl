@@ -164,6 +164,10 @@ function _create_pager_help_repl_mode(
 
     tp_help_mode.on_done =
         (s, buf, ok) -> begin
+            # Without this, aborting the prompt with CTRL-D still evaluated the empty
+            # input, which paged the Julia help welcome text instead of leaving the mode.
+            ok || return REPL.transition(s, :abort)
+
             # Take the input command.
             input = String(take!(buf))
             REPL.reset(repl)
