@@ -1,6 +1,11 @@
 TerminalPager.jl
 ================
 
+Version 0.7.2
+-------------
+
+- ![Enhancement][badge-enhancement] Add support for StringManipulation.jl v0.5.
+
 Version 0.7.1
 -------------
 
