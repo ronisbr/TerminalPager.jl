@@ -11,11 +11,12 @@ using REPL
 using REPL.LineEdit
 using REPL.LineEdit: buffer, input_string
 
-using Crayons
 using InteractiveUtils
 using Markdown
 using Preferences
 using StringManipulation
+using StyledStrings
+using StyledStrings: Face, SimpleColor, addface!, getface, loadface!, resetfaces!
 
 # The performance of TerminalPager.jl does not improve with many compiler optimizations.
 # Hence, we disable them to improve compile time.
@@ -35,14 +36,8 @@ include("./types.jl")
 
 const CSI = "\x1b["
 
-# Define reusable crayons.
-const _CRAYON_B = string(crayon"bold")
-const _CRAYON_CB = string(crayon"cyan bold")
-const _CRAYON_C = string(crayon"cyan")
-const _CRAYON_G = string(crayon"dark_gray")
-const _CRAYON_R = string(crayon"red bold")
-const _CRAYON_RESET = string(Crayon(; reset = true))
-const _CRAYON_Y = string(crayon"yellow bold")
+# SGR sequence resetting every text attribute. The other sequences come from the faces.
+const _SGR_RESET = "$(CSI)0m"
 
 ############################################################################################
 #                                         Includes                                         #
@@ -50,6 +45,7 @@ const _CRAYON_Y = string(crayon"yellow bold")
 
 include("./command_line.jl")
 include("./debug.jl")
+include("./faces.jl")
 include("./help.jl")
 include("./helpers.jl")
 include("./pager.jl")
@@ -113,14 +109,6 @@ Call the pager to show the output of the object `obj`.
 The user can define custom preferences using the function
 [`TerminalPager.set_preference!`](@ref). The available preferences are listed as follows:
 
-- `"active_search_decoration"`: `String` with the ANSI escape sequence to decorate the
-    active search element. One can easily obtain this sequence by converting a `Crayon` to
-    string.
-    (**Default**: `string(crayon"black bg:yellow")`)
-- `"inactive_search_decoration"`: `String` with the ANSI escape sequence to decorate the
-    inactive search element. One can easily obtain this sequence by converting a `Crayon` to
-    string.
-    (**Default**: `string(crayon"black bg:light_gray")`)
 - `"always_use_alternate_screen_buffer_in_repl_mode"`: Deprecated and ignored, because the
     alternate screen buffer is now used by default. Use `"block_alternate_screen_buffer"` to
     disable it.
@@ -148,15 +136,56 @@ The user can define custom preferences using the function
     large windows and slow connections. Disable it if your terminal does not support the
     XTerm scroll region sequences.
     (**Default**: `true`)
-- `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
-    selected lines in the visual mode.
-    (**Default**: `"100"`)
-- `"visual_mode_active_line_background"`: `String` with the ANSI code of the background for
-    the active line in the visual mode.
-    (**Default**: `"44"`)
 
 For more information, see: [`TerminalPager.set_preference!`](@ref),
 [`TerminalPager.drop_preference!`](@ref), and [`TerminalPager.drop_all_preferences!`](@ref).
+
+# Faces
+
+The colors and the text attributes of the pager are faces registered with
+**StyledStrings.jl** under the prefix `terminalpager_`. They can be customized in the file
+`config/faces.toml` of the Julia depot under the tables `[terminalpager.<name>]`. The
+available faces are listed as follows:
+
+- `"status_bar"`: Status bar.
+    (**Default**: reverse video)
+- `"badge_normal"`: Mode badge in the normal mode.
+    (**Default**: bold, bright white on blue)
+- `"badge_search"`: Mode badge in the search mode.
+    (**Default**: bold, black on yellow)
+- `"badge_visual"`: Mode badge in the visual mode.
+    (**Default**: bold, bright white on magenta)
+- `"message_info"`: Informative message on the status bar.
+    (**Default**: bold, bright white on green)
+- `"message_error"`: Error message on the status bar.
+    (**Default**: bold, bright white on red)
+- `"search_match"`: Inactive search match.
+    (**Default**: black on white)
+- `"search_active_match"`: Active search match.
+    (**Default**: black on yellow)
+- `"visual_line"`: Lines marked in the visual mode. Only its background is used.
+    (**Default**: bright black background)
+- `"visual_active_line"`: Visual line. Only its background is used.
+    (**Default**: blue background)
+- `"ruler"`: Line number ruler.
+    (**Default**: bright black)
+- `"scrollbar_track"`: Track of the scrollbar.
+    (**Default**: bright black)
+- `"scrollbar_thumb"`: Thumb of the scrollbar.
+    (**Default**: no attributes)
+- `"command_status"`: Status shown at the right of the command line, like the number of
+    matches while searching.
+    (**Default**: bright black)
+- `"help_title"`: Title of the help screen.
+    (**Default**: bold cyan)
+- `"help_section"`: Section titles of the help screen.
+    (**Default**: bold)
+- `"help_description"`: Section descriptions and feature tags of the help screen.
+    (**Default**: bright black)
+- `"help_key"`: Keys of the help screen.
+    (**Default**: cyan)
+- `"help_action"`: Action names of the help screen.
+    (**Default**: bold yellow)
 """
 pager(obj::Any; kwargs...) = pager(_render_object(obj); kwargs...)
 
@@ -245,6 +274,10 @@ function __init__()
     # values are serialized into the compiled image. Drop it here so that a session never
     # starts with values captured at precompile time.
     _invalidate_preference_cache!()
+
+    # The faces live in the registry of StyledStrings.jl, which is not serialized with this
+    # package. Hence, they must be registered at every session start.
+    _register_faces!()
 
     # Modify the key bindings if the user wants `vi` mode.
     _apply_mode_keybindings!()

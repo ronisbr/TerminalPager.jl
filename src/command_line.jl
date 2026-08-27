@@ -34,15 +34,6 @@ const _POSITION_WIDTH = 3
 const _HIDDEN_LEFT = "‹"
 const _HIDDEN_RIGHT = "›"
 
-# The bar is drawn in reverse video, so that it works with light and dark themes. The badges
-# and the messages reset it and select their own colors.
-const _CRAYON_BAR = "$(CSI)0;7m"
-const _CRAYON_BADGE_NORMAL = "$(CSI)0;1;97;44m"
-const _CRAYON_BADGE_SEARCH = "$(CSI)0;1;30;43m"
-const _CRAYON_BADGE_VISUAL = "$(CSI)0;1;97;45m"
-const _CRAYON_MESSAGE_INFO = "$(CSI)0;1;97;42m"
-const _CRAYON_MESSAGE_ERROR = "$(CSI)0;1;97;41m"
-
 # Icons telling the kind of a message at a glance. Both have a display width of one.
 const _MESSAGE_INFO_ICON = "✓"
 const _MESSAGE_ERROR_ICON = "✗"
@@ -179,6 +170,7 @@ function _redraw_status_bar!(pagerd::Pager)
     num_lines = pagerd.num_lines
     mode = pagerd.mode
     use_color = get(term.out_stream, :color, true)::Bool
+    display_config = pagerd.display_config
 
     out = _screen_buffer!(pagerd)
 
@@ -194,27 +186,27 @@ function _redraw_status_bar!(pagerd::Pager)
 
     # == Badge =============================================================================
 
-    badge, badge_crayon = if pagerd.visual_mode
-        use_color ? (_BADGE_VISUAL, _CRAYON_BADGE_VISUAL) : (_BADGE_VISUAL_PLAIN, "")
+    badge, badge_face = if pagerd.visual_mode
+        use_color ? (_BADGE_VISUAL, display_config.badge_visual) : (_BADGE_VISUAL_PLAIN, "")
     elseif mode == :searching
-        use_color ? (_BADGE_SEARCH, _CRAYON_BADGE_SEARCH) : (_BADGE_SEARCH_PLAIN, "")
+        use_color ? (_BADGE_SEARCH, display_config.badge_search) : (_BADGE_SEARCH_PLAIN, "")
     else
-        use_color ? (_BADGE_NORMAL, _CRAYON_BADGE_NORMAL) : (_BADGE_NORMAL_PLAIN, "")
+        use_color ? (_BADGE_NORMAL, display_config.badge_normal) : (_BADGE_NORMAL_PLAIN, "")
     end
 
-    use_color && write(out, badge_crayon)
+    use_color && write(out, badge_face)
 
     if cols < _BADGE_WIDTH
         # Every badge is ASCII, so the bytes are the columns.
         GC.@preserve badge unsafe_write(out, pointer(badge), UInt(cols))
-        use_color && write(out, _CRAYON_RESET)
+        use_color && write(out, _SGR_RESET)
         _move_cursor(out, rows, 1)
         _flush_screen!(pagerd)
         return nothing
     end
 
     write(out, badge)
-    use_color && write(out, _CRAYON_BAR)
+    use_color && write(out, display_config.status_bar)
     used = _BADGE_WIDTH
 
     # == Message ===========================================================================
@@ -228,7 +220,8 @@ function _redraw_status_bar!(pagerd::Pager)
         width = 0
         is_error = pagerd.message_kind === :error
 
-        use_color && write(out, is_error ? _CRAYON_MESSAGE_ERROR : _CRAYON_MESSAGE_INFO)
+        message_face = is_error ? display_config.message_error : display_config.message_info
+        use_color && write(out, message_face)
 
         if available >= 3
             write(out, UInt8(' '))
@@ -245,7 +238,7 @@ function _redraw_status_bar!(pagerd::Pager)
         end
 
         _write_blanks(out, available - width)
-        use_color && write(out, _CRAYON_RESET)
+        use_color && write(out, _SGR_RESET)
         _move_cursor(out, rows, 1)
         _flush_screen!(pagerd)
         return nothing
@@ -397,7 +390,7 @@ function _redraw_status_bar!(pagerd::Pager)
         write(out, UInt8(' '))
     end
 
-    use_color && write(out, _CRAYON_RESET)
+    use_color && write(out, _SGR_RESET)
     _move_cursor(out, rows, 1)
 
     _flush_screen!(pagerd)
@@ -517,9 +510,9 @@ function _read_cmd!(
 
                 if (status_width > 0) && (column + status_width <= display_size[2])
                     _write_blanks(out, display_size[2] - status_width - column + 1)
-                    use_color && write(out, _CRAYON_G)
+                    use_color && write(out, pagerd.display_config.command_status)
                     write(out, status)
-                    use_color && write(out, _CRAYON_RESET)
+                    use_color && write(out, _SGR_RESET)
                 end
 
                 _move_cursor(

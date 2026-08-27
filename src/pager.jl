@@ -564,7 +564,7 @@ prompt. Clearing it ends the scrollback with the last page of the text instead.
 """
 function _clear_status_row(@nospecialize(io::IO))
     _move_cursor(io, displaysize(io)[1], 1)
-    write(io, _CRAYON_RESET)
+    write(io, _SGR_RESET)
     _clear_to_eol(io)
     return nothing
 end
@@ -1493,7 +1493,7 @@ function _redraw!(pagerd::Pager)
             # `textview` always leaves the SGR state at its default, but we reset it anyway.
             # Otherwise, a row painted out of order could erase to the end of the line with a
             # colored background.
-            write(out, _CRAYON_RESET)
+            write(out, _SGR_RESET)
         end
 
         _clear_to_eol(out)
@@ -1511,7 +1511,7 @@ function _redraw!(pagerd::Pager)
         # A row recorded as empty is already blank.
         valid && (row_last[i] < row_first[i]) && continue
         _move_cursor(out, i, 1)
-        write(out, _CRAYON_RESET)
+        write(out, _SGR_RESET)
         _clear_to_eol(out)
     end
 

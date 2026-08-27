@@ -120,8 +120,8 @@ end
     TerminalPager._view!(pagerd)
     frame = split(String(take!(pagerd.buf.io)), '\n')
 
-    active = pagerd.display_config.visual_mode_active_line_background
-    selected = pagerd.display_config.visual_mode_line_background
+    active = pagerd.display_config.visual_active_line
+    selected = pagerd.display_config.visual_line
 
     @test occursin("\e[$(active)m", frame[2])
     @test !occursin("\e[$(selected)m", frame[2])

@@ -542,9 +542,9 @@ end
     # The active line comes first, so that it keeps its own background.
     @test pagerd.visual_lines == [2, 4, 6]
     @test pagerd.visual_line_backgrounds == [
-        pagerd.display_config.visual_mode_active_line_background,
-        pagerd.display_config.visual_mode_line_background,
-        pagerd.display_config.visual_mode_line_background,
+        pagerd.display_config.visual_active_line,
+        pagerd.display_config.visual_line,
+        pagerd.display_config.visual_line,
     ]
 
     # The buffers must be reused instead of reallocated at every frame.

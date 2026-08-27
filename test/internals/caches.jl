@@ -95,26 +95,37 @@ end
 
 @testset "Help Screen Cache" begin
     TerminalPager.reset_keybindings()
+    config = TerminalPager.DisplayConfig()
 
-    text, layout = TerminalPager._help_screen(true)
+    text, layout = TerminalPager._help_screen(true, config)
     @test occursin("TerminalPager.jl", text)
     @test collect(layout) == split(text, '\n')
 
     # A second call must reuse the text and its prepared layout.
-    cached_text, cached_layout = TerminalPager._help_screen(true)
+    cached_text, cached_layout = TerminalPager._help_screen(true, config)
     @test cached_text === text
     @test cached_layout === layout
 
     # The colorless screen is cached separately.
-    plain_text, plain_layout = TerminalPager._help_screen(false)
+    plain_text, plain_layout = TerminalPager._help_screen(false, config)
     @test plain_text !== text
     @test plain_layout !== layout
     @test !occursin('\e', plain_text)
 
+    # Changing a face must rebuild it, and restoring the faces must rebuild it again.
+    red_face = TerminalPager.Face(; foreground = :red)
+    red_config = TerminalPager._display_config(name -> red_face)
+    red_text, red_layout = TerminalPager._help_screen(true, red_config)
+    @test red_text !== text
+    @test red_layout !== layout
+    @test occursin("\e[31m", red_text)
+    @test TerminalPager._help_screen(true, red_config)[1] === red_text
+    @test TerminalPager._help_screen(true, config)[1] !== red_text
+
     # Changing a keybinding must rebuild it.
     try
         TerminalPager.set_keybinding("Z", :quit)
-        new_text, new_layout = TerminalPager._help_screen(true)
+        new_text, new_layout = TerminalPager._help_screen(true, config)
         @test new_text !== text
         @test new_layout !== layout
         @test occursin("Z", new_text)

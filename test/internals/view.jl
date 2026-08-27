@@ -168,8 +168,9 @@ end
     @test TerminalPager._scrollbar_thumb(pagerd, 9) == (1, 9)
     rows = _frame_rows(pagerd)
     @test length(rows) == 9
-    @test all(endswith(row, TerminalPager._SCROLLBAR_THUMB) for row in rows)
-    @test rows[4] == "\e[0m\e[20G" * TerminalPager._SCROLLBAR_THUMB
+    thumb = pagerd.display_config.scrollbar_thumb * TerminalPager._SCROLLBAR_THUMB * "\e[0m"
+    @test all(endswith(row, thumb) for row in rows)
+    @test rows[4] == "\e[20G" * thumb
 
     # Without color, the scrollbar has no decoration.
     pagerd = _create_redraw_pagerd(["a"]; display_size = (10, 20), color = false)

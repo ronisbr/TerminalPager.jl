@@ -12,8 +12,6 @@
 # inferred as `Any`, which made the session options in `_pager!` and in the REPL mode
 # dynamically dispatched.
 const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, String}}(
-    "active_search_decoration" => string(crayon"black bg:yellow"),
-    "inactive_search_decoration" => string(crayon"black bg:light_gray"),
     "always_use_alternate_screen_buffer_in_repl_mode" => false,
     "block_alternate_screen_buffer" => false,
     "copy_stdout_to_clipboard_in_repl_mode" => false,
@@ -21,8 +19,16 @@ const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, String}}(
     "pager_mode" => "default",
     "show_scrollbar" => false,
     "use_scroll_regions" => true,
-    "visual_mode_line_background" => "100",
-    "visual_mode_active_line_background" => "44",
+)
+
+# Preferences replaced by faces, mapped to the face that replaced them. Setting or dropping
+# one of them throws an error pointing to the face, so that an old configuration does not
+# fail silently.
+const _REPLACED_PREFERENCES = Dict{String, String}(
+    "active_search_decoration" => "search_active_match",
+    "inactive_search_decoration" => "search_match",
+    "visual_mode_active_line_background" => "visual_active_line",
+    "visual_mode_line_background" => "visual_line",
 )
 
 # Reading a preference goes through the TOML-backed `Preferences.jl` storage, which takes
@@ -38,7 +44,7 @@ const _PREFERENCE_CACHE = Dict{String, Union{Bool, String}}()
 """
     drop_all_preferences!() -> Nothing
 
-Drop all preferences.
+Drop all preferences, and reset the faces to their built-in defaults.
 
 # Examples
 
@@ -49,6 +55,15 @@ julia> TerminalPager.drop_all_preferences!()
 function drop_all_preferences!()
     for pref in keys(_AVAILABLE_PREFERENCES)
         @delete_preferences!(pref)
+    end
+
+    # The replaced preferences are deleted too, so that an old configuration is cleaned up.
+    for pref in keys(_REPLACED_PREFERENCES)
+        @delete_preferences!(pref)
+    end
+
+    for (name, _) in _FACES
+        resetfaces!(Symbol(_FACE_PREFIX, name))
     end
 
     _invalidate_preference_cache!()
@@ -68,12 +83,11 @@ Drop the preference `pref`.
 # Examples
 
 ```julia
-julia> TerminalPager.drop_preference!("visual_mode_line_background")
+julia> TerminalPager.drop_preference!("show_scrollbar")
 ```
 """
 function drop_preference!(pref::String)
-    pref ∉ keys(_AVAILABLE_PREFERENCES) &&
-        throw(ArgumentError("$pref is not a valid preference."))
+    _check_preference_name(pref)
     @delete_preferences!(pref)
     _invalidate_preference_cache!()
     return nothing
@@ -92,7 +106,7 @@ Set the preference `pref` to the `value`.
 # Examples
 
 ```julia
-julia> TerminalPager.set_preference!("visual_mode_line_background", "44")
+julia> TerminalPager.set_preference!("show_scrollbar", true)
 ```
 """
 function set_preference!(pref::String, value)
@@ -157,8 +171,7 @@ Validate a known preference against the type of its built-in default.
 - `value::Any`: Candidate preference value.
 """
 function _validate_preference(pref::String, value)::Union{Bool, String}
-    haskey(_AVAILABLE_PREFERENCES, pref) ||
-        throw(ArgumentError("$pref is not a valid preference."))
+    _check_preference_name(pref)
     expected_type = typeof(_AVAILABLE_PREFERENCES[pref])
     value isa expected_type || throw(
         ArgumentError(
@@ -181,21 +194,26 @@ function _validate_preference(pref::String, value)::Union{Bool, String}
 end
 
 """
-    _display_config(get_preference::F = _get_preference) -> DisplayConfig where
-        {F <: Function}
+    _check_preference_name(pref::String) -> Nothing
 
-Capture the display string preferences for a new pager session.
+Throw an `ArgumentError` if `pref` is not a supported preference. The error of a preference
+replaced by a face names the face.
 
 # Arguments
 
-- `get_preference::F`: Callable preference getter used to capture each display value.
-    (**Default**: `_get_preference`)
+- `pref::String`: Name of the preference to check.
 """
-function _display_config(get_preference::F = _get_preference) where {F <: Function}
-    return DisplayConfig(
-        get_preference("active_search_decoration")::String,
-        get_preference("inactive_search_decoration")::String,
-        get_preference("visual_mode_active_line_background")::String,
-        get_preference("visual_mode_line_background")::String,
-    )
+function _check_preference_name(pref::String)
+    haskey(_AVAILABLE_PREFERENCES, pref) && return nothing
+
+    if haskey(_REPLACED_PREFERENCES, pref)
+        throw(
+            ArgumentError(
+                "The preference \"$pref\" was replaced by the face " *
+                    "\"$(_REPLACED_PREFERENCES[pref])\".",
+            ),
+        )
+    end
+
+    throw(ArgumentError("$pref is not a valid preference."))
 end

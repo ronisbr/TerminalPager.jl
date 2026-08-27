@@ -53,8 +53,8 @@ function _view!(pagerd::Pager)
         pagerd.start_column = start_column
     end
 
-    vm_active_line_background = display_config.visual_mode_active_line_background
-    vm_line_background = display_config.visual_mode_line_background
+    vm_active_line_background = display_config.visual_active_line
+    vm_line_background = display_config.visual_line
 
     active_match_location = if active_search_match_id == 0
         (0, 0)
@@ -110,6 +110,7 @@ function _view!(pagerd::Pager)
             thumb_first,
             thumb_last,
             get(buf, :color, true)::Bool,
+            display_config,
         )
     end
 
@@ -156,14 +157,15 @@ function _render_view(
         io,
         pagerd.text_layout,
         (pagerd.start_row, -1, pagerd.start_column, -1);
-        active_highlight = display_config.active_search_decoration,
+        active_highlight = display_config.search_active_match,
         active_match = 0,
         active_match_location = active_match_location,
         frozen_columns_at_beginning = pagerd.frozen_columns,
         frozen_lines_at_beginning = pagerd.frozen_rows,
-        highlight = display_config.inactive_search_decoration,
+        highlight = display_config.search_match,
         maximum_number_of_columns = cols,
         maximum_number_of_lines = rows,
+        ruler_decoration = display_config.ruler,
         search_matches = pagerd.search_matches,
         show_ruler = pagerd.show_ruler,
         title_lines = pagerd.title_rows,
@@ -206,7 +208,8 @@ const _SCROLLBAR_TRACK = "│"
 
 """
     _append_scrollbar!(out::IOBuffer, frame::IOBuffer, rows::Int, column::Int,
-        thumb_first::Int, thumb_last::Int, use_color::Bool) -> Nothing
+        thumb_first::Int, thumb_last::Int, use_color::Bool,
+        display_config::DisplayConfig) -> Nothing
 
 Copy the view in `frame` to `out`, appending the scrollbar at `column` to every one of the
 `rows` rows.
@@ -223,6 +226,7 @@ the scrollbar always spans the whole view.
 - `thumb_first::Int`: First row of the thumb.
 - `thumb_last::Int`: Last row of the thumb.
 - `use_color::Bool`: Decorate the scrollbar with ANSI escape sequences.
+- `display_config::DisplayConfig`: Session display configuration with the scrollbar faces.
 """
 function _append_scrollbar!(
     out::IOBuffer,
@@ -232,6 +236,7 @@ function _append_scrollbar!(
     thumb_first::Int,
     thumb_last::Int,
     use_color::Bool,
+    display_config::DisplayConfig,
 )
     data, num_bytes = _frame_bytes(frame)
     row = 1
@@ -246,7 +251,9 @@ function _append_scrollbar!(
         row_size = i - row_first
         row_size > 0 &&
             GC.@preserve data unsafe_write(out, pointer(data, row_first), UInt(row_size))
-        _write_scrollbar_cell!(out, column, thumb_first <= row <= thumb_last, use_color)
+        _write_scrollbar_cell!(
+            out, column, thumb_first <= row <= thumb_last, use_color, display_config
+        )
         row < rows && write(out, UInt8('\n'))
 
         row += 1
@@ -255,7 +262,9 @@ function _append_scrollbar!(
 
     # The rows after the end of the text only carry the scrollbar.
     while row <= rows
-        _write_scrollbar_cell!(out, column, thumb_first <= row <= thumb_last, use_color)
+        _write_scrollbar_cell!(
+            out, column, thumb_first <= row <= thumb_last, use_color, display_config
+        )
         row < rows && write(out, UInt8('\n'))
         row += 1
     end
@@ -264,8 +273,13 @@ function _append_scrollbar!(
 end
 
 """
-    _write_scrollbar_cell!(out::IOBuffer, column::Int, is_thumb::Bool, use_color::Bool) ->
-        Nothing
+    _write_scrollbar_cell!(
+        out::IOBuffer,
+        column::Int,
+        is_thumb::Bool,
+        use_color::Bool,
+        display_config::DisplayConfig,
+    ) -> Nothing
 
 Write one cell of the scrollbar at `column` of the current row of `out`.
 
@@ -275,20 +289,30 @@ Write one cell of the scrollbar at `column` of the current row of `out`.
 - `column::Int`: One-based column of the scrollbar.
 - `is_thumb::Bool`: Whether the cell belongs to the thumb.
 - `use_color::Bool`: Decorate the cell with ANSI escape sequences.
+- `display_config::DisplayConfig`: Session display configuration with the scrollbar faces.
 """
-function _write_scrollbar_cell!(out::IOBuffer, column::Int, is_thumb::Bool, use_color::Bool)
-    use_color && write(out, _CRAYON_RESET)
+function _write_scrollbar_cell!(
+    out::IOBuffer,
+    column::Int,
+    is_thumb::Bool,
+    use_color::Bool,
+    display_config::DisplayConfig,
+)
     write(out, CSI)
     _write_decimal(out, column)
     write(out, UInt8('G'))
 
+    # Every face starts by resetting the attributes, which also protects the cell from the
+    # attributes left by the text of the row.
     if is_thumb
+        use_color && write(out, display_config.scrollbar_thumb)
         write(out, _SCROLLBAR_THUMB)
     else
-        use_color && write(out, _CRAYON_G)
+        use_color && write(out, display_config.scrollbar_track)
         write(out, _SCROLLBAR_TRACK)
-        use_color && write(out, _CRAYON_RESET)
     end
+
+    use_color && write(out, _SGR_RESET)
 
     return nothing
 end

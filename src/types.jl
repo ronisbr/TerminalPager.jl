@@ -81,31 +81,54 @@ PagerInput(stream::IO) = PagerInput(stream, UInt8[], nothing, true)
 """
     DisplayConfig
 
-Store display strings captured from preferences for one pager session.
+Store the pager faces rendered into escape sequences for one pager session.
+
+Every field holds a complete SGR sequence that resets the attributes and then selects the
+ones of the face, except the visual line backgrounds, which hold only the SGR parameters of
+the background, as `textview` expects.
 
 # Fields
 
-- `active_search_decoration::String`: Decoration for the active search match.
-- `inactive_search_decoration::String`: Decoration for inactive search matches.
-- `visual_mode_active_line_background::String`: Background for the active visual line.
-- `visual_mode_line_background::String`: Background for selected visual lines.
+- `status_bar::String`: Status bar.
+- `badge_normal::String`: Mode badge in the normal mode.
+- `badge_search::String`: Mode badge in the search mode.
+- `badge_visual::String`: Mode badge in the visual mode.
+- `message_info::String`: Informative message on the status bar.
+- `message_error::String`: Error message on the status bar.
+- `search_match::String`: Inactive search match.
+- `search_active_match::String`: Active search match.
+- `visual_line::String`: Background of the lines marked in the visual mode.
+- `visual_active_line::String`: Background of the visual line.
+- `ruler::String`: Line number ruler.
+- `scrollbar_track::String`: Track of the scrollbar.
+- `scrollbar_thumb::String`: Thumb of the scrollbar.
+- `command_status::String`: Status shown at the right of the command line.
+- `help_title::String`: Title of the help screen.
+- `help_section::String`: Section titles of the help screen.
+- `help_description::String`: Section descriptions and feature tags of the help screen.
+- `help_key::String`: Keys of the help screen.
+- `help_action::String`: Action names of the help screen.
 """
 struct DisplayConfig
-    active_search_decoration::String
-    inactive_search_decoration::String
-    visual_mode_active_line_background::String
-    visual_mode_line_background::String
-end
-
-"""
-    DisplayConfig() -> DisplayConfig
-
-Construct a display configuration with the built-in preference defaults.
-"""
-function DisplayConfig()
-    return DisplayConfig(
-        string(crayon"black bg:yellow"), string(crayon"black bg:light_gray"), "44", "100"
-    )
+    status_bar::String
+    badge_normal::String
+    badge_search::String
+    badge_visual::String
+    message_info::String
+    message_error::String
+    search_match::String
+    search_active_match::String
+    visual_line::String
+    visual_active_line::String
+    ruler::String
+    scrollbar_track::String
+    scrollbar_thumb::String
+    command_status::String
+    help_title::String
+    help_section::String
+    help_description::String
+    help_key::String
+    help_action::String
 end
 
 """

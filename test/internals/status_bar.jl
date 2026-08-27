@@ -224,24 +224,25 @@ end
     pagerd, output = _create_status_pagerd(["line"]; color = true, display_size = (10, 30))
     TerminalPager._redraw_status_bar!(pagerd)
     colored = String(take!(output))
-    badge = TerminalPager._CRAYON_BADGE_NORMAL * " NORMAL " * TerminalPager._CRAYON_BAR
+    config = pagerd.display_config
+    badge = config.badge_normal * " NORMAL " * config.status_bar
     @test occursin(badge, colored)
     @test endswith(colored, "\e[0m\e[10;1H")
 
     TerminalPager._set_message!(pagerd, "Invalid regex"; kind = :error)
     TerminalPager._redraw_status_bar!(pagerd)
     colored = String(take!(output))
-    @test occursin(TerminalPager._CRAYON_MESSAGE_ERROR * " ✗ Invalid regex", colored)
+    @test occursin(config.message_error * " ✗ Invalid regex", colored)
 
     TerminalPager._set_message!(pagerd, "3 lines copied")
     TerminalPager._redraw_status_bar!(pagerd)
     colored = String(take!(output))
-    @test occursin(TerminalPager._CRAYON_MESSAGE_INFO * " ✓ 3 lines copied", colored)
+    @test occursin(config.message_info * " ✓ 3 lines copied", colored)
 
     pagerd.mode = :searching
     TerminalPager._clear_message!(pagerd)
     TerminalPager._redraw_status_bar!(pagerd)
-    @test occursin(TerminalPager._CRAYON_BADGE_SEARCH * " SEARCH ", String(take!(output)))
+    @test occursin(config.badge_search * " SEARCH ", String(take!(output)))
 end
 
 @testset "Status Bar Key Hints" begin

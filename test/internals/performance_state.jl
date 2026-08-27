@@ -9,21 +9,26 @@ using About
 module InlineHelpModule end
 
 @testset "Display Configuration" begin
+    Face = TerminalPager.Face
+    withfaces = TerminalPager.StyledStrings.withfaces
+
     config = @inferred TerminalPager._display_config()
     @test config isa TerminalPager.DisplayConfig
     @test isconcretetype(typeof(config))
-    @test @inferred(TerminalPager._validate_preference("active_search_decoration", "44")) ==
-        "44"
+    @test @inferred(TerminalPager._validate_preference("pager_mode", "vi")) == "vi"
 
+    # The default configuration renders the default faces, and only the background of the
+    # visual faces is used.
     defaults = TerminalPager._AVAILABLE_PREFERENCES
     default_config = TerminalPager.DisplayConfig()
-    @test default_config.active_search_decoration == defaults["active_search_decoration"]
-    @test default_config.inactive_search_decoration ==
-        defaults["inactive_search_decoration"]
-    @test default_config.visual_mode_active_line_background ==
-        defaults["visual_mode_active_line_background"]
-    @test default_config.visual_mode_line_background ==
-        defaults["visual_mode_line_background"]
+    for (name, face) in TerminalPager._FACES
+        expected = if name in (:visual_line, :visual_active_line)
+            TerminalPager._face_background_sgr(face)
+        else
+            TerminalPager._face_sgr(face)
+        end
+        @test getfield(default_config, name) == expected
+    end
 
     for (preference, default) in defaults
         invalid = default isa Bool ? "true" : true
@@ -34,9 +39,11 @@ module InlineHelpModule end
 
     pagerd = _create_pagerd("text")
     old_config = pagerd.display_config
-    new_config = TerminalPager.DisplayConfig("a", "b", "c", "d")
+    new_config = TerminalPager._display_config(name -> Face(; foreground = :red))
     @test pagerd.display_config === old_config
     @test new_config !== old_config
+    @test new_config.status_bar == "\e[0m\e[31m"
+    @test new_config.visual_line == ""
 
     @test_throws UndefKeywordError TerminalPager.Pager(term = pagerd.term, buf = pagerd.buf)
 
@@ -49,25 +56,29 @@ module InlineHelpModule end
     @test compatible_pager.num_lines == length(default_layout)
     @test compatible_pager.text_layout[2] == "second"
 
-    values = copy(defaults)
-    get_preference = preference -> values[preference]
-    first_session = TerminalPager._display_config(get_preference)
-    values["active_search_decoration"] = "first changed"
-    values["visual_mode_line_background"] = "99"
-    second_session = TerminalPager._display_config(get_preference)
-    @test first_session.active_search_decoration != second_session.active_search_decoration
-    @test first_session.visual_mode_line_background !=
-        second_session.visual_mode_line_background
+    # The session configuration follows the registered faces.
+    first_session = TerminalPager._display_config()
+    second_session = withfaces(
+        :terminalpager_search_active_match => Face(; background = :red),
+        :terminalpager_visual_line => Face(; background = :green),
+    ) do
+        TerminalPager._display_config()
+    end
+    @test first_session.search_active_match != second_session.search_active_match
+    @test first_session.visual_line != second_session.visual_line
+    @test occursin("\e[41m", second_session.search_active_match)
+    @test second_session.visual_line == "42"
+    @test TerminalPager._display_config() == first_session
 
     pagerd = _create_pagerd("match")
-    pagerd.display_config = TerminalPager.DisplayConfig(
-        "\e[30;43m", "\e[30;47m", "196", "22"
-    )
+    pagerd.display_config = TerminalPager._display_config() do name
+        name == :search_active_match ? Face(; foreground = :black, background = :yellow) : Face()
+    end
     TerminalPager._find_matches!(pagerd, r"match")
     @test pagerd.text_layout[1] == "match"
     TerminalPager._change_active_match!(pagerd)
     TerminalPager._view!(pagerd)
-    @test occursin("\e[30;43m", String(take!(pagerd.buf.io)))
+    @test occursin("\e[0m\e[30m\e[43m", String(take!(pagerd.buf.io)))
 
     view_source = read(joinpath(dirname(pathof(TerminalPager)), "view.jl"), String)
     @test !occursin("_get_preference", view_source)

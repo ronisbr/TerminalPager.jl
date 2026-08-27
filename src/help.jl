@@ -13,9 +13,9 @@
 const _ACTION_KEYS = Dict{Symbol, Vector{String}}()
 const _ACTION_KEYS_GENERATION = Ref(-1)
 
-# One cache entry per color support, holding the generation it was built for, the help text,
-# and its prepared layout.
-const _HELP_CACHE = Dict{Bool, Tuple{Int, String, TextViewLayout}}()
+# One cache entry per color support, holding the generation and the display configuration it
+# was built for, the help text, and its prepared layout.
+const _HELP_CACHE = Dict{Bool, Tuple{Int, DisplayConfig, String, TextViewLayout}}()
 
 # Layout of the help screen: its width, and the widths of the key and description columns.
 const _HELP_WIDTH = 90
@@ -35,7 +35,9 @@ function _help!(pagerd::Pager)
     # The color flag must come from the session view buffer, which is the single source of
     # truth for the session rendering. The terminal stream of a programmatically built
     # pager does not necessarily carry the flag.
-    help_str, help_layout = _help_screen(get(pagerd.buf, :color, true)::Bool)
+    help_str, help_layout = _help_screen(
+        get(pagerd.buf, :color, true)::Bool, pagerd.display_config
+    )
 
     # The nested session must not toggle the alternate screen buffer: leaving it would
     # switch the terminal back to the normal screen while the parent session keeps painting
@@ -59,26 +61,28 @@ function _help!(pagerd::Pager)
 end
 
 """
-    _help_screen(use_color::Bool) -> Tuple{String, TextViewLayout}
+    _help_screen(use_color::Bool, display_config::DisplayConfig) ->
+        Tuple{String, TextViewLayout}
 
-Return the help text and its prepared layout, rebuilding them only when the keybindings
-change.
+Return the help text and its prepared layout, rebuilding them only when the keybindings or
+the faces change.
 
 # Arguments
 
 - `use_color::Bool`: Decorate the help screen with ANSI escape sequences.
+- `display_config::DisplayConfig`: Session display configuration with the help faces.
 """
-function _help_screen(use_color::Bool)
+function _help_screen(use_color::Bool, display_config::DisplayConfig)
     generation = _KEYBINDINGS_GENERATION[]
     cached = get(_HELP_CACHE, use_color, nothing)
 
-    if !isnothing(cached) && (cached[1] == generation)
-        return cached[2], cached[3]
+    if !isnothing(cached) && (cached[1] == generation) && (cached[2] == display_config)
+        return cached[3], cached[4]
     end
 
-    help_str = _help_string(use_color)
+    help_str = _help_string(use_color, display_config)
     help_layout = TextViewLayout(split(help_str, '\n'))
-    _HELP_CACHE[use_color] = (generation, help_str, help_layout)
+    _HELP_CACHE[use_color] = (generation, display_config, help_str, help_layout)
 
     return help_str, help_layout
 end
@@ -220,7 +224,7 @@ const _HELP_SECTIONS = HelpSection[
 ]
 
 """
-    _help_string(use_color::Bool) -> String
+    _help_string(use_color::Bool, display_config::DisplayConfig = DisplayConfig()) -> String
 
 Assemble the pager help screen from [`_HELP_SECTIONS`](@ref) and the current key bindings.
 
@@ -231,15 +235,17 @@ on the following rows.
 # Arguments
 
 - `use_color::Bool`: Decorate the help screen with ANSI escape sequences.
+- `display_config::DisplayConfig`: Session display configuration with the help faces.
+    (**Default**: `DisplayConfig()`)
 """
-function _help_string(use_color::Bool)
+function _help_string(use_color::Bool, display_config::DisplayConfig = DisplayConfig())
     if use_color
-        _b = _CRAYON_B
-        _c = _CRAYON_C
-        _cb = _CRAYON_CB
-        _d = _CRAYON_RESET
-        _g = _CRAYON_G
-        _y = _CRAYON_Y
+        _b = display_config.help_section
+        _c = display_config.help_key
+        _cb = display_config.help_title
+        _d = _SGR_RESET
+        _g = display_config.help_description
+        _y = display_config.help_action
     else
         _b = ""
         _c = ""
