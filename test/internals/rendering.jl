@@ -29,3 +29,22 @@ end
         Base.eval(:(stdout = $old_stdout))
     end
 end
+
+@testset "Print Without a Terminal" begin
+    # Without a terminal, the pager used to paint escape sequences into the redirected output
+    # and then throw when the input reached its end. Like `less`, it must print the text.
+    old_stdout = stdout
+    output = IOBuffer()
+
+    try
+        Base.eval(:(stdout = $(IOContext(output, :color => false))))
+        @test isnothing(pager("first line\nsecond line"))
+        @test String(take!(output)) == "first line\nsecond line"
+    finally
+        Base.eval(:(stdout = $old_stdout))
+    end
+
+    @test !TerminalPager._is_terminal(IOBuffer())
+    @test !TerminalPager._is_terminal(IOContext(IOBuffer(), :color => true))
+    @test !TerminalPager._is_terminal(devnull)
+end

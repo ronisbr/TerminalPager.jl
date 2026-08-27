@@ -31,8 +31,12 @@ PrecompileTools.@setup_workload begin
             _init_pager_repl_mode(mock_repl)
             _register_help_shortcuts(mock_repl)
 
+            # The public entry point prints the text when the standard streams are not
+            # terminals, which is the case here. Hence, the workload renders the object
+            # like `pager` does and drives the session directly.
             a = vcat(reshape(fill(0.1986, 100), 1, :), zeros(100, 100))
-            t = @async pager(a)
+            str = _render_object(a)
+            t = @async _pager(str)
 
             # Ruler.
             write(stdin_wr, "r")
@@ -79,13 +83,13 @@ PrecompileTools.@setup_workload begin
             wait(t)
 
             # Pager with the alternate screen buffer.
-            t = @async pager(a; use_alternate_screen_buffer = true)
+            t = @async _pager(str; use_alternate_screen_buffer = true)
             write(stdin_wr, "q")
             wait(t)
 
             # Pager with auto mode, which exercises the `printable_textwidth` code path.
             # This is important because the REPL mode always uses `auto = true`.
-            t = @async pager(a; auto = true)
+            t = @async _pager(str; auto = true)
             write(stdin_wr, "q")
             wait(t)
 
