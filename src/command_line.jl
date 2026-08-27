@@ -458,10 +458,19 @@ CTRL-U to clear the command, and the up and down keys to recall the commands in 
 - `history::Union{Nothing, Vector{String}}`: Previous commands, from the oldest to the
     newest, or `nothing` to disable the recall.
     (**Default**: `nothing`)
+- `on_change::Any`: Callable object invoked with the command whenever its text changes, or
+    `nothing`. It must return a `String`, which is shown at the right of the prompt row
+    when it fits, for example a live match count.
+    (**Default**: `nothing`)
 """
 function _read_cmd!(
-    pagerd::Pager; prefix::String = "/", history::Union{Nothing, Vector{String}} = nothing
+    pagerd::Pager;
+    prefix::String = "/",
+    history::Union{Nothing, Vector{String}} = nothing,
+    on_change = nothing,
 )
+    term = pagerd.term
+    use_color = get(term.out_stream, :color, true)::Bool
     # Unpack values.
     display_size = pagerd.display_size
 
@@ -472,6 +481,8 @@ function _read_cmd!(
     cursor = 1
     prefix_width = textwidth(prefix)
     redraw = true
+    changed = false
+    status = ""
 
     # The history is browsed from the newest entry to the oldest one. The command typed
     # before the browsing started is kept, so that it is restored when going past the newest
@@ -505,6 +516,16 @@ function _read_cmd!(
                     column += character_width
                 end
 
+                # The status is right-aligned after the command when it fits.
+                status_width = textwidth(status)
+
+                if (status_width > 0) && (column + status_width <= display_size[2])
+                    _write_blanks(out, display_size[2] - status_width - column + 1)
+                    use_color && write(out, _CRAYON_G)
+                    write(out, status)
+                    use_color && write(out, _CRAYON_RESET)
+                end
+
                 _move_cursor(
                     out,
                     display_size[1],
@@ -536,13 +557,13 @@ function _read_cmd!(
                     # Delete the character before the cursor, not the last one.
                     deleteat!(chars, cursor - 1)
                     cursor -= 1
-                    redraw = true
+                    changed = true
                 end
 
             elseif value == "<delete>"
                 if cursor <= length(chars)
                     deleteat!(chars, cursor)
-                    redraw = true
+                    changed = true
                 end
 
             elseif value == "<left>"
@@ -570,7 +591,7 @@ function _read_cmd!(
                 # this name.
                 empty!(chars)
                 cursor = 1
-                redraw = true
+                changed = true
 
             elseif k.ctrl && (value == "w")
                 # Delete the word before the cursor together with the spaces after it.
@@ -587,7 +608,7 @@ function _read_cmd!(
                 if stop < cursor - 1
                     deleteat!(chars, (stop + 1):(cursor - 1))
                     cursor = stop + 1
-                    redraw = true
+                    changed = true
                 end
 
             elseif (value == "<up>") && !isnothing(history)
@@ -596,7 +617,7 @@ function _read_cmd!(
                     history_index -= 1
                     chars = collect(history[history_index])
                     cursor = length(chars) + 1
-                    redraw = true
+                    changed = true
                 end
 
             elseif (value == "<down>") && !isnothing(history)
@@ -610,17 +631,23 @@ function _read_cmd!(
                     end
 
                     cursor = length(chars) + 1
-                    redraw = true
+                    changed = true
                 end
 
             elseif _is_printable_keystroke(k)
                 insert!(chars, cursor, only(value))
                 cursor += 1
-                redraw = true
+                changed = true
             end
 
             # Every other keystroke is ignored. Otherwise, names such as `<F1>` would be
             # inserted verbatim into the command.
+
+            if changed
+                changed = false
+                redraw = true
+                isnothing(on_change) || (status = on_change(String(chars))::String)
+            end
         end
     finally
         # The cursor is hidden for the rest of the session.

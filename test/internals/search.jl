@@ -32,8 +32,12 @@ function _create_modal_pagerd(lines::Vector{String}, input_text::AbstractString)
 end
 
 @testset "Regular Expression Validation" begin
-    @test TerminalPager._try_regex("abc") == r"abc"
-    @test TerminalPager._try_regex("a(b|c)+") == r"a(b|c)+"
+    # The search uses smart case: a pattern without uppercase letters is case-insensitive.
+    @test TerminalPager._try_regex("abc") == r"abc"i
+    @test TerminalPager._try_regex("a(b|c)+") == r"a(b|c)+"i
+    @test TerminalPager._try_regex("Abc") == r"Abc"
+    @test occursin(TerminalPager._try_regex("abc"), "xABCx")
+    @test !occursin(TerminalPager._try_regex("Abc"), "xABCx")
 
     # These used to escape the pager main loop and tear down the session.
     @test isnothing(TerminalPager._try_regex("["))
@@ -208,4 +212,89 @@ end
     @test pagerd.mode == :searching
     @test length(pagerd.ordered_search_matches) == 3
     @test pagerd.active_search_match_id == 1
+end
+
+@testset "Incremental Search" begin
+    lines = ["line $i" for i in 1:30]
+
+    # The matches are previewed while the pattern is typed, so the view moves before Enter.
+    pagerd = _create_modal_pagerd(lines, "25\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :searching
+    @test length(pagerd.ordered_search_matches) == 1
+    @test pagerd.start_row == 25 - 9 + 1
+    @test occursin("match 1/1", String(take!(pagerd.term.out_stream)))
+
+    # Cancelling the prompt restores the viewport and the previous search.
+    pagerd = _create_modal_pagerd(lines, "25\e")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :view
+    @test isempty(pagerd.ordered_search_matches)
+    @test pagerd.start_row == 1
+
+    pagerd = _create_modal_pagerd(lines, "2\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    matches_before = pagerd.ordered_search_matches
+    pagerd = _create_modal_pagerd(lines, "25\e")
+    pagerd.search_matches = TerminalPager.SearchMatches(2 => [(6, 1)])
+    pagerd.ordered_search_matches = [TerminalPager.SearchMatch(2, 1, 6, 1)]
+    pagerd.active_search_match_id = 1
+    pagerd.mode = :searching
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :searching
+    @test [m.line for m in pagerd.ordered_search_matches] == [2]
+    @test pagerd.start_row == 1
+
+    # A pattern that stops matching while it is typed restores the viewport, and the prompt
+    # reports it.
+    pagerd = _create_modal_pagerd(lines, "25x\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :searching
+    @test isempty(pagerd.ordered_search_matches)
+    @test pagerd.start_row == 1
+    @test occursin("no match", String(take!(pagerd.term.out_stream)))
+
+    # An invalid pattern is reported while typing and rejected on Enter.
+    pagerd = _create_modal_pagerd(lines, "[\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :view
+    @test pagerd.message == "Invalid regex: ["
+    @test occursin("invalid regex", String(take!(pagerd.term.out_stream)))
+
+    # The preview is skipped for huge texts, and the search runs on Enter.
+    pagerd = _create_modal_pagerd(lines, "25\n")
+    pagerd.num_lines = TerminalPager._INCREMENTAL_SEARCH_MAX_LINES + 1
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :searching
+    @test pagerd.start_row == 25 - 9 + 1
+    @test !occursin("match 1/1", String(take!(pagerd.term.out_stream)))
+    empty!(TerminalPager._SEARCH_HISTORY)
+end
+
+@testset "Search Wrap Notice" begin
+    pagerd = _create_modal_pagerd(["a", "b", "a"], "")
+    TerminalPager._find_matches!(pagerd, r"a")
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.active_search_match_id == 1
+    @test isempty(pagerd.message)
+
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.active_search_match_id == 2
+    @test isempty(pagerd.message)
+
+    TerminalPager._change_active_match!(pagerd, true)
+    @test pagerd.active_search_match_id == 1
+    @test pagerd.message == "Search wrapped to the top"
+
+    TerminalPager._clear_message!(pagerd)
+    TerminalPager._change_active_match!(pagerd, false)
+    @test pagerd.active_search_match_id == 2
+    @test pagerd.message == "Search wrapped to the bottom"
 end

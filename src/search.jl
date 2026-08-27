@@ -27,10 +27,13 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
             active_search_match_id -= 1
         end
 
+        # Wrapping around is announced, like `vim` does, because the jump is easy to miss.
         if active_search_match_id > num_matches
             active_search_match_id = 1
+            _set_message!(pagerd, "Search wrapped to the top")
         elseif active_search_match_id < 1
             active_search_match_id = num_matches
+            _set_message!(pagerd, "Search wrapped to the bottom")
         end
     end
 
@@ -131,19 +134,191 @@ end
 
 Compile `str` into a regular expression, returning `nothing` if it is not valid.
 
+The expression is case-insensitive unless `str` has an uppercase letter, which is the smart
+case behavior of `less` and `vim`.
+
 # Arguments
 
 - `str::AbstractString`: Pattern typed by the user.
 """
 function _try_regex(str::AbstractString)
+    flags = any(isuppercase, str) ? "" : "i"
+
     # PCRE throws when the pattern is malformed, e.g. when the user types `/[`. There is no
     # `tryparse(Regex, ...)` in Base, so we must catch the error here. Otherwise, it escapes
     # the pager main loop and tears down the session.
     return try
-        Regex(str)
+        Regex(str, flags)
     catch
         nothing
     end
+end
+
+# Texts up to this number of lines are searched while the pattern is typed. Above it, every
+# keystroke would run the search over the whole text, so the search runs when the pattern is
+# confirmed instead.
+const _INCREMENTAL_SEARCH_MAX_LINES = 100_000
+
+"""
+    _search!(pagerd::Pager) -> Nothing
+
+Prompt for a search pattern and highlight its matches in `pagerd`.
+
+While the pattern is typed, the matches in a text with up to `_INCREMENTAL_SEARCH_MAX_LINES`
+lines are previewed, and the prompt shows the active match. Cancelling the prompt, or
+leaving it empty, keeps the search state and the viewport from before it. An invalid pattern
+reports an error.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _search!(pagerd::Pager)
+    saved = _search_state(pagerd)
+    incremental = pagerd.num_lines <= _INCREMENTAL_SEARCH_MAX_LINES
+    previewed = Ref("")
+
+    on_change = if incremental
+        pattern -> begin
+            previewed[] = pattern
+            _preview_search!(pagerd, pattern, saved)
+        end
+    else
+        nothing
+    end
+
+    cmd_input = _read_cmd!(pagerd; history = _SEARCH_HISTORY, on_change = on_change)
+
+    if isnothing(cmd_input) || isempty(cmd_input)
+        _restore_search_state!(pagerd, saved)
+    else
+        regex = _try_regex(cmd_input)
+
+        if isnothing(regex)
+            _restore_search_state!(pagerd, saved)
+            _set_message!(pagerd, "Invalid regex: $cmd_input"; kind = :error)
+        else
+            _push_history!(_SEARCH_HISTORY, cmd_input)
+
+            # The preview already applied the confirmed pattern.
+            if !(incremental && (previewed[] == cmd_input))
+                _restore_viewport!(pagerd, saved)
+                _apply_search!(pagerd, regex)
+            end
+        end
+    end
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _search_state(pagerd::Pager) -> NamedTuple
+
+Return the search state and the viewport of `pagerd`, so that they can be restored.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to record.
+"""
+function _search_state(pagerd::Pager)
+    return (
+        search_matches = pagerd.search_matches,
+        ordered_search_matches = pagerd.ordered_search_matches,
+        active_search_match_id = pagerd.active_search_match_id,
+        start_row = pagerd.start_row,
+        start_column = pagerd.start_column,
+        mode = pagerd.mode,
+    )
+end
+
+"""
+    _restore_search_state!(pagerd::Pager, saved::NamedTuple) -> Nothing
+
+Restore the search state and the viewport of `pagerd` recorded in `saved`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `saved::NamedTuple`: State returned by [`_search_state`](@ref).
+"""
+function _restore_search_state!(pagerd::Pager, saved::NamedTuple)
+    pagerd.search_matches = saved.search_matches
+    pagerd.ordered_search_matches = saved.ordered_search_matches
+    pagerd.active_search_match_id = saved.active_search_match_id
+    pagerd.mode = saved.mode
+    _restore_viewport!(pagerd, saved)
+    return nothing
+end
+
+"""
+    _restore_viewport!(pagerd::Pager, saved::NamedTuple) -> Nothing
+
+Restore the viewport of `pagerd` recorded in `saved`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `saved::NamedTuple`: State returned by [`_search_state`](@ref).
+"""
+function _restore_viewport!(pagerd::Pager, saved::NamedTuple)
+    pagerd.start_row = saved.start_row
+    pagerd.start_column = saved.start_column
+    return nothing
+end
+
+"""
+    _apply_search!(pagerd::Pager, regex::Regex) -> Nothing
+
+Find the matches of `regex` in `pagerd`, activate the first one at or after the top of the
+view, move the view to it, and enter the searching mode.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `regex::Regex`: Regular expression to search for.
+"""
+function _apply_search!(pagerd::Pager, regex::Regex)
+    _find_matches!(pagerd, regex)
+    _change_active_match!(pagerd, true)
+    _move_view_to_match!(pagerd)
+    pagerd.mode = :searching
+    return nothing
+end
+
+"""
+    _preview_search!(pagerd::Pager, pattern::String, saved::NamedTuple) -> String
+
+Show the matches of `pattern` while it is typed and return the status shown in the prompt.
+
+The search always starts from the viewport recorded in `saved`, so that the preview does not
+drift while the pattern is edited. An empty or invalid pattern restores `saved`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `pattern::String`: Pattern typed so far.
+- `saved::NamedTuple`: State returned by [`_search_state`](@ref) before the prompt.
+"""
+function _preview_search!(pagerd::Pager, pattern::String, saved::NamedTuple)
+    regex = isempty(pattern) ? nothing : _try_regex(pattern)
+
+    status = if isnothing(regex)
+        _restore_search_state!(pagerd, saved)
+        isempty(pattern) ? "" : "invalid regex"
+    else
+        _restore_viewport!(pagerd, saved)
+        _apply_search!(pagerd, regex)
+        num_matches = length(pagerd.ordered_search_matches)
+        match_id = pagerd.active_search_match_id
+        num_matches > 0 ? "match $match_id/$num_matches" : "no match"
+    end
+
+    _view!(pagerd)
+    _redraw!(pagerd)
+
+    return status
 end
 
 """

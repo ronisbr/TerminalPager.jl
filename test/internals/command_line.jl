@@ -299,3 +299,22 @@ end
     @test length(pagerd.ordered_search_matches) == 2
     empty!(TerminalPager._SEARCH_HISTORY)
 end
+
+@testset "Command Line Change Callback" begin
+    # The callback runs whenever the text changes, not when only the cursor moves, and its
+    # result is shown at the right of the prompt row.
+    calls = String[]
+    pagerd = _create_modal_pagerd(["x"], "ab\e[D\e[Dc\x7f\x15z\n")
+    cmd = TerminalPager._read_cmd!(pagerd; on_change = text -> (push!(calls, text); "S:" * text))
+    @test cmd == "z"
+    @test calls == ["a", "ab", "cab", "ab", "", "z"]
+    output = String(take!(pagerd.term.out_stream))
+    @test occursin("S:ab", output)
+    @test endswith(replace(output, r"\e\[[0-9;?]*[A-Za-z]" => ""), "/z" * " "^35 * "S:z")
+
+    # A status that does not fit the row is not shown.
+    pagerd = _create_modal_pagerd(["x"], "a\n")
+    pagerd.display_size = (10, 6)
+    TerminalPager._read_cmd!(pagerd; on_change = text -> "too long")
+    @test !occursin("too long", String(take!(pagerd.term.out_stream)))
+end
