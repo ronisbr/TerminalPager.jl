@@ -414,3 +414,30 @@ end
         "abc = 1", TerminalPager._cursor_character_position(CursorState("abc = 1", 4))
     ) == "abc"
 end
+
+REPL.LineEdit.terminal(::CursorState) = :mock_terminal
+
+@testset "Shortcut Repaints the Prompt" begin
+    # The pager can clear the screen, for example when the alternate screen buffer is blocked,
+    # so the prompt must be repainted after the shortcut callback. It used to be left blank
+    # although the input was still in the buffer.
+    calls = Any[]
+    result = TerminalPager._show_pager_cursor(
+        identifier -> push!(calls, identifier),
+        CursorState("foo", 2);
+        raw_function = (terminal, raw) -> push!(calls, (terminal, raw)),
+        refresh_function = s -> push!(calls, :refresh),
+    )
+    @test result === :ok
+    @test calls == ["foo", (:mock_terminal, true), :refresh]
+
+    # Without an identifier under the cursor, nothing is shown nor repainted.
+    empty!(calls)
+    @test TerminalPager._show_pager_cursor(
+        identifier -> push!(calls, identifier),
+        CursorState("   ", 1);
+        raw_function = (terminal, raw) -> push!(calls, (terminal, raw)),
+        refresh_function = s -> push!(calls, :refresh),
+    ) === :ok
+    @test isempty(calls)
+end

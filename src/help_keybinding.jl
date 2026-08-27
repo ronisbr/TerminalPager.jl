@@ -285,7 +285,7 @@ function _cursor_character_position(s)
 end
 
 """
-    _show_pager_cursor(f::Any, s::Any) -> Symbol
+    _show_pager_cursor(f::Any, s::Any; kwargs...) -> Symbol
 
 Show information about the identifier under the cursor in the REPL by calling `f`.
 
@@ -293,8 +293,17 @@ Show information about the identifier under the cursor in the REPL by calling `f
 
 - `f::Any`: Callable object invoked with the identifier under the cursor.
 - `s::Any`: Current REPL line-edit state.
+
+# Keywords
+
+- `raw_function::Any`: Callable object used to restore raw mode.
+    (**Default**: `REPL.Terminals.raw!`)
+- `refresh_function::Any`: Callable object used to repaint the prompt.
+    (**Default**: `LineEdit.refresh_line`)
 """
-function _show_pager_cursor(f, s)
+function _show_pager_cursor(
+    f, s; raw_function = REPL.Terminals.raw!, refresh_function = LineEdit.refresh_line
+)
     input = input_string(s)
     identifier = _extract_identifier(input, _cursor_character_position(s))
 
@@ -303,10 +312,15 @@ function _show_pager_cursor(f, s)
     # The terminal must come from the line-edit state. Reaching for the global
     # `Base.active_repl` broke the shortcut in any REPL that is not the active one, such
     # as an embedded REPL.
-    _with_raw_restoration(LineEdit.terminal(s)) do
+    _with_raw_restoration(LineEdit.terminal(s); raw_function = raw_function) do
         # Call the provided functionality with the identifier under the cursor.
         f(identifier)
     end
+
+    # The pager may have cleared the screen, for example when the alternate screen buffer is
+    # blocked. The prompt must be repainted, otherwise the input the user typed is no longer
+    # visible although it is still in the buffer.
+    refresh_function(s)
 
     return :ok
 end
