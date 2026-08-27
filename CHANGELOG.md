@@ -10,6 +10,12 @@ Version 0.8.0
   `"block_alternate_screen_buffer"` disables the alternate screen buffer globally.
 - ![BREAKING][badge-breaking] Breaking Change: The search uses smart case. A pattern without
   uppercase letters is case-insensitive, and a pattern with one is case-sensitive.
+- ![BREAKING][badge-breaking] Breaking Change: The pager is styled with StyledStrings.jl
+  faces instead of Crayons.jl, which is no longer a dependency. The preferences
+  `"active_search_decoration"`, `"inactive_search_decoration"`,
+  `"visual_mode_line_background"`, and `"visual_mode_active_line_background"` were replaced
+  by the faces `search_active_match`, `search_match`, `visual_line`, and
+  `visual_active_line`. Setting or dropping one of them throws an error naming the face.
 - ![Deprecation][badge-deprecation] The preference
   `"always_use_alternate_screen_buffer_in_repl_mode"` is deprecated and ignored, because the
   alternate screen buffer is now used by default. Setting it warns.
@@ -31,6 +37,12 @@ Version 0.8.0
   holding SHIFT to select text with the terminal.
 - ![Feature][badge-feature] A scrollbar can be shown at the right edge of the view with the
   keyword `show_scrollbar`, the new preference `"show_scrollbar"`, or the key `s`.
+- ![Feature][badge-feature] Every color and text attribute of the pager is a StyledStrings.jl
+  face registered under the prefix `terminalpager_`: the status bar, the mode badges, the
+  messages, the search matches, the visual lines, the ruler, the scrollbar, the command line
+  status, and the help screen. The faces can be customized with the new functions
+  `TerminalPager.set_face!` and `TerminalPager.drop_face!`, which persist the changes with
+  Preferences.jl, or in the `faces.toml` file of the Julia depot.
 - ![Enhancement][badge-enhancement] Scrolling asks the terminal to shift the rows already on
   screen and repaints only the rows that entered the view. A one line scroll on a 60 by 220
   terminal writes about 250 bytes instead of 13 KB. The new preference
