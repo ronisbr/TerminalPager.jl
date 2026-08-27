@@ -127,3 +127,12 @@ end
         TerminalPager.reset_keybindings()
     end
 end
+
+@testset "CTRL-C Cancels the Search" begin
+    # CTRL-C used to be a silent no-op inside the pager, because the raw mode disables the
+    # interrupt signal and the keystroke was unbound.
+    k = TerminalPager._read_keystroke!(TerminalPager.PagerInput(IOBuffer("\x03")))
+    @test (k.value, k.ctrl) == ("c", true)
+    @test TerminalPager._pager_action(k) === :quit_search
+    @test TerminalPager._DEFAULT_KEYBINDINGS[("c", false, true, false)] === :quit_search
+end

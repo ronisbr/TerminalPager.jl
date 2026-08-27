@@ -46,6 +46,9 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("n", false, false, false) => :next_match,
     ("N", false, false, false) => :previous_match,
     ("<esc>", false, false, false) => :quit_search,
+    # The raw mode delivers CTRL-C as a keystroke. Like in `less`, it cancels the current
+    # operation instead of quitting the pager.
+    ("c", false, true, false) => :quit_search,
     ("f", false, false, false) => :change_freeze,
     ("<eot>", false, false, false) => :quit_eot,
     ("r", false, false, false) => :toggle_ruler,

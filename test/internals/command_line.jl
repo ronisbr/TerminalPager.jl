@@ -152,6 +152,9 @@ end
     @test isnothing(first(_read_cmd("ab\e")))
     @test isnothing(first(_read_cmd("\e")))
 
+    # The raw mode delivers CTRL-C as a keystroke, which cancels the prompt as well.
+    @test isnothing(first(_read_cmd("ab\x03")))
+
     # Cancelling the search prompt keeps the view mode and records no match.
     pagerd = _create_modal_pagerd(["line"], "li\e")
     pagerd.event = :search

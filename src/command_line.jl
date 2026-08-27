@@ -233,7 +233,7 @@ end
     _read_cmd!(pagerd::Pager; prefix::String = "/") -> Union{Nothing, String}
 
 Read and edit one command from the pager input, returning `nothing` if the user cancels it
-with ESC.
+with ESC or CTRL-C.
 
 # Arguments
 
@@ -292,9 +292,10 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
         if k.value == "<enter>"
             break
 
-        elseif k.value == "<esc>"
+        elseif (k.value == "<esc>") || (k.ctrl && (k.value == "c"))
             # A cancelled command is different from an empty one: the callers keep their
-            # current state instead of applying an empty value.
+            # current state instead of applying an empty value. Notice that the raw mode
+            # delivers CTRL-C as a keystroke instead of raising an interrupt.
             return nothing
 
         elseif k.value == "<backspace>"
