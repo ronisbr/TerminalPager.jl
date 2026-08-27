@@ -55,6 +55,48 @@ Mark `p` for redraw and return the assigned value, `true`.
 _request_redraw!(p::Pager) = (p.redraw = true)
 
 """
+    _set_message!(p::Pager, message::String; kind::Symbol = :info) -> Nothing
+
+Show `message` on the command line of `p` until the next keystroke and request a redraw.
+
+Unlike a modal message, the next keystroke is processed normally instead of being consumed
+to dismiss the message.
+
+# Arguments
+
+- `p::Pager`: Pager state to update.
+- `message::String`: Message to show.
+
+# Keywords
+
+- `kind::Symbol`: Kind of the message, `:info` or `:error`, which selects its decoration.
+    (**Default**: `:info`)
+"""
+function _set_message!(p::Pager, message::String; kind::Symbol = :info)
+    p.message = message
+    p.message_kind = kind
+    _request_redraw!(p)
+    return nothing
+end
+
+"""
+    _clear_message!(p::Pager) -> Nothing
+
+Remove the command line message of `p`, if any, and request a redraw in that case.
+
+# Arguments
+
+- `p::Pager`: Pager state to update.
+"""
+function _clear_message!(p::Pager)
+    isempty(p.message) && return nothing
+    p.message = ""
+    p.message_kind = :info
+    _request_redraw!(p)
+    return nothing
+end
+
+"""
     _update_display_size!(p::Pager) -> Nothing
 
 Update the recorded display size and request a redraw when the terminal size changes.
@@ -348,8 +390,10 @@ function _pager!(
                 _redraw_cmd_line!(pagerd)
             end
 
-            # Wait for user input.
+            # Wait for user input. A message on the command line is shown until this
+            # keystroke, which is then processed normally.
             k = _read_keystroke!(pagerd.input)
+            _clear_message!(pagerd)
             before_row = pagerd.start_row
             before_column = pagerd.start_column
             action = _pager_key_process!(pagerd, k)
@@ -820,8 +864,7 @@ function _pager_event_process!(pagerd::Pager)
             match_regex = _try_regex(cmd_input)
 
             if isnothing(match_regex)
-                _print_cmd_message!(pagerd, "Invalid regex!"; crayon = crayon"red bold")
-                _read_keystroke!(pagerd.input)
+                _set_message!(pagerd, "Invalid regex!"; kind = :error)
             else
                 _find_matches!(pagerd, match_regex)
                 _change_active_match!(pagerd, true)
@@ -961,16 +1004,14 @@ function _pager_event_process!(pagerd::Pager)
             end
 
             if copied
-                _print_cmd_message!(
+                _set_message!(
                     pagerd,
                     num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" :
                         "1 line copied",
                 )
             else
-                _print_cmd_message!(
-                    pagerd,
-                    "Could not copy to the system clipboard!";
-                    crayon = crayon"red bold",
+                _set_message!(
+                    pagerd, "Could not copy to the system clipboard!"; kind = :error
                 )
             end
         end

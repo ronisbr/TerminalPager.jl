@@ -159,6 +159,9 @@ Store the mutable state for one pager session.
 - `ordered_search_matches::Vector{SearchMatch}`: Matches in navigation order.
 - `active_search_match_id::Int`: Active match index in navigation order.
 - `redraw::Bool`: Whether the viewport needs to be redrawn.
+- `message::String`: Message shown on the command line until the next keystroke, or an
+    empty string.
+- `message_kind::Symbol`: Kind of `message`, `:info` or `:error`.
 - `mode::Symbol`: Current pager mode.
 - `event::Union{Nothing, Symbol}`: Pending pager event.
 - `features::Vector{Symbol}`: Features enabled for the session.
@@ -190,6 +193,8 @@ Base.@kwdef mutable struct Pager
     ordered_search_matches::Vector{SearchMatch} = SearchMatch[]
     active_search_match_id::Int = 0
     redraw::Bool = true
+    message::String = ""
+    message_kind::Symbol = :info
     mode::Symbol = :view
     event::Union{Nothing, Symbol} = nothing
     features::Vector{Symbol} = Symbol[]

@@ -172,3 +172,35 @@ end
     @test occursin("Frozen rows", output)
     @test !occursin("Frozen columns", output)
 end
+
+@testset "Command Line Messages" begin
+    pagerd = _create_modal_pagerd(["x"], "")
+    pagerd.redraw = false
+    TerminalPager._set_message!(pagerd, "3 lines copied")
+    @test pagerd.redraw
+    @test pagerd.message_kind === :info
+    TerminalPager._redraw_cmd_line!(pagerd)
+    @test occursin("3 lines copied", String(take!(pagerd.term.out_stream)))
+
+    # The message is removed by the next keystroke, and the prompt is back.
+    pagerd.redraw = false
+    TerminalPager._clear_message!(pagerd)
+    @test pagerd.redraw
+    @test isempty(pagerd.message)
+    TerminalPager._redraw_cmd_line!(pagerd)
+    output = String(take!(pagerd.term.out_stream))
+    @test !occursin("3 lines copied", output)
+    @test occursin(":", output)
+
+    # Clearing without a message does not request a redraw.
+    pagerd.redraw = false
+    TerminalPager._clear_message!(pagerd)
+    @test !pagerd.redraw
+
+    # An invalid number leaves a message instead of consuming the next keystroke.
+    pagerd = _create_modal_pagerd(["x"], "bad\nq")
+    @test TerminalPager._prompt_number!(pagerd, "Rows", 0) == (:invalid, 0)
+    @test pagerd.message == "Invalid data!"
+    @test pagerd.message_kind === :error
+    @test TerminalPager._read_keystroke!(pagerd.input).value == "q"
+end

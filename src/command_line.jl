@@ -55,44 +55,6 @@ function _write_blanks(io::IO, n::Int)
 end
 
 """
-    _print_cmd_message!(pagerd::Pager, msg::String;
-        crayon::Crayon = Crayon()) -> Nothing
-
-Print `msg` on the pager command line.
-
-# Arguments
-
-- `pagerd::Pager`: Pager state whose terminal receives the message.
-- `msg::String`: Message to print.
-
-# Keywords
-
-- `crayon::Crayon`: Formatting applied when the terminal supports color.
-    (**Default**: `Crayon()`)
-"""
-function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon())
-    term = pagerd.term
-    display_size = pagerd.display_size
-
-    if get(term.out_stream, :color, true)::Bool
-        _d = _CRAYON_RESET
-        _h = string(crayon)
-    else
-        _d = ""
-        _h = ""
-    end
-
-    # Move the cursor to the last line and print the message.
-    _move_cursor(term.out_stream, display_size[1], 1)
-    write(term.out_stream, _h)
-    write(term.out_stream, msg)
-    write(term.out_stream, _d)
-    _clear_to_eol(term.out_stream)
-
-    return nothing
-end
-
-"""
     _prompt_number!(pagerd::Pager, label::String, current::Int) -> Tuple{Symbol, Int}
 
 Prompt for an integer on the command line of `pagerd`, showing `label` and the `current`
@@ -100,8 +62,8 @@ value, and return the status and the number typed by the user.
 
 The status is `:value` when a number was typed, `:empty` when the prompt was left empty,
 `:cancel` when the prompt was cancelled, and `:invalid` when the input is not a number. In
-the last case, an error message is shown and the function waits for a keystroke before
-returning. The number is `0` unless the status is `:value`.
+the last case, an error message is shown on the command line until the next keystroke. The
+number is `0` unless the status is `:value`.
 
 # Arguments
 
@@ -117,8 +79,7 @@ function _prompt_number!(pagerd::Pager, label::String, current::Int)
     value = tryparse(Int, cmd_input; base = 10)
 
     if isnothing(value)
-        _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
-        _read_keystroke!(pagerd.input)
+        _set_message!(pagerd, "Invalid data!"; kind = :error)
         return :invalid, 0
     end
 
@@ -190,6 +151,17 @@ function _redraw_cmd_line!(pagerd::Pager)
     # left behind by the command editor.
     _move_cursor(out, display_size[1], 1)
     _clear_to_eol(out)
+
+    if !isempty(pagerd.message)
+        # The message replaces the prompt and the hint until the next keystroke.
+        use_color && write(out, pagerd.message_kind === :error ? _CRAYON_R : _CRAYON_B)
+        write(out, pagerd.message)
+        use_color && write(out, _CRAYON_RESET)
+        _move_cursor(out, display_size[1], 1)
+        _flush_screen!(pagerd)
+        return nothing
+    end
+
     write(out, UInt8(':'))
 
     if display_size[2] > (hint_width + 4)

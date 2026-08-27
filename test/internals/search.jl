@@ -188,15 +188,17 @@ end
 @testset "Invalid Search Pattern" begin
     lines = ["first line", "second line", "third line"]
 
-    # A malformed pattern must show a message, wait for a keystroke, and keep the session
-    # alive in view mode with no matches recorded.
+    # A malformed pattern must show a message and keep the session alive in view mode with
+    # no matches recorded. The message used to be modal, consuming the next keystroke.
     pagerd = _create_modal_pagerd(lines, "[\n ")
     pagerd.event = :search
 
     @test TerminalPager._pager_event_process!(pagerd) != false
     @test pagerd.mode == :view
     @test length(pagerd.ordered_search_matches) == 0
-    @test occursin("Invalid regex!", String(take!(pagerd.term.out_stream)))
+    @test pagerd.message == "Invalid regex!"
+    @test pagerd.message_kind === :error
+    @test TerminalPager._read_keystroke!(pagerd.input).value == " "
 
     # A valid pattern must still work through the same code path.
     pagerd = _create_modal_pagerd(lines, "line\n")
