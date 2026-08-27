@@ -75,9 +75,11 @@ end
 
 """
     _prompt_number!(pagerd::Pager, label::String, current::Int) -> Tuple{Symbol, Int}
+    _prompt_number!(pagerd::Pager, prefix::String) -> Tuple{Symbol, Int}
 
-Prompt for an integer on the command line of `pagerd`, showing `label` and the `current`
-value, and return the status and the number typed by the user.
+Prompt for an integer on the command line of `pagerd` and return the status and the number
+typed by the user. The prompt shows `label` and the `current` value in brackets, or the raw
+`prefix`.
 
 The status is `:value` when a number was typed, `:empty` when the prompt was left empty,
 `:cancel` when the prompt was cancelled, and `:invalid` when the input is not a number. In
@@ -89,9 +91,14 @@ number is `0` unless the status is `:value`.
 - `pagerd::Pager`: Pager state whose terminal and input are used.
 - `label::String`: Description of the requested number, shown in the prompt.
 - `current::Int`: Current value, shown in the prompt.
+- `prefix::String`: Prompt displayed before the number.
 """
 function _prompt_number!(pagerd::Pager, label::String, current::Int)
-    cmd_input = _read_cmd!(pagerd; prefix = "$label [$current] › ")
+    return _prompt_number!(pagerd, "$label [$current] › ")
+end
+
+function _prompt_number!(pagerd::Pager, prefix::String)
+    cmd_input = _read_cmd!(pagerd; prefix = prefix)
     isnothing(cmd_input) && return :cancel, 0
     isempty(cmd_input) && return :empty, 0
 

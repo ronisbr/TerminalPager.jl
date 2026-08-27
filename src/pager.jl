@@ -773,7 +773,14 @@ function _action_event(action, features::Vector{Symbol})
     isnothing(action) && return nothing
 
     if action in (
-        :quit, :quit_eot, :search, :next_match, :previous_match, :quit_search, :toggle_ruler
+        :quit,
+        :quit_eot,
+        :goto_line,
+        :search,
+        :next_match,
+        :previous_match,
+        :quit_search,
+        :toggle_ruler,
     )
         return action
     end
@@ -971,6 +978,18 @@ function _pager_event_process!(pagerd::Pager)
 
     elseif event == :search
         _search!(pagerd)
+
+    elseif event == :goto_line
+        status, line = _prompt_number!(pagerd, ":")
+
+        if status === :value
+            # The requested line is shown at the top of the view, like `less` does, and the
+            # view never moves into the frozen rows.
+            min_row = max(1, pagerd.frozen_rows + 1)
+            pagerd.start_row = clamp(line, min_row, max(min_row, pagerd.num_lines))
+        end
+
+        _request_redraw!(pagerd)
 
     elseif event == :next_match
         _change_active_match!(pagerd, true)

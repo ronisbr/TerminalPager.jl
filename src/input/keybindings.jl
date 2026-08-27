@@ -42,6 +42,7 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("<down>", true, false, false) => :end,
     ("G", false, false, false) => :end,
     (">", false, false, false) => :end,
+    (":", false, false, false) => :goto_line,
     ("/", false, false, false) => :search,
     ("n", false, false, false) => :next_match,
     ("N", false, false, false) => :previous_match,
@@ -253,9 +254,9 @@ be selected with the keyword `ctrl` instead, for example
 
     :quit, :quit_eot, :help, :up, :down, :left, :right, :fastup, :fastdown,
     :fastleft, :fastright, :bol, :eol, :pageup, :pagedown, :halfpageup,
-    :halfpagedown, :home, :end, :search, :next_match, :previous_match,
-    :quit_search, :change_freeze, :change_title_rows, :toggle_ruler,
-    :toggle_visual_mode, :select_visual_mode_line, :yank
+    :halfpagedown, :home, :end, :goto_line, :search, :next_match,
+    :previous_match, :quit_search, :change_freeze, :change_title_rows,
+    :toggle_ruler, :toggle_visual_mode, :select_visual_mode_line, :yank
 
 # Arguments
 

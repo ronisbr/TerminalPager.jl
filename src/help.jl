@@ -181,6 +181,10 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:eol, "Move the display to show the last column."),
             ActionHelp(:home, "Move the display to the first line."),
             ActionHelp(:end, "Move the display to show the last line."),
+            ActionHelp(
+                :goto_line,
+                "Request a line number in the command line and move the display to it.",
+            ),
         ],
     ),
     HelpSection(

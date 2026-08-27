@@ -318,3 +318,38 @@ end
     TerminalPager._read_cmd!(pagerd; on_change = text -> "too long")
     @test !occursin("too long", String(take!(pagerd.term.out_stream)))
 end
+
+@testset "Go To Line" begin
+    lines = ["line $i" for i in 1:30]
+    k = TerminalPager.Keystroke(; value = ":")
+    @test TerminalPager._pager_action(k) === :goto_line
+
+    pagerd = _create_modal_pagerd(lines, "25\n")
+    @test TerminalPager._pager_key_process!(pagerd, k) === :goto_line
+    @test pagerd.event === :goto_line
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.start_row == 25
+    @test pagerd.redraw
+    @test occursin("\e[0K\e[?25h:25", String(take!(pagerd.term.out_stream)))
+
+    # The line is clamped to the text and never enters the frozen rows.
+    for (input, frozen_rows, expected) in
+        (("0\n", 0, 1), ("99\n", 0, 30), ("1\n", 2, 3), ("-5\n", 0, 1))
+        pagerd = _create_modal_pagerd(lines, input)
+        pagerd.frozen_rows = frozen_rows
+        pagerd.start_row = frozen_rows + 1
+        pagerd.event = :goto_line
+        @test TerminalPager._pager_event_process!(pagerd)
+        @test pagerd.start_row == expected
+    end
+
+    # Cancelling, an empty number, or an invalid one keeps the position.
+    for input in ("\e", "\n", "abc\n")
+        pagerd = _create_modal_pagerd(lines, input)
+        pagerd.start_row = 7
+        pagerd.event = :goto_line
+        @test TerminalPager._pager_event_process!(pagerd)
+        @test pagerd.start_row == 7
+    end
+    @test pagerd.message == "Not a number: abc"
+end
