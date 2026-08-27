@@ -148,7 +148,9 @@ The colors and the text attributes of the pager are faces registered with
 file `config/faces.toml` of the Julia depot under the tables `[terminalpager.<name>]`. The
 available faces are listed as follows:
 
-- `"status_bar"`: Status bar.
+- `"status_bar"`: Status bar. It is drawn in reverse video by default, so that it matches
+    light and dark themes. Since the terminal swaps the colors of a face with
+    `inverse = true`, custom colors must come with `inverse = false`.
     (**Default**: reverse video)
 - `"badge_normal"`: Mode badge in the normal mode.
     (**Default**: bold, bright white on blue)

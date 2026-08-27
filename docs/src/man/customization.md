@@ -68,7 +68,7 @@ prefix `terminalpager_`. The available faces are:
 
 | Face                  | Description                                            | Default                            |
 |:----------------------|:-------------------------------------------------------|:-----------------------------------|
-| `status_bar`          | Status bar.                                            | Reverse video.                     |
+| `status_bar`          | Status bar (see the note below).                       | Reverse video.                     |
 | `badge_normal`        | Mode badge in the normal mode.                         | Bold, bright white on blue.        |
 | `badge_search`        | Mode badge in the search mode.                         | Bold, black on yellow.             |
 | `badge_visual`        | Mode badge in the visual mode.                         | Bold, bright white on magenta.     |
@@ -100,7 +100,19 @@ julia> TerminalPager.set_face!("search_active_match"; foreground = :white, backg
 
 The colors can be the names of the 16 terminal colors (`black`, `red`, `green`, `yellow`,
 `blue`, `magenta`, `cyan`, `white`, and their `bright_` variants) or 24-bit colors written as
-`"#rrggbb"`. The default face can be restored with:
+`"#rrggbb"`.
+
+!!! note
+    The status bar is drawn in reverse video by default, so that it matches light and dark
+    themes. Since the terminal swaps the colors of a face with `inverse = true`, custom
+    colors must come with `inverse = false`. Otherwise, the background is shown as the
+    foreground and vice versa:
+
+    ```julia
+    julia> TerminalPager.set_face!("status_bar"; foreground = :white, background = :blue, inverse = false)
+    ```
+
+The default face can be restored with:
 
 ```julia
 julia> TerminalPager.drop_face!("search_active_match")
