@@ -25,7 +25,7 @@ end
     # `round(Int, 100 * (1 - 0 / 0))` threw an `InexactError` because `0 / 0` is `NaN`.
     TerminalPager._redraw_status_bar!(pagerd)
     output = String(take!(pagerd.term.out_stream))
-    @test occursin("100%", output)
+    @test occursin("All", output)
 
     # Toggling the ruler used to compute the ruler width with `log10`.
     pagerd.show_ruler = true

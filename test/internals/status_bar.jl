@@ -61,17 +61,18 @@ end
     lines = ["line $i" for i in 1:20]
     pagerd, output = _create_status_pagerd(lines)
     pagerd.features = [:help]
+    pagerd.start_row = 5
     pagerd.cropped_lines = 11
 
-    # The bar fills the whole row. The view has nine rows, so lines 1 to 9 are visible.
+    # The bar fills the whole row: the badge, the key hints, and the position.
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL] lines 1–9/20" * " "^17 * " ?:help  q:quit   45% "
+    @test text == "[NORMAL]" * " "^31 * " ?:help  q:quit  45% "
     @test textwidth(text) == 60
 
     # Without the help feature, only the quit hint is shown.
     pagerd.features = Symbol[]
     text = _status_bar_text(pagerd, output)
-    @test endswith(text, " q:quit   45% ")
+    @test endswith(text, " q:quit  45% ")
     @test !occursin("help", text)
     @test textwidth(text) == 60
 
@@ -79,19 +80,17 @@ end
     pagerd.mode = :searching
     pagerd.ordered_search_matches = [TerminalPager.SearchMatch(i, 1, 1, 1) for i in 1:5]
     pagerd.active_search_match_id = 2
-    text = _status_bar_text(pagerd, output)
-    @test startswith(text, "[SEARCH] lines 1–9/20  match 2/5 ")
+    @test startswith(_status_bar_text(pagerd, output), "[SEARCH] match 2/5 ")
 
     empty!(pagerd.ordered_search_matches)
     pagerd.active_search_match_id = 0
-    @test startswith(_status_bar_text(pagerd, output), "[SEARCH] lines 1–9/20  no match ")
+    @test startswith(_status_bar_text(pagerd, output), "[SEARCH] no match ")
     pagerd.mode = :view
 
     # The visual mode shows the number of selected lines.
     pagerd.visual_mode = true
     push!(pagerd.visual_mode_selected_lines, 3)
-    text = _status_bar_text(pagerd, output)
-    @test startswith(text, "[VISUAL] lines 1–9/20  1 selected ")
+    @test startswith(_status_bar_text(pagerd, output), "[VISUAL] 1 selected ")
     pagerd.visual_mode = false
     empty!(pagerd.visual_mode_selected_lines)
 
@@ -101,54 +100,96 @@ end
     pagerd.title_rows = 1
     pagerd.show_ruler = true
     text = _status_bar_text(pagerd, output)
-    @test startswith(text, "[NORMAL] lines 1–9/20  frozen 2×3  titles 1  ruler ")
-    @test endswith(text, " 45% ")
-    @test !occursin("quit", text)
+    @test startswith(text, "[NORMAL] frozen 2×3  titles 1  ruler ")
+    @test endswith(text, " q:quit  45% ")
     @test textwidth(text) == 60
 
-    pagerd.display_size = (10, 70)
+    pagerd.display_size = (10, 45)
     text = _status_bar_text(pagerd, output)
-    @test startswith(text, "[NORMAL] lines 1–9/20  frozen 2×3  titles 1  ruler ")
-    @test endswith(text, " q:quit   45% ")
-    @test textwidth(text) == 70
+    @test startswith(text, "[NORMAL] frozen 2×3  titles 1  ruler ")
+    @test endswith(text, " 45% ")
+    @test !occursin("quit", text)
+    @test textwidth(text) == 45
 end
 
-@testset "Status Bar Columns" begin
-    # The columns are shown only when the text is wider than the view.
+@testset "Status Bar Position" begin
+    lines = ["line $i" for i in 1:20]
+    pagerd, output = _create_status_pagerd(lines; display_size = (10, 30))
+
+    # The whole text is visible, the top, the bottom, or a percentage in between. The
+    # percentage never reaches 100, because the bottom has its own token.
+    pagerd.cropped_lines = 11
+    @test endswith(_status_bar_text(pagerd, output), " q:quit  Top ")
+    pagerd.start_row = 12
+    pagerd.cropped_lines = 0
+    @test endswith(_status_bar_text(pagerd, output), " q:quit  Bot ")
+    pagerd.start_row = 2
+    pagerd.cropped_lines = 10
+    @test endswith(_status_bar_text(pagerd, output), " q:quit  50% ")
+    pagerd.cropped_lines = 1
+    @test endswith(_status_bar_text(pagerd, output), " q:quit  95% ")
+    pagerd.cropped_lines = 19
+    @test endswith(_status_bar_text(pagerd, output), " q:quit   5% ")
+
+    # With frozen rows, the top is the first scrollable row.
+    pagerd.frozen_rows = 2
+    pagerd.start_row = 3
+    pagerd.cropped_lines = 11
+    @test endswith(_status_bar_text(pagerd, output), " Top ")
+    pagerd.start_row = 4
+    @test endswith(_status_bar_text(pagerd, output), " 45% ")
+
+    pagerd, output = _create_status_pagerd(["a", "b"]; display_size = (10, 30))
+    @test endswith(_status_bar_text(pagerd, output), " q:quit  All ")
+
+    pagerd, output = _create_status_pagerd(String[]; display_size = (10, 30))
+    @test _status_bar_text(pagerd, output) == "[NORMAL]" * " "^9 * " q:quit  All "
+end
+
+@testset "Status Bar Hidden Text Hints" begin
+    # The hints tell that the text continues beyond the left or the right edge of the view.
     pagerd, output = _create_status_pagerd(["x"^100, "y"^50]; display_size = (10, 50))
+    TerminalPager._view!(pagerd)
     text = _status_bar_text(pagerd, output)
-    @test startswith(text, "[NORMAL] lines 1–2/2  cols 1–50/100 ")
+    @test text == "[NORMAL]" * " "^26 * " ›  q:quit  All "
     @test textwidth(text) == 50
 
     pagerd.start_column = 30
-    @test occursin(" cols 30–79/100 ", _status_bar_text(pagerd, output))
+    TerminalPager._view!(pagerd)
+    @test endswith(_status_bar_text(pagerd, output), " ‹›  q:quit  All ")
 
-    # The frozen columns and the ruler reduce the visible columns.
-    pagerd.start_column = 1
+    pagerd.start_column = 51
+    TerminalPager._view!(pagerd)
+    @test endswith(_status_bar_text(pagerd, output), " ‹  q:quit  All ")
+
+    # The frozen columns are never hidden.
     pagerd.frozen_columns = 5
-    pagerd.show_ruler = true
-    ruler_width = TerminalPager._ruler_width(2)
-    text = _status_bar_text(pagerd, output)
-    @test occursin(" cols 1–$(50 - 5 - ruler_width)/100 ", text)
+    pagerd.start_column = 6
+    TerminalPager._view!(pagerd)
+    @test endswith(_status_bar_text(pagerd, output), " ›  q:quit  All ")
 
     pagerd, output = _create_status_pagerd(["short"]; display_size = (10, 40))
-    @test !occursin("cols", _status_bar_text(pagerd, output))
+    TerminalPager._view!(pagerd)
+    text = _status_bar_text(pagerd, output)
+    @test !occursin("‹", text)
+    @test !occursin("›", text)
 end
 
 @testset "Status Bar Fits Narrow Displays" begin
     lines = ["line $i" for i in 1:20]
     pagerd, output = _create_status_pagerd(lines; display_size = (10, 30))
     pagerd.features = [:help]
+    pagerd.start_row = 5
     pagerd.cropped_lines = 11
 
-    # The hints are dropped first, then the scroll position.
+    # The hints are dropped first, then the position.
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL] lines 1–9/20" * " "^4 * " 45% "
+    @test text == "[NORMAL]" * " "^1 * " ?:help  q:quit  45% "
     @test textwidth(text) == 30
 
     pagerd.display_size = (10, 22)
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL] lines 1–9/20 "
+    @test text == "[NORMAL]" * " "^9 * " 45% "
     @test textwidth(text) == 22
 
     # The badge is the last segment to go, and it is cut at the display width.
@@ -177,10 +218,6 @@ end
     text = _status_bar_text(pagerd, output)
     @test text == "[NORMAL] ✓ A very long message"
     @test textwidth(text) == 30
-
-    # An empty text is reported as such.
-    pagerd, output = _create_status_pagerd(String[]; display_size = (10, 30))
-    @test _status_bar_text(pagerd, output) == "[NORMAL] empty" * " "^2 * " q:quit  100% "
 
     # With color, the bar is drawn in reverse video with a colored badge, and it ends with a
     # reset before the cursor is parked.
@@ -315,10 +352,13 @@ end
 end
 
 @testset "Status Bar With the Scrollbar" begin
-    # The visible columns exclude the scrollbar column.
-    pagerd, output = _create_status_pagerd(["x"^100]; display_size = (10, 50))
+    # The text cut by the scrollbar column is reported as hidden.
+    pagerd, output = _create_status_pagerd(["x"^50]; display_size = (10, 50))
+    TerminalPager._view!(pagerd)
+    @test !occursin("›", _status_bar_text(pagerd, output))
     pagerd.show_scrollbar = true
-    @test occursin(" cols 1–49/100 ", _status_bar_text(pagerd, output))
+    TerminalPager._view!(pagerd)
+    @test occursin(" ›  ", _status_bar_text(pagerd, output))
 
     # The keyword and the preference select the initial state.
     input = IOBuffer("q")

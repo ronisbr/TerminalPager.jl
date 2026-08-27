@@ -117,7 +117,7 @@ end
     # On a terminal too narrow for the hints, they are not written. Without an explicit
     # clear, the text left behind by the command editor persisted on the command line.
     pagerd = _create_modal_pagerd(["x", "y"], "")
-    pagerd.display_size = (10, 30)
+    pagerd.display_size = (10, 20)
     pagerd.features = [:help]
 
     TerminalPager._redraw_status_bar!(pagerd)

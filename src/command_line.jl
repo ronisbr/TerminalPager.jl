@@ -18,12 +18,21 @@ const _BADGE_SEARCH_PLAIN = "[SEARCH]"
 const _BADGE_VISUAL_PLAIN = "[VISUAL]"
 const _BADGE_WIDTH = 8
 
-const _EMPTY = " empty "
-const _EMPTY_WIDTH = textwidth(_EMPTY)
 const _NO_MATCH = " no match "
 const _NO_MATCH_WIDTH = textwidth(_NO_MATCH)
 const _RULER = " ruler "
 const _RULER_WIDTH = textwidth(_RULER)
+
+# Position tokens, like the ones of `vim`. Every token, including a percentage, is three
+# columns wide.
+const _POSITION_ALL = "All"
+const _POSITION_TOP = "Top"
+const _POSITION_BOTTOM = "Bot"
+const _POSITION_WIDTH = 3
+
+# Hints telling that the text continues beyond the left and the right edges of the view.
+const _HIDDEN_LEFT = "‹"
+const _HIDDEN_RIGHT = "›"
 
 # The bar is drawn in reverse video, so that it works with light and dark themes. The badges
 # and the messages reset it and select their own colors.
@@ -153,10 +162,12 @@ end
 
 Redraw the status bar of `pagerd` on the last row of the display.
 
-The bar shows the mode badge, the visible lines and columns, the search and visual mode
-state, the enabled features, the scroll position, and the key hints. When the display is too
-narrow, the key hints are dropped first, then the segments from the least to the most
-important one. A pending message replaces every segment but the badge.
+The bar shows the mode badge, the search and visual mode state, the enabled features, the
+hints that the text continues beyond the left or the right edge of the view, the key hints,
+and the position, which is `All` when the whole text is visible, `Top`, `Bot`, or the
+percentage of the text above the bottom of the view. When the display is too narrow, the
+key hints are dropped first, then the segments from the least to the most important one. A
+pending message replaces every segment but the badge.
 
 # Arguments
 
@@ -245,15 +256,6 @@ function _redraw_status_bar!(pagerd::Pager)
     # Everything but the numbers is constant, so the widths are computed from the number of
     # digits. Assembling strings here allocated at every keystroke.
 
-    # Visible lines: " lines a–b/N ".
-    last_line = num_lines - pagerd.cropped_lines
-    first_line = min(pagerd.start_row, last_line)
-    w_lines = if num_lines == 0
-        _EMPTY_WIDTH
-    else
-        10 + ndigits(first_line) + ndigits(last_line) + ndigits(num_lines)
-    end
-
     # Search: " match i/n " or " no match ".
     num_matches = length(pagerd.ordered_search_matches)
     match_id = pagerd.active_search_match_id
@@ -269,57 +271,48 @@ function _redraw_status_bar!(pagerd::Pager)
     num_selected = length(pagerd.visual_mode_selected_lines)
     w_visual = pagerd.visual_mode ? 11 + ndigits(num_selected) : 0
 
-    # Visible columns: " cols a–b/W ", only when the text is wider than the view.
-    frozen_columns = pagerd.frozen_columns
-    ruler_width = pagerd.show_ruler ? _ruler_width(num_lines) : 0
-    view_cols = _get_pager_display_size(pagerd)[2] - frozen_columns - ruler_width
-    text_width = _text_width(pagerd)
-    first_col = pagerd.start_column
-    last_col = min(text_width, first_col + view_cols - 1)
-    show_cols = (text_width > view_cols) && (last_col >= first_col)
-    w_cols = if show_cols
-        9 + ndigits(first_col) + ndigits(last_col) + ndigits(text_width)
-    else
-        0
-    end
-
     # Features: " frozen r×c ", " titles t ", and " ruler ".
     frozen_rows = pagerd.frozen_rows
+    frozen_columns = pagerd.frozen_columns
     show_frozen = (frozen_rows > 0) || (frozen_columns > 0)
     w_frozen = show_frozen ? 10 + ndigits(frozen_rows) + ndigits(frozen_columns) : 0
     title_rows = pagerd.title_rows
     w_titles = title_rows > 0 ? 9 + ndigits(title_rows) : 0
     w_ruler = pagerd.show_ruler ? _RULER_WIDTH : 0
 
-    # Scroll position: " NNN% ". Notice that an empty text has nothing left to scroll, so we
-    # must not divide by `num_lines` here.
+    # Hidden text: "‹" when the view is scrolled to the right and "›" when the text is cut
+    # at the right edge. Notice that the hints follow the last rendered frame.
+    hidden_left = pagerd.start_column > max(1, frozen_columns + 1)
+    hidden_right = pagerd.cropped_columns > 0
+    w_hidden = hidden_left + hidden_right
+
+    # Position: " All ", " Top ", " Bot ", or " NN% ". The percentage never reaches 100,
+    # because the bottom of the text has its own token, and an empty text has nothing to
+    # scroll.
+    cropped_lines = pagerd.cropped_lines
+    at_top = pagerd.start_row <= max(1, frozen_rows + 1)
+    at_bottom = cropped_lines == 0
     percentage = if num_lines > 0
-        clamp(round(Int, 100 * (1 - pagerd.cropped_lines / num_lines)), 0, 100)
+        clamp(round(Int, 100 * (1 - cropped_lines / num_lines)), 1, 99)
     else
-        100
+        0
     end
 
-    # Key hints: " ?:help  q:quit  NNN% ".
+    # Key hints: " ?:help  q:quit ".
     hint = _status_hint(:help ∈ pagerd.features)
 
     # == Fit ===============================================================================
 
-    # The scroll position is kept whenever it fits next to the visible lines. The remaining
-    # segments are added from the most to the least important one, and the key hints only
-    # take the space that is left at the end.
-    right = (used + w_lines + 6 <= cols) ? 6 : 0
-
-    show_lines = used + w_lines + right <= cols
-    show_lines && (used += w_lines)
+    # The position is kept whenever it fits next to the badge. The remaining segments are
+    # added from the most to the least important one, and the key hints only take the space
+    # that is left at the end.
+    right = (used + _POSITION_WIDTH + 2 <= cols) ? _POSITION_WIDTH + 2 : 0
 
     show_search = (w_search > 0) && (used + w_search + right <= cols)
     show_search && (used += w_search)
 
     show_visual = (w_visual > 0) && (used + w_visual + right <= cols)
     show_visual && (used += w_visual)
-
-    show_cols &= used + w_cols + right <= cols
-    show_cols && (used += w_cols)
 
     show_frozen &= used + w_frozen + right <= cols
     show_frozen && (used += w_frozen)
@@ -330,24 +323,14 @@ function _redraw_status_bar!(pagerd::Pager)
     show_ruler = (w_ruler > 0) && (used + w_ruler + right <= cols)
     show_ruler && (used += w_ruler)
 
-    show_hint = !isempty(hint) && (right > 0) && (used + textwidth(hint) + 8 <= cols)
-    show_hint && (right = textwidth(hint) + 8)
+    show_hidden = (w_hidden > 0) && (right > 0) && (used + right + w_hidden + 2 <= cols)
+    show_hidden && (right += w_hidden + 2)
+
+    show_hint =
+        !isempty(hint) && (right > 0) && (used + right + textwidth(hint) + 2 <= cols)
+    show_hint && (right += textwidth(hint) + 2)
 
     # == Rendering =========================================================================
-
-    if show_lines
-        if num_lines == 0
-            write(out, _EMPTY)
-        else
-            write(out, " lines ")
-            _write_decimal(out, first_line)
-            write(out, "–")
-            _write_decimal(out, last_line)
-            write(out, UInt8('/'))
-            _write_decimal(out, num_lines)
-            write(out, UInt8(' '))
-        end
-    end
 
     if show_search
         if num_matches > 0
@@ -365,16 +348,6 @@ function _redraw_status_bar!(pagerd::Pager)
         write(out, UInt8(' '))
         _write_decimal(out, num_selected)
         write(out, " selected ")
-    end
-
-    if show_cols
-        write(out, " cols ")
-        _write_decimal(out, first_col)
-        write(out, "–")
-        _write_decimal(out, last_col)
-        write(out, UInt8('/'))
-        _write_decimal(out, text_width)
-        write(out, UInt8(' '))
     end
 
     if show_frozen
@@ -398,14 +371,30 @@ function _redraw_status_bar!(pagerd::Pager)
     if right > 0
         write(out, UInt8(' '))
 
+        if show_hidden
+            hidden_left && write(out, _HIDDEN_LEFT)
+            hidden_right && write(out, _HIDDEN_RIGHT)
+            write(out, "  ")
+        end
+
         if show_hint
             write(out, hint)
             write(out, "  ")
         end
 
-        _write_blanks(out, 3 - ndigits(percentage))
-        _write_decimal(out, percentage)
-        write(out, "% ")
+        if (num_lines == 0) || (at_top && at_bottom)
+            write(out, _POSITION_ALL)
+        elseif at_top
+            write(out, _POSITION_TOP)
+        elseif at_bottom
+            write(out, _POSITION_BOTTOM)
+        else
+            _write_blanks(out, 2 - ndigits(percentage))
+            _write_decimal(out, percentage)
+            write(out, UInt8('%'))
+        end
+
+        write(out, UInt8(' '))
     end
 
     use_color && write(out, _CRAYON_RESET)

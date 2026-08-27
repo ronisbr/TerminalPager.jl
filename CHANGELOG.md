@@ -14,9 +14,10 @@ Version 0.8.0
   `"always_use_alternate_screen_buffer_in_repl_mode"` is deprecated and ignored, because the
   alternate screen buffer is now used by default. Setting it warns.
 - ![Feature][badge-feature] The command line was replaced by a status bar with a mode badge,
-  the visible lines and columns, the search and visual mode state, the enabled features, the
-  scroll position, and key hints derived from the current key bindings. The bar adapts to
-  narrow displays, and the cursor is hidden while the pager is open.
+  the search and visual mode state, the enabled features, hints that the text continues
+  beyond the left or the right edge, key hints derived from the current key bindings, and
+  the position (`All`, `Top`, `Bot`, or a percentage). The bar adapts to narrow displays,
+  and the cursor is hidden while the pager is open.
 - ![Feature][badge-feature] The command line editor supports CTRL-A, CTRL-E, CTRL-W, CTRL-U,
   and CTRL-H, and the up and down keys recall the search patterns of the session.
 - ![Feature][badge-feature] The search is incremental: the matches are previewed while the

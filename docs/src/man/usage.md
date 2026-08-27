@@ -21,8 +21,9 @@ inside the `pager`.
 
 ## Inside the Pager
 
-The last row is a status bar showing the current mode, the visible lines and columns, the
-enabled features, the scroll position, and the keys to open the help and to quit. The
+The last row is a status bar showing the current mode, the enabled features, whether the
+text continues beyond the left or the right edge (`‹` and `›`), the keys to open the help
+and to quit, and the position (`All`, `Top`, `Bot`, or a percentage). The
 movements follow `less` and Vi: the arrow keys, `j`, `k`, `h`, `l`, `Space`, `PgUp`, `PgDn`,
 `Home`, `End`, `g`, and `G`. Typing `:` followed by a line number moves the display to that
 line, `r` toggles a line number ruler, `s` toggles a scrollbar, and `q` quits.
