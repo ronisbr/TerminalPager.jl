@@ -82,9 +82,178 @@ showing a stale one after a new version was released.
 _pkg_version() = pkgversion(@__MODULE__)
 
 """
+    struct ActionHelp
+
+Describe one pager action in the help screen.
+
+# Fields
+
+- `action::Symbol`: Pager action.
+- `description::String`: Description of the action, possibly spanning multiple lines.
+- `feature::Union{Nothing, Symbol}`: Feature required by the action, or `nothing`.
+"""
+struct ActionHelp
+    action::Symbol
+    description::String
+    feature::Union{Nothing, Symbol}
+end
+
+"""
+    ActionHelp(action::Symbol, description::String) -> ActionHelp
+
+Describe the pager `action` with `description` when it does not require a feature.
+
+# Arguments
+
+- `action::Symbol`: Pager action.
+- `description::String`: Description of the action, possibly spanning multiple lines.
+"""
+ActionHelp(action::Symbol, description::String) = ActionHelp(action, description, nothing)
+
+"""
+    struct HelpSection
+
+Group the actions of the help screen under a title.
+
+# Fields
+
+- `title::String`: Section title.
+- `feature::Union{Nothing, Symbol}`: Feature required by every action in the section, or
+    `nothing`.
+- `actions::Vector{ActionHelp}`: Actions documented in the section.
+"""
+struct HelpSection
+    title::String
+    feature::Union{Nothing, Symbol}
+    actions::Vector{ActionHelp}
+end
+
+# The help screen is generated from this table, so that the documentation of an action lives
+# in a single place.
+const _HELP_SECTIONS = HelpSection[
+    HelpSection(
+        "General",
+        nothing,
+        ActionHelp[
+            ActionHelp(:help, "Show this screen.", :help),
+            ActionHelp(:quit, "Quit the pager."),
+            ActionHelp(
+                :quit_eot,
+                """
+                This is a special quit action designed for the
+                END OF TRANSMISSION (^D) keycode. If we are in a search
+                operation, then it quits the search. If not, then it
+                quits the pager.""",
+            ),
+            ActionHelp(:toggle_ruler, "Toggle the vertical ruler."),
+        ],
+    ),
+    HelpSection(
+        "Movement",
+        nothing,
+        ActionHelp[
+            ActionHelp(:up, "Move the display one line up."),
+            ActionHelp(:down, "Move the display one line down."),
+            ActionHelp(:left, "Move the display one column to the left."),
+            ActionHelp(:right, "Move the display one column to the right."),
+            ActionHelp(:fastup, "Move the display five lines up."),
+            ActionHelp(:fastdown, "Move the display five lines down."),
+            ActionHelp(:fastleft, "Move the display ten columns to the left."),
+            ActionHelp(:fastright, "Move the display ten columns to the right."),
+            ActionHelp(
+                :pageup,
+                "Move the display one page up (a page has the same size as the view).",
+            ),
+            ActionHelp(
+                :pagedown,
+                "Move the display one page down (a page has the same size as the view).",
+            ),
+            ActionHelp(
+                :halfpageup,
+                "Move the display half page up (a page has the same size as the view).",
+            ),
+            ActionHelp(
+                :halfpagedown,
+                "Move the display half page down (a page has the same size as the view).",
+            ),
+            ActionHelp(:bol, "Move the display to the first column."),
+            ActionHelp(:eol, "Move the display to show the last column."),
+            ActionHelp(:home, "Move the display to the first line."),
+            ActionHelp(:end, "Move the display to show the last line."),
+        ],
+    ),
+    HelpSection(
+        "Searching",
+        nothing,
+        ActionHelp[
+            ActionHelp(
+                :search,
+                "Request a regex in the command line and highlight all the matches.",
+            ),
+            ActionHelp(:next_match, "Go to the next match of the search."),
+            ActionHelp(:previous_match, "Go to the previous match of the search."),
+            ActionHelp(
+                :quit_search,
+                "Quit searching, removing all the highlights (only during search mode).",
+            ),
+        ],
+    ),
+    HelpSection(
+        "Freezing Data",
+        :change_freeze,
+        ActionHelp[
+            ActionHelp(
+                :change_freeze,
+                """
+                Two values will be requested in the command line. The first is the
+                number of rows and the second is the number of columns that will be
+                frozen. If a value is equal to or lower than 0, then no row or column
+                will be frozen.""",
+            ),
+            ActionHelp(
+                :change_title_rows,
+                """
+                Define the number of rows within the frozen rows that will be
+                considered as titles. In this case, these rows will not scroll
+                horizontally.""",
+            ),
+        ],
+    ),
+    HelpSection(
+        "Visual Mode",
+        :visual_mode,
+        ActionHelp[
+            ActionHelp(
+                :toggle_visual_mode,
+                """
+                Toggle visual mode, where a visual line is displayed on the screen.
+                In this mode, the movements are slightly modified to be relative to
+                the visual line.""",
+            ),
+            ActionHelp(
+                :select_visual_mode_line,
+                """
+                Mark the current visual line. Notice that if the line is already
+                marked, it will be unmarked. All the lines are unmarked when we exit
+                the visual mode.""",
+            ),
+            ActionHelp(
+                :yank,
+                """
+                Copy (yank) the selected and current visual lines to the system
+                clipboard.""",
+            ),
+        ],
+    ),
+]
+
+# Width used to center the section titles of the help screen.
+const _HELP_WIDTH = 92
+
+"""
     _help_string(use_color::Bool) -> String
 
-Assemble the pager help screen from the current key bindings.
+Assemble the pager help screen from [`_HELP_SECTIONS`](@ref) and the current key bindings.
 
 # Arguments
 
@@ -107,173 +276,45 @@ function _help_string(use_color::Bool)
         _y = ""
     end
 
-    # Get the current key bindings.
+    buf = IOBuffer()
 
-    # Collect general keybindings.
-    kb_help = _getkb(:help)
-    kb_quit = _getkb(:quit)
-    kb_quit_eot = _getkb(:quit_eot)
-    kb_toggle_ruler = _getkb(:toggle_ruler)
+    print(buf, "  ", _cb, "TerminalPager.jl ", _pkg_version(), _d, "\n\n")
+    print(
+        buf,
+        "  The pager can execute several types of actions, as shown below. The key\n",
+        "  bindings of each action can be changed using the function\n",
+        "  ", _c, "set_keybinding", _d, ".\n\n",
+        "  Some actions are only available if a feature is enabled. The enabled\n",
+        "  features depend on how the pager was called and on the object being\n",
+        "  displayed.\n",
+    )
 
-    # Collect movement keybindings.
-    kb_up = _getkb(:up)
-    kb_down = _getkb(:down)
-    kb_left = _getkb(:left)
-    kb_right = _getkb(:right)
-    kb_fastup = _getkb(:fastup)
-    kb_fastdown = _getkb(:fastdown)
-    kb_fastleft = _getkb(:fastleft)
-    kb_fastright = _getkb(:fastright)
-    kb_pageup = _getkb(:pageup)
-    kb_pagedown = _getkb(:pagedown)
-    kb_hpageup = _getkb(:halfpageup)
-    kb_hpagedown = _getkb(:halfpagedown)
-    kb_bol = _getkb(:bol)
-    kb_eol = _getkb(:eol)
-    kb_home = _getkb(:home)
-    kb_end = _getkb(:end)
+    for section in _HELP_SECTIONS
+        title = section.title
+        print(buf, '\n', _b, " "^div(_HELP_WIDTH - length(title), 2), title, _d, '\n')
 
-    # Collect search keybindings.
-    kb_search = _getkb(:search)
-    kb_next_match = _getkb(:next_match)
-    kb_previous_match = _getkb(:previous_match)
-    kb_quit_search = _getkb(:quit_search)
+        if !isnothing(section.feature)
+            feature = section.feature
+            print(buf, _g, "  These actions require the feature :", feature, ".", _d, '\n')
+        end
 
-    # Collect data-freezing keybindings.
-    kb_change_freeze = _getkb(:change_freeze)
-    kb_change_title_rows = _getkb(:change_title_rows)
+        for entry in section.actions
+            print(buf, _y, "  :", entry.action, _d, '\n')
 
-    # Collect visual-mode keybindings.
-    kb_toggle_visual_mode = _getkb(:toggle_visual_mode)
-    kb_select_visual_mode_line = _getkb(:select_visual_mode_line)
-    kb_yank = _getkb(:yank)
+            for line in eachsplit(entry.description, '\n')
+                print(buf, "    ", line, '\n')
+            end
 
-    help_str = """
-                 $(_cb)TerminalPager.jl $(_pkg_version())$(_d)
+            print(buf, _c, "    Keybindings: ", _getkb(entry.action), _d, '\n')
 
-                 The pager can execute several types of actions, as shown below. The key
-                 bindings of each action can be changed using the function
-                 $(_c)set_keybinding$(_d).
+            if !isnothing(entry.feature)
+                feature = entry.feature
+                print(buf, _g, "    This action requires the feature :", feature, ".", _d, '\n')
+            end
+        end
+    end
 
-                 Some actions are only available if a feature is enabled. The enabled
-                 features depend on how the pager was called and on the object being
-                 displayed.
-
-               $(_b)                                          General$(_d)
-               $(_y)  :help$(_d)
-                   Show this screen.
-               $(_c)    Keybindings: $(kb_help)$(_d)
-               $(_g)    This action requires the feature :help.
-               $(_y)  :quit$(_d)
-                   Quit the pager.
-               $(_c)    Keybindings: $(kb_quit)$(_d)
-               $(_y)  :quit_eot$(_d)
-                   This is a special quit action designed for the
-                   $(_c)END OF TRANSMISSION (^D)$(_d) keycode. If we are in a search
-                   operation, then it quits the search. If not, then it
-                   quits the pager.
-               $(_c)    Keybindings: $(kb_quit_eot)$(_d)
-               $(_y)  :toggle_ruler$(_d)
-                   Toggle the vertical ruler.
-               $(_c)    Keybindings: $(kb_toggle_ruler)$(_d)
-
-               $(_b)                                          Movement$(_d)
-               $(_y)  :up$(_d)
-                   Move the display one line up.
-               $(_c)    Keybindings: $(kb_up)$(_d)
-               $(_y)  :down$(_d)
-                   Move the display one line down.
-               $(_c)    Keybindings: $(kb_down)$(_d)
-               $(_y)  :left$(_d)
-                   Move the display one column to the left.
-               $(_c)    Keybindings: $(kb_left)$(_d)
-               $(_y)  :right$(_d)
-                   Move the display one column to the right.
-               $(_c)    Keybindings: $(kb_right)$(_d)
-               $(_y)  :fastup$(_d)
-                   Move the display five lines up.
-               $(_c)    Keybindings: $(kb_fastup)$(_d)
-               $(_y)  :fastdown$(_d)
-                   Move the display five lines down.
-               $(_c)    Keybindings: $(kb_fastdown)$(_d)
-               $(_y)  :fastleft$(_d)
-                   Move the display ten columns to the left.
-               $(_c)    Keybindings: $(kb_fastleft)$(_d)
-               $(_y)  :fastright$(_d)
-                   Move the display ten columns to the right.
-               $(_c)    Keybindings: $(kb_fastright)$(_d)
-               $(_y)  :pageup$(_d)
-                   Move the display one page up (a page has the same size as the view).
-               $(_c)    Keybindings: $(kb_pageup)$(_d)
-               $(_y)  :pagedown$(_d)
-                   Move the display one page down (a page has the same size as the view).
-               $(_c)    Keybindings: $(kb_pagedown)$(_d)
-               $(_y)  :halfpageup$(_d)
-                   Move the display half page up (a page has the same size as the view).
-               $(_c)    Keybindings: $(kb_hpageup)$(_d)
-               $(_y)  :halfpagedown$(_d)
-                   Move the display half page down (a page has the same size as the view).
-               $(_c)    Keybindings: $(kb_hpagedown)$(_d)
-               $(_y)  :bol$(_d)
-                   Move the display to the first column.
-               $(_c)    Keybindings: $(kb_bol)$(_d)
-               $(_y)  :eol$(_d)
-                   Move the display to show the last column.
-               $(_c)    Keybindings: $(kb_eol)$(_d)
-               $(_y)  :home$(_d)
-                   Move the display to the first line.
-               $(_c)    Keybindings: $(kb_home)$(_d)
-               $(_y)  :end$(_d)
-                   Move the display to show the last line.
-               $(_c)    Keybindings: $(kb_end)$(_d)
-
-               $(_b)                                         Searching$(_d)
-               $(_y)  :search$(_d)
-                   Request a regex in the command line and highlight all the matches.
-               $(_c)    Keybindings: $(kb_search)$(_d)
-               $(_y)  :next_match$(_d)
-                   Go to the next match of the search.
-               $(_c)    Keybindings: $(kb_next_match)$(_d)
-               $(_y)  :previous_match$(_d)
-                   Go to the previous match of the search.
-               $(_c)    Keybindings: $(kb_previous_match)$(_d)
-               $(_y)  :quit_search$(_d)
-                   Quit searching, removing all the highlights (only during search mode).
-               $(_c)    Keybindings: $(kb_quit_search)$(_d)
-
-               $(_b)                                       Freezing Data$(_d)
-               $(_g)  These actions require the feature :change_freeze.
-               $(_y)  :change_freeze$(_d)
-                   Two values will be requested in the command line. The first is the
-                   number of rows and the second is the number of columns that will be
-                   frozen. If a value is equal to or lower than 0, then no row or column
-                   will be frozen.
-               $(_c)    Keybindings: $(kb_change_freeze)$(_d)
-               $(_y)  :change_title_rows$(_d)
-                   Define the number of rows within the frozen rows that will be
-                   considered as titles. In this case, these rows will not scroll
-                   horizontally.
-               $(_c)    Keybindings: $(kb_change_title_rows)$(_d)
-
-               $(_b)                                        Visual Mode$(_d)
-               $(_g)  These actions require the feature :visual_mode.
-               $(_y)  :toggle_visual_mode$(_d)
-                   Toggle visual mode, where a visual line is displayed on the screen.
-                   In this mode, the movements are slightly modified to be relative to
-                   the visual line.
-               $(_c)    Keybindings: $(kb_toggle_visual_mode)$(_d)
-               $(_y)  :select_visual_mode_line$(_d)
-                   Mark the current visual line. Notice that if the line is already
-                   marked, it will be unmarked. All the lines are unmarked when we exit
-                   the visual mode.
-               $(_c)    Keybindings: $(kb_select_visual_mode_line)$(_d)
-               $(_y)  :yank$(_d)
-                   Copy (yank) the selected and current visual lines to the system
-                   clipboard.
-               $(_c)    Keybindings: $(kb_yank)$(_d)
-               """
-
-    return help_str
+    return String(take!(buf))
 end
 
 ############################################################################################
