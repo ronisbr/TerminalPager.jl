@@ -196,7 +196,7 @@ end
     @test TerminalPager._pager_event_process!(pagerd) != false
     @test pagerd.mode == :view
     @test length(pagerd.ordered_search_matches) == 0
-    @test pagerd.message == "Invalid regex!"
+    @test pagerd.message == "Invalid regex: ["
     @test pagerd.message_kind === :error
     @test TerminalPager._read_keystroke!(pagerd.input).value == " "
 

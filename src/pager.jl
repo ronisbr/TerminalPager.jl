@@ -977,7 +977,7 @@ function _pager_event_process!(pagerd::Pager)
             match_regex = _try_regex(cmd_input)
 
             if isnothing(match_regex)
-                _set_message!(pagerd, "Invalid regex!"; kind = :error)
+                _set_message!(pagerd, "Invalid regex: $cmd_input"; kind = :error)
             else
                 _find_matches!(pagerd, match_regex)
                 _change_active_match!(pagerd, true)
@@ -1034,13 +1034,25 @@ function _pager_event_process!(pagerd::Pager)
                 pagerd.cropped_lines = 0
                 pagerd.cropped_columns = 0
             end
+
+            if status !== :invalid
+                _set_message!(
+                    pagerd,
+                    "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
+                )
+            end
         end
 
         _request_redraw!(pagerd)
 
     elseif event == :change_title_rows
         status, title_rows = _prompt_number!(pagerd, "Title rows", pagerd.title_rows)
-        (status === :value) && (pagerd.title_rows = max(0, title_rows))
+
+        if status === :value
+            pagerd.title_rows = max(0, title_rows)
+            _set_message!(pagerd, "$(pagerd.title_rows) title rows")
+        end
+
         _request_redraw!(pagerd)
 
     elseif event == :toggle_ruler
@@ -1124,7 +1136,7 @@ function _pager_event_process!(pagerd::Pager)
                 )
             else
                 _set_message!(
-                    pagerd, "Could not copy to the system clipboard!"; kind = :error
+                    pagerd, "Could not copy to the system clipboard"; kind = :error
                 )
             end
         end

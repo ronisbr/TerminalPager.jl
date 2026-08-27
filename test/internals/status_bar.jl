@@ -166,15 +166,16 @@ end
 @testset "Status Bar Messages and Colors" begin
     pagerd, output = _create_status_pagerd(["line"]; display_size = (10, 30))
 
-    # A message replaces every segment but the badge and is cut at the display width.
-    TerminalPager._set_message!(pagerd, "Invalid regex!"; kind = :error)
+    # A message replaces every segment but the badge, carries an icon telling its kind, and
+    # is cut at the display width.
+    TerminalPager._set_message!(pagerd, "Invalid regex"; kind = :error)
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL] Invalid regex!" * " "^7
+    @test text == "[NORMAL] ✗ Invalid regex" * " "^6
     @test textwidth(text) == 30
 
     TerminalPager._set_message!(pagerd, "A very long message that does not fit the row")
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL] A very long message t"
+    @test text == "[NORMAL] ✓ A very long message"
     @test textwidth(text) == 30
 
     # An empty text is reported as such.
@@ -190,10 +191,15 @@ end
     @test occursin(badge, colored)
     @test endswith(colored, "\e[0m\e[10;1H")
 
-    TerminalPager._set_message!(pagerd, "Invalid regex!"; kind = :error)
+    TerminalPager._set_message!(pagerd, "Invalid regex"; kind = :error)
     TerminalPager._redraw_status_bar!(pagerd)
     colored = String(take!(output))
-    @test occursin(TerminalPager._CRAYON_MESSAGE_ERROR * " Invalid regex!", colored)
+    @test occursin(TerminalPager._CRAYON_MESSAGE_ERROR * " ✗ Invalid regex", colored)
+
+    TerminalPager._set_message!(pagerd, "3 lines copied")
+    TerminalPager._redraw_status_bar!(pagerd)
+    colored = String(take!(output))
+    @test occursin(TerminalPager._CRAYON_MESSAGE_INFO * " ✓ 3 lines copied", colored)
 
     pagerd.mode = :searching
     TerminalPager._clear_message!(pagerd)

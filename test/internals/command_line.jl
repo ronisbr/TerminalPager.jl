@@ -203,7 +203,28 @@ end
     # An invalid number leaves a message instead of consuming the next keystroke.
     pagerd = _create_modal_pagerd(["x"], "bad\nq")
     @test TerminalPager._prompt_number!(pagerd, "Rows", 0) == (:invalid, 0)
-    @test pagerd.message == "Invalid data!"
+    @test pagerd.message == "Not a number: bad"
     @test pagerd.message_kind === :error
     @test TerminalPager._read_keystroke!(pagerd.input).value == "q"
+end
+
+@testset "Prompt Styling and Feedback" begin
+    # The prompts show the current value in brackets, and the freeze events confirm the new
+    # values with a message.
+    pagerd = _create_modal_pagerd(["a", "b", "c"], "2\n1\n")
+    pagerd.features = [:change_freeze]
+    pagerd.event = :change_freeze
+    @test TerminalPager._pager_event_process!(pagerd)
+    output = String(take!(pagerd.term.out_stream))
+    @test occursin("Frozen rows [0] › ", output)
+    @test occursin("Frozen columns [0] › ", output)
+    @test pagerd.message == "Frozen 2 rows × 1 columns"
+    @test pagerd.message_kind === :info
+
+    pagerd = _create_modal_pagerd(["a", "b", "c"], "1\n")
+    pagerd.features = [:change_freeze]
+    pagerd.event = :change_title_rows
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test occursin("Title rows [0] › ", String(take!(pagerd.term.out_stream)))
+    @test pagerd.message == "1 title rows"
 end

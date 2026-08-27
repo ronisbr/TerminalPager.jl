@@ -31,8 +31,12 @@ const _CRAYON_BAR = "$(CSI)0;7m"
 const _CRAYON_BADGE_NORMAL = "$(CSI)0;1;97;44m"
 const _CRAYON_BADGE_SEARCH = "$(CSI)0;1;30;43m"
 const _CRAYON_BADGE_VISUAL = "$(CSI)0;1;97;45m"
-const _CRAYON_MESSAGE_INFO = "$(CSI)0;7;1m"
+const _CRAYON_MESSAGE_INFO = "$(CSI)0;1;97;42m"
 const _CRAYON_MESSAGE_ERROR = "$(CSI)0;1;97;41m"
+
+# Icons telling the kind of a message at a glance. Both have a display width of one.
+const _MESSAGE_INFO_ICON = "✓"
+const _MESSAGE_ERROR_ICON = "✗"
 
 # Key hints of the status bar, rebuilt when the key bindings change. The entries are the
 # generation they were built for, the hints with the help action, and without it.
@@ -87,14 +91,14 @@ number is `0` unless the status is `:value`.
 - `current::Int`: Current value, shown in the prompt.
 """
 function _prompt_number!(pagerd::Pager, label::String, current::Int)
-    cmd_input = _read_cmd!(pagerd; prefix = "$label ($current): ")
+    cmd_input = _read_cmd!(pagerd; prefix = "$label [$current] › ")
     isnothing(cmd_input) && return :cancel, 0
     isempty(cmd_input) && return :empty, 0
 
     value = tryparse(Int, cmd_input; base = 10)
 
     if isnothing(value)
-        _set_message!(pagerd, "Invalid data!"; kind = :error)
+        _set_message!(pagerd, "Not a number: $cmd_input"; kind = :error)
         return :invalid, 0
     end
 
@@ -200,18 +204,19 @@ function _redraw_status_bar!(pagerd::Pager)
     message = pagerd.message
 
     if !isempty(message)
-        # The message replaces every other segment until the next keystroke.
+        # The message replaces every other segment until the next keystroke. It is shown
+        # like a toast, with an icon and a color that tell its kind at a glance.
         available = cols - used
         width = 0
+        is_error = pagerd.message_kind === :error
 
-        if use_color
-            is_error = pagerd.message_kind === :error
-            write(out, is_error ? _CRAYON_MESSAGE_ERROR : _CRAYON_MESSAGE_INFO)
-        end
+        use_color && write(out, is_error ? _CRAYON_MESSAGE_ERROR : _CRAYON_MESSAGE_INFO)
 
-        if available >= 1
+        if available >= 3
             write(out, UInt8(' '))
-            width += 1
+            write(out, is_error ? _MESSAGE_ERROR_ICON : _MESSAGE_INFO_ICON)
+            write(out, UInt8(' '))
+            width += 3
         end
 
         for c in message
