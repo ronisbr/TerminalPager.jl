@@ -139,3 +139,8 @@ end
     source = read(joinpath(pkgdir(TerminalPager), "src", "screen.jl"), String)
     @test !occursin("\$(CSI)\$(", source)
 end
+
+@testset "Mouse Sequences" begin
+    @test _seq(TerminalPager._turn_on_mouse) == "\e[?1000h\e[?1006h"
+    @test _seq(TerminalPager._turn_off_mouse) == "\e[?1006l\e[?1000l"
+end

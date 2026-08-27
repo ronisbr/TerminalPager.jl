@@ -42,6 +42,7 @@ function _help!(pagerd::Pager)
         text_layout = help_layout,
         manage_cursor_key_mode = false,
         manage_cursor = false,
+        manage_mouse = false,
     )
 
     return nothing
@@ -185,6 +186,8 @@ const _HELP_SECTIONS = HelpSection[
                 :goto_line,
                 "Request a line number in the command line and move the display to it.",
             ),
+            ActionHelp(:wheel_up, "Move the display three lines up."),
+            ActionHelp(:wheel_down, "Move the display three lines down."),
         ],
     ),
     HelpSection(
@@ -241,6 +244,12 @@ const _HELP_SECTIONS = HelpSection[
                 Mark the current visual line. Notice that if the line is already
                 marked, it will be unmarked. All the lines are unmarked when we exit
                 the visual mode.""",
+            ),
+            ActionHelp(
+                :mouse_select,
+                """
+                Move the visual line to the clicked line, or mark the clicked line
+                when it is already the visual line.""",
             ),
             ActionHelp(
                 :yank,
@@ -314,7 +323,8 @@ function _help_string(use_color::Bool)
 
             if !isnothing(entry.feature)
                 feature = entry.feature
-                print(buf, _g, "    This action requires the feature :", feature, ".", _d, '\n')
+                note = "    This action requires the feature :"
+                print(buf, _g, note, feature, ".", _d, '\n')
             end
         end
     end

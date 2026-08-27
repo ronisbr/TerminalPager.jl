@@ -124,6 +124,11 @@ function _decode_escape(prefix::Vector{UInt8})
 
     num_bytes == 1 && return _DECODE_INCOMPLETE
 
+    # SGR mouse reports begin with `\e[<`, which is not a prefix of any key sequence.
+    if (num_bytes >= 3) && (prefix[2] == UInt8('[')) && (prefix[3] == UInt8('<'))
+        return _decode_mouse(prefix)
+    end
+
     offset = length(prefix) >= 2 && prefix[2] == 0x1b ? 2 : 1
     if length(prefix) >= offset + 2 && prefix[offset + 1] in (0x5b, 0x4f)
         final_index = findfirst(
@@ -148,6 +153,93 @@ function _decode_escape(prefix::Vector{UInt8})
         shift = scalar.shift,
     )
     return :complete, key, consumed + 1
+end
+
+"""
+    _decode_mouse(prefix::Vector{UInt8}) -> Tuple{Symbol, Keystroke, Int}
+
+Decode an SGR mouse report without performing IO. A report is `\\e[<b;x;yM` for a press or
+a wheel movement and `\\e[<b;x;ym` for a release, where `b` encodes the button and the
+modifiers and `x` and `y` are the one-based column and row.
+
+The keystroke value is `<wheel_up>`, `<wheel_down>`, `<wheel_left>`, `<wheel_right>`,
+`<mouse_press>`, `<mouse_press_middle>`, `<mouse_press_right>`, `<mouse_release>`, or
+`<mouse_drag>`. A malformed report is returned as an undefined key.
+
+# Arguments
+
+- `prefix::Vector{UInt8}`: Buffered bytes beginning with `\\e[<`.
+"""
+function _decode_mouse(prefix::Vector{UInt8})
+    num_bytes = length(prefix)
+    final_index = 0
+
+    @inbounds for i in 4:num_bytes
+        byte = prefix[i]
+
+        if (byte == UInt8('M')) || (byte == UInt8('m'))
+            final_index = i
+            break
+        elseif !((byte == UInt8(';')) || (UInt8('0') <= byte <= UInt8('9')))
+            bytes = prefix[1:i]
+            key = Keystroke(; raw = _raw_bytes(bytes), value = "<undefined>")
+            return :complete, key, i
+        end
+    end
+
+    final_index == 0 && return _DECODE_INCOMPLETE
+
+    # Parse the button code and the position.
+    button = 0
+    x = 0
+    y = 0
+    field = 1
+    number = 0
+
+    @inbounds for i in 4:final_index
+        byte = prefix[i]
+
+        if (byte == UInt8(';')) || (i == final_index)
+            (field == 1) && (button = number)
+            (field == 2) && (x = number)
+            (field == 3) && (y = number)
+            field += 1
+            number = 0
+        else
+            number = 10 * number + Int(byte - UInt8('0'))
+        end
+    end
+
+    bytes = prefix[1:final_index]
+    raw = _raw_bytes(bytes)
+
+    if field != 4
+        return :complete, Keystroke(; raw = raw, value = "<undefined>"), final_index
+    end
+
+    value = if (button & 0x40) != 0
+        ("<wheel_up>", "<wheel_down>", "<wheel_left>", "<wheel_right>")[(button & 0x03) + 1]
+    elseif (button & 0x20) != 0
+        "<mouse_drag>"
+    elseif prefix[final_index] == UInt8('m')
+        "<mouse_release>"
+    else
+        ("<mouse_press>", "<mouse_press_middle>", "<mouse_press_right>", "<undefined>")[
+            (button & 0x03) + 1
+        ]
+    end
+
+    key = Keystroke(;
+        raw = raw,
+        value = value,
+        alt = (button & 0x08) != 0,
+        ctrl = (button & 0x10) != 0,
+        shift = (button & 0x04) != 0,
+        x = x,
+        y = y,
+    )
+
+    return :complete, key, final_index
 end
 
 """

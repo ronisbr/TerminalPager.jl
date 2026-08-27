@@ -20,6 +20,10 @@ const _CURSOR_KEYS_ON = "$(CSI)?1h"
 const _HIDE_CURSOR = "$(CSI)?25l"
 const _SHOW_CURSOR = "$(CSI)?25h"
 
+# The mouse is reported with the SGR encoding, which is unambiguous for any position.
+const _MOUSE_ON = "$(CSI)?1000h$(CSI)?1006h"
+const _MOUSE_OFF = "$(CSI)?1006l$(CSI)?1000l"
+
 # Parameterized escape sequences are assembled from precomputed pieces. Building them with
 # string interpolation allocates roughly 640 bytes per call, which the redraw path pays once
 # per screen row. `print(io, ::Int)` is not an alternative because it materializes a `String`
@@ -135,6 +139,28 @@ Show the cursor in `io`.
 - `io::IO`: Terminal output stream to update.
 """
 _show_cursor(@nospecialize(io::IO)) = write(io, _SHOW_CURSOR)
+
+"""
+    _turn_on_mouse(io::IO) -> Int
+
+Enable the mouse reporting in `io` with the SGR encoding.
+
+# Arguments
+
+- `io::IO`: Terminal output stream to update.
+"""
+_turn_on_mouse(@nospecialize(io::IO)) = write(io, _MOUSE_ON)
+
+"""
+    _turn_off_mouse(io::IO) -> Int
+
+Disable the mouse reporting in `io`.
+
+# Arguments
+
+- `io::IO`: Terminal output stream to update.
+"""
+_turn_off_mouse(@nospecialize(io::IO)) = write(io, _MOUSE_OFF)
 
 """
     _turn_on_alternate_screen_buffer(io::IO) -> Int

@@ -177,3 +177,53 @@ end
         @test !key.alt && !key.ctrl && !key.shift
     end
 end
+
+@testset "Mouse Reports" begin
+    # SGR mouse reports carry the button, the modifiers, and the position.
+    for (sequence, value, x, y, alt, ctrl, shift) in (
+        ("\e[<64;10;5M", "<wheel_up>", 10, 5, false, false, false),
+        ("\e[<65;1;1M", "<wheel_down>", 1, 1, false, false, false),
+        ("\e[<66;2;3M", "<wheel_left>", 2, 3, false, false, false),
+        ("\e[<67;2;3M", "<wheel_right>", 2, 3, false, false, false),
+        ("\e[<68;7;8M", "<wheel_up>", 7, 8, false, false, true),
+        ("\e[<0;3;4M", "<mouse_press>", 3, 4, false, false, false),
+        ("\e[<1;3;4M", "<mouse_press_middle>", 3, 4, false, false, false),
+        ("\e[<2;3;4M", "<mouse_press_right>", 3, 4, false, false, false),
+        ("\e[<0;3;4m", "<mouse_release>", 3, 4, false, false, false),
+        ("\e[<32;3;4M", "<mouse_drag>", 3, 4, false, false, false),
+        ("\e[<24;3;4M", "<mouse_press>", 3, 4, true, true, false),
+        ("\e[<0;120;45M", "<mouse_press>", 120, 45, false, false, false),
+    )
+        bytes = collect(codeunits(sequence))
+        status, key, consumed = TerminalPager._decode_keystroke(bytes)
+        @test status === :complete
+        @test key.value == value
+        @test (key.x, key.y) == (x, y)
+        @test (key.alt, key.ctrl, key.shift) == (alt, ctrl, shift)
+        @test consumed == length(bytes)
+    end
+
+    # A report is incomplete until its final byte arrives, and a malformed one is undefined.
+    for sequence in ("\e[<", "\e[<64", "\e[<64;10;5")
+        status, _, consumed = TerminalPager._decode_keystroke(collect(codeunits(sequence)))
+        @test status === :incomplete
+        @test consumed == 0
+    end
+
+    for sequence in ("\e[<64;xM", "\e[<64M", "\e[<64;1;2;3M")
+        bytes = collect(codeunits(sequence))
+        status, key, consumed = TerminalPager._decode_keystroke(bytes)
+        @test status === :complete
+        @test key.value == "<undefined>"
+        @test 4 <= consumed <= length(bytes)
+    end
+
+    # A report followed by a key is split correctly.
+    input = TerminalPager.PagerInput(IOBuffer("\e[<64;10;5Mq"))
+    @test TerminalPager._read_keystroke!(input).value == "<wheel_up>"
+    @test TerminalPager._read_keystroke!(input).value == "q"
+
+    # Keyboard keystrokes have no position, and the table constructor still works.
+    @test TerminalPager.Keystroke("q", "q", false, false, false).x == 0
+    @test TerminalPager._ascii_keystroke(UInt8('j')).y == 0
+end

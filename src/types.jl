@@ -18,6 +18,8 @@ Represent one decoded keystroke.
 - `alt::Bool`: Whether the ALT key was pressed.
 - `ctrl::Bool`: Whether the CTRL key was pressed.
 - `shift::Bool`: Whether the SHIFT key was pressed.
+- `x::Int`: One-based column of a mouse event, or `0` for a keyboard key.
+- `y::Int`: One-based row of a mouse event, or `0` for a keyboard key.
 """
 Base.@kwdef struct Keystroke
     raw::String = ""
@@ -25,6 +27,25 @@ Base.@kwdef struct Keystroke
     alt::Bool = false
     ctrl::Bool = false
     shift::Bool = false
+    x::Int = 0
+    y::Int = 0
+end
+
+"""
+    Keystroke(raw::String, value::String, alt::Bool, ctrl::Bool, shift::Bool) -> Keystroke
+
+Create a keyboard keystroke, that is, one without a mouse position.
+
+# Arguments
+
+- `raw::String`: Raw keystroke code converted to string.
+- `value::String`: String representing the keystroke.
+- `alt::Bool`: Whether the ALT key was pressed.
+- `ctrl::Bool`: Whether the CTRL key was pressed.
+- `shift::Bool`: Whether the SHIFT key was pressed.
+"""
+function Keystroke(raw::String, value::String, alt::Bool, ctrl::Bool, shift::Bool)
+    return Keystroke(raw, value, alt, ctrl, shift, 0, 0)
 end
 
 """
@@ -174,6 +195,8 @@ Store the mutable state for one pager session.
 - `visual_mode::Bool`: Whether visual selection mode is active.
 - `visual_mode_line::Int`: Active visual line relative to the viewport.
 - `visual_mode_selected_lines::Vector{Int}`: Selected source-line indices.
+- `mouse_row::Int`: Row of the last mouse event, or `0` if there was none.
+- `mouse_column::Int`: Column of the last mouse event, or `0` if there was none.
 - `visual_lines::Vector{Int}`: Reused buffer with the lines rendered with a background.
 - `visual_line_backgrounds::Vector{String}`: Reused buffer with the background of each entry
     of `visual_lines`.
@@ -208,6 +231,8 @@ Base.@kwdef mutable struct Pager
     visual_mode::Bool = false
     visual_mode_line::Int = 1
     visual_mode_selected_lines::Vector{Int} = Int[]
+    mouse_row::Int = 0
+    mouse_column::Int = 0
     visual_lines::Vector{Int} = Int[]
     visual_line_backgrounds::Vector{String} = String[]
     frame_cache::FrameCache = FrameCache()

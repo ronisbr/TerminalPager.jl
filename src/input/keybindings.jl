@@ -57,6 +57,13 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("v", false, false, false) => :toggle_visual_mode,
     ("m", false, false, false) => :select_visual_mode_line,
     ("y", false, false, false) => :yank,
+    ("<wheel_up>", false, false, false) => :wheel_up,
+    ("<wheel_down>", false, false, false) => :wheel_down,
+    ("<wheel_up>", false, false, true) => :fastleft,
+    ("<wheel_down>", false, false, true) => :fastright,
+    ("<wheel_left>", false, false, false) => :fastleft,
+    ("<wheel_right>", false, false, false) => :fastright,
+    ("<mouse_press>", false, false, false) => :mouse_select,
 )
 
 # Dictionary with the current keybindings. It is initialized here with the default values
@@ -95,6 +102,11 @@ const _KEY_NAMES = Dict{String, String}(
     "<shiftin>" => "Ctrl-U",
     "<tab>" => "Tab",
     "<up>" => "↑",
+    "<wheel_up>" => "Wheel↑",
+    "<wheel_down>" => "Wheel↓",
+    "<wheel_left>" => "Wheel←",
+    "<wheel_right>" => "Wheel→",
+    "<mouse_press>" => "Click",
 )
 
 """
@@ -244,19 +256,23 @@ keywords `alt`, `ctrl`, and `shift`.
     "<keypad_0>", "<keypad_1>", "<keypad_2>", "<keypad_3>", "<keypad_4>",
     "<keypad_5>", "<keypad_6>", "<keypad_7>", "<keypad_8>", "<keypad_9>",
     "<delete>", "<pageup>", "<pagedown>", "<tab>", "<enter>", "<esc>",
-    "<backspace>", "<eot>", "<shiftin>"
+    "<backspace>", "<eot>", "<shiftin>", "<wheel_up>", "<wheel_down>",
+    "<wheel_left>", "<wheel_right>", "<mouse_press>", "<mouse_press_middle>",
+    "<mouse_press_right>", "<mouse_release>", "<mouse_drag>"
 
 `"<eot>"` is CTRL-D and `"<shiftin>"` is CTRL-U. Every other CTRL combination with a letter must
 be selected with the keyword `ctrl` instead, for example
-`set_keybinding("a", :quit; ctrl = true)`.
+`set_keybinding("a", :quit; ctrl = true)`. The mouse keys are reported when the preference
+`"mouse"` is enabled.
 
 `action` can be one of the following symbols:
 
     :quit, :quit_eot, :help, :up, :down, :left, :right, :fastup, :fastdown,
     :fastleft, :fastright, :bol, :eol, :pageup, :pagedown, :halfpageup,
-    :halfpagedown, :home, :end, :goto_line, :search, :next_match,
-    :previous_match, :quit_search, :change_freeze, :change_title_rows,
-    :toggle_ruler, :toggle_visual_mode, :select_visual_mode_line, :yank
+    :halfpagedown, :home, :end, :wheel_up, :wheel_down, :goto_line, :search,
+    :next_match, :previous_match, :quit_search, :change_freeze,
+    :change_title_rows, :toggle_ruler, :toggle_visual_mode,
+    :select_visual_mode_line, :mouse_select, :yank
 
 # Arguments
 

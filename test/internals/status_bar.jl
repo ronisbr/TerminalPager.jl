@@ -280,3 +280,35 @@ end
     @test occursin("\e[?25h", edited)
     @test endswith(edited, "\e[?25l")
 end
+
+@testset "Session Mouse Reporting" begin
+    # The mouse is reported during the session and released at the end, unless the
+    # preference disables it. A nested session leaves it alone.
+    input = IOBuffer("q")
+    output = IOBuffer()
+    term = REPL.Terminals.TTYTerminal("", input, output, output)
+    TerminalPager._pager!(term, "a\nb"; input = TerminalPager.PagerInput(input))
+    session = String(take!(output))
+    @test occursin("\e[?1000h\e[?1006h", session)
+    @test occursin("\e[?1006l\e[?1000l", session)
+    @test findfirst("\e[?1006l", session).start < findfirst("\e[?25h", session).start
+
+    input = IOBuffer("q")
+    term = REPL.Terminals.TTYTerminal("", input, output, output)
+    TerminalPager._pager!(
+        term, "a\nb"; input = TerminalPager.PagerInput(input), manage_mouse = false
+    )
+    @test !occursin("\e[?1000", String(take!(output)))
+
+    try
+        TerminalPager.set_preference!("mouse", false)
+        input = IOBuffer("q")
+        term = REPL.Terminals.TTYTerminal("", input, output, output)
+        TerminalPager._pager!(term, "a\nb"; input = TerminalPager.PagerInput(input))
+        @test !occursin("\e[?1000", String(take!(output)))
+    finally
+        TerminalPager.drop_preference!("mouse")
+    end
+
+    @test TerminalPager._get_preference("mouse") == true
+end

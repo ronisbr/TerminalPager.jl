@@ -130,6 +130,11 @@ The user can define custom preferences using the function
 - `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, the output shown in the pager in REPL
     mode is also copied to the system clipboard, without any decoration.
     (**Default**: `false`)
+- `"mouse"`: If `true`, the pager reports the mouse events: the wheel scrolls the text, SHIFT
+    and the wheel scroll it horizontally, and clicking a line in the visual mode moves the
+    visual line to it or marks it. Notice that, while the mouse is reported, selecting text
+    with the terminal requires holding SHIFT, or OPTION on some terminals.
+    (**Default**: `true`)
 - `"pager_mode"`: If it is `"vi"`, some keybindings are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
     (**Default**: `"default"`)

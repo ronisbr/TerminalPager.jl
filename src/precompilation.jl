@@ -100,6 +100,7 @@ PrecompileTools.@setup_workload begin
             TerminalPager._get_help(@view f[1:4])
             TerminalPager._extract_identifier("while true break end", 10)
             TerminalPager._decode_keystroke(collect(codeunits("\e[B")))
+            TerminalPager._decode_keystroke(collect(codeunits("\e[<64;10;5M")))
             TerminalPager._try_read_keystroke!(PagerInput(IOBuffer("j")))
             TerminalPager._read_keystroke!(PagerInput(IOBuffer("\e")))
 

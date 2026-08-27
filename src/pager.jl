@@ -333,6 +333,10 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
 - `manage_cursor::Bool`: Hide the cursor during the session, and show it and clear the
     status bar row when the session ends. A nested session must not do this.
     (**Default**: `true`)
+- `manage_mouse::Bool`: Enable the mouse reporting during the session if the preference
+    `"mouse"` is enabled, and disable it when the session ends. A nested session must not
+    do this.
+    (**Default**: `true`)
 """
 function _pager!(
     @nospecialize(term::REPL.Terminals.TTYTerminal),
@@ -353,6 +357,7 @@ function _pager!(
     _layout_factory = TextViewLayout,
     manage_cursor_key_mode::Bool = true,
     manage_cursor::Bool = true,
+    manage_mouse::Bool = true,
 )
     # Reuse a supplied layout or line vector; the raw text is split only when neither is
     # available, and the result feeds both the auto-fit check and the layout construction.
@@ -386,6 +391,7 @@ function _pager!(
     cursor_key_mode_enabled = false
     alternate_screen_enabled = false
     cursor_hidden = false
+    mouse_enabled = false
     try
         if manage_cursor_key_mode
             cursor_key_mode_enabled = true
@@ -408,6 +414,13 @@ function _pager!(
         if manage_cursor
             cursor_hidden = true
             _hide_cursor(term.out_stream)
+        end
+
+        # The mouse reporting lets the wheel scroll the text. It is a terminal state that
+        # outlives the session if it is not disabled at the end.
+        if manage_mouse && _get_preference("mouse")::Bool
+            mouse_enabled = true
+            _turn_on_mouse(term.out_stream)
         end
 
         # The pager is divided into a view and a command line. Everything in the view is
@@ -468,6 +481,7 @@ function _pager!(
     finally
         _restore_terminal(
             term.out_stream;
+            mouse = mouse_enabled,
             clear_status_row = cursor_hidden && !alternate_screen_enabled,
             show_cursor = cursor_hidden,
             alternate_screen = alternate_screen_enabled,
@@ -482,7 +496,7 @@ end
     _restore_terminal(io::IO; kwargs...) -> Nothing
 
 Undo the changes a pager session made to the terminal `io`, performing every requested step
-even if a previous one throws.
+even if a previous one throws. The first error is thrown again after the last step.
 
 # Arguments
 
@@ -490,6 +504,7 @@ even if a previous one throws.
 
 # Keywords
 
+- `mouse::Bool`: Disable the mouse reporting.
 - `clear_status_row::Bool`: Clear the last row of the display, where the status bar was.
 - `show_cursor::Bool`: Show the cursor.
 - `alternate_screen::Bool`: Leave the alternate screen buffer.
@@ -497,31 +512,53 @@ even if a previous one throws.
 """
 function _restore_terminal(
     @nospecialize(io::IO);
+    mouse::Bool,
     clear_status_row::Bool,
     show_cursor::Bool,
     alternate_screen::Bool,
     cursor_key_mode::Bool,
 )
-    try
-        if clear_status_row
-            # Without the alternate screen buffer, the status bar would be left right above
-            # the next prompt. Clearing it ends the scrollback with the last page instead.
-            _move_cursor(io, displaysize(io)[1], 1)
-            write(io, _CRAYON_RESET)
-            _clear_to_eol(io)
-        end
-    finally
+    steps = (
+        (mouse, () -> _turn_off_mouse(io)),
+        (clear_status_row, () -> _clear_status_row(io)),
+        (show_cursor, () -> _show_cursor(io)),
+        (alternate_screen, () -> _turn_off_alternate_screen_buffer(io)),
+        (cursor_key_mode, () -> _turn_off_cursor_key_mode(io)),
+    )
+
+    first_error = nothing
+
+    for (enabled, step) in steps
+        enabled || continue
+
         try
-            show_cursor && _show_cursor(io)
-        finally
-            try
-                alternate_screen && _turn_off_alternate_screen_buffer(io)
-            finally
-                cursor_key_mode && _turn_off_cursor_key_mode(io)
-            end
+            step()
+        catch err
+            isnothing(first_error) && (first_error = err)
         end
     end
 
+    isnothing(first_error) || throw(first_error)
+
+    return nothing
+end
+
+"""
+    _clear_status_row(io::IO) -> Nothing
+
+Clear the last row of the display of `io`, where the status bar was.
+
+Without the alternate screen buffer, the status bar would be left right above the next
+prompt. Clearing it ends the scrollback with the last page of the text instead.
+
+# Arguments
+
+- `io::IO`: Terminal output stream to update.
+"""
+function _clear_status_row(@nospecialize(io::IO))
+    _move_cursor(io, displaysize(io)[1], 1)
+    write(io, _CRAYON_RESET)
+    _clear_to_eol(io)
     return nothing
 end
 
@@ -590,6 +627,12 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     action = _pager_action(k)
 
+    # The position of a mouse event is kept for the events that need it.
+    if (k.x > 0) && (k.y > 0)
+        pagerd.mouse_column = k.x
+        pagerd.mouse_row = k.y
+    end
+
     # Compute the minimum value for the start row.
     min_row = max(1, frozen_rows + 1)
 
@@ -636,6 +679,9 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     return action
 end
 
+# Number of lines scrolled by one movement of the mouse wheel.
+const _WHEEL_LINES = 3
+
 """
     _movement(action::Union{Nothing, Symbol}, page_rows::Int, half_page_rows::Int) ->
         Tuple{Symbol, Int, Symbol}
@@ -645,8 +691,9 @@ Return the axis, the signed step, and the visual cursor policy of the movement `
 The axis is `:vertical`, `:horizontal`, or `:none` when `action` is not a movement. A step of
 `typemax(Int)` or `-typemax(Int)` moves as far as possible. The policy is `:follow` when the
 visual cursor moves by the step and the view scrolls only by the part of the step that
-crosses its edge, or `:pin` when the view scrolls by the step and the cursor is pinned to the
-edge in the direction of the movement. Notice that `:follow` steps are always finite.
+crosses its edge, `:pin` when the view scrolls by the step and the cursor is pinned to the
+edge in the direction of the movement, or `:keep` when the view scrolls by the step and the
+cursor keeps its row. Notice that `:follow` steps are always finite.
 
 # Arguments
 
@@ -665,6 +712,8 @@ function _movement(action, page_rows::Int, half_page_rows::Int)
     action === :halfpageup && return :vertical, -half_page_rows, :follow
     action === :pageup && return :vertical, -page_rows, :pin
     action === :home && return :vertical, -typemax(Int), :pin
+    action === :wheel_down && return :vertical, _WHEEL_LINES, :keep
+    action === :wheel_up && return :vertical, -_WHEEL_LINES, :keep
     action === :right && return :horizontal, 1, :pin
     action === :fastright && return :horizontal, 10, :pin
     action === :eol && return :horizontal, typemax(Int), :pin
@@ -687,7 +736,7 @@ visual mode, `policy` selects how the cursor moves, as described in [`_movement`
 
 - `pagerd::Pager`: Pager state to update.
 - `step::Int`: Signed number of lines to move.
-- `policy::Symbol`: Visual cursor policy, `:follow` or `:pin`.
+- `policy::Symbol`: Visual cursor policy, `:follow`, `:pin`, or `:keep`.
 """
 function _scroll_vertical!(pagerd::Pager, step::Int, policy::Symbol)
     frozen_rows = pagerd.frozen_rows
@@ -714,7 +763,9 @@ function _scroll_vertical!(pagerd::Pager, step::Int, policy::Symbol)
             start_row = max(start_row + step, min_row)
         end
 
-        pagerd.visual_mode && (visual_mode_line = step > 0 ? view_rows : 1)
+        if pagerd.visual_mode && (policy === :pin)
+            visual_mode_line = step > 0 ? view_rows : 1
+        end
     end
 
     if (start_row != pagerd.start_row) || (visual_mode_line != pagerd.visual_mode_line)
@@ -791,7 +842,7 @@ function _action_event(action, features::Vector{Symbol})
         return :change_freeze ∈ features ? action : nothing
     end
 
-    if action in (:toggle_visual_mode, :select_visual_mode_line, :yank)
+    if action in (:toggle_visual_mode, :select_visual_mode_line, :mouse_select, :yank)
         return :visual_mode ∈ features ? action : nothing
     end
 
@@ -812,8 +863,10 @@ function _pager_action(k::Keystroke)
     return get(_KEYBINDINGS, key, nothing)
 end
 
-const _VERTICAL_FORWARD_ACTIONS = (:down, :fastdown, :pagedown, :halfpagedown, :end)
-const _VERTICAL_BACKWARD_ACTIONS = (:up, :fastup, :pageup, :halfpageup, :home)
+const _VERTICAL_FORWARD_ACTIONS = (
+    :down, :fastdown, :pagedown, :halfpagedown, :end, :wheel_down
+)
+const _VERTICAL_BACKWARD_ACTIONS = (:up, :fastup, :pageup, :halfpageup, :home, :wheel_up)
 const _HORIZONTAL_FORWARD_ACTIONS = (:right, :fastright, :eol)
 const _HORIZONTAL_BACKWARD_ACTIONS = (:left, :fastleft, :bol)
 
@@ -1092,6 +1145,25 @@ function _pager_event_process!(pagerd::Pager)
         end
 
         _request_redraw!(pagerd)
+
+    elseif event == :mouse_select
+        # A click moves the visual line to the clicked row, and a click on the visual line
+        # marks it. Clicks outside the scrollable rows are ignored.
+        if pagerd.visual_mode
+            view_rows = pagerd.display_size[1] - 1 - pagerd.frozen_rows
+            clicked_line = pagerd.mouse_row - pagerd.frozen_rows
+            last_line = min(view_rows, pagerd.num_lines - pagerd.start_row + 1)
+
+            if 1 <= clicked_line <= last_line
+                if clicked_line == pagerd.visual_mode_line
+                    pagerd.event = :select_visual_mode_line
+                    return _pager_event_process!(pagerd)
+                end
+
+                pagerd.visual_mode_line = clicked_line
+                _request_redraw!(pagerd)
+            end
+        end
 
     elseif event == :select_visual_mode_line
         if pagerd.visual_mode
