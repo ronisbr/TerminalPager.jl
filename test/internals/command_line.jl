@@ -18,10 +18,12 @@ Run the command line editor over `input_text` and return the command and the ter
 
 - `prefix::String`: Prompt displayed before the command.
     (**Default**: `"/"`)
+- `history::Union{Nothing, Vector{String}}`: Commands recalled with the up and down keys.
+    (**Default**: `nothing`)
 """
-function _read_cmd(input_text::AbstractString; prefix::String = "/")
+function _read_cmd(input_text::AbstractString; prefix::String = "/", history = nothing)
     pagerd = _create_modal_pagerd(["x", "y"], input_text)
-    cmd = TerminalPager._read_cmd!(pagerd; prefix = prefix)
+    cmd = TerminalPager._read_cmd!(pagerd; prefix = prefix, history = history)
     return cmd, String(take!(pagerd.term.out_stream))
 end
 
@@ -227,4 +229,73 @@ end
     @test TerminalPager._pager_event_process!(pagerd)
     @test occursin("Title rows [0] › ", String(take!(pagerd.term.out_stream)))
     @test pagerd.message == "1 title rows"
+end
+
+@testset "Command Line Editing Keys" begin
+    # CTRL-U clears the command, CTRL-A and CTRL-E jump to its ends, CTRL-W deletes the word
+    # before the cursor, and CTRL-H is a backspace on terminals that send it for the key.
+    @test first(_read_cmd("abc\x15xy\n")) == "xy"
+    @test first(_read_cmd("abc\x01X\n")) == "Xabc"
+    @test first(_read_cmd("abc\x01X\x05Y\n")) == "XabcY"
+    @test first(_read_cmd("foo bar\x17\n")) == "foo "
+    @test first(_read_cmd("foo bar  \x17\n")) == "foo "
+    @test first(_read_cmd("foo bar\e[D\e[D\x17\n")) == "foo ar"
+    @test first(_read_cmd("\x17\n")) == ""
+    @test first(_read_cmd("abc\x08\n")) == "ab"
+    @test first(_read_cmd("\x08")) == ""
+end
+
+@testset "Command Line History" begin
+    history = ["one", "two"]
+
+    # The up key recalls the newest entry first and stops at the oldest one.
+    @test first(_read_cmd("\e[A\n"; history = history)) == "two"
+    @test first(_read_cmd("\e[A\e[A\n"; history = history)) == "one"
+    @test first(_read_cmd("\e[A\e[A\e[A\n"; history = history)) == "one"
+
+    # The down key goes back to the newest entry and then to the command typed before.
+    @test first(_read_cmd("x\e[A\e[A\e[B\e[B\n"; history = history)) == "x"
+    @test first(_read_cmd("x\e[A\e[B\n"; history = history)) == "x"
+    @test first(_read_cmd("\e[B\n"; history = history)) == ""
+
+    # A recalled entry can be edited, and the history itself is not modified.
+    @test first(_read_cmd("\e[A\x7f\x7fen\n"; history = history)) == "ten"
+    @test history == ["one", "two"]
+
+    # Without a history, the up and down keys are ignored.
+    @test first(_read_cmd("a\e[A\e[Bb\n")) == "ab"
+
+    # The history keeps one copy of each entry, the newest last, and is bounded.
+    entries = String[]
+    TerminalPager._push_history!(entries, "a")
+    TerminalPager._push_history!(entries, "b")
+    TerminalPager._push_history!(entries, "a")
+    TerminalPager._push_history!(entries, "")
+    @test entries == ["b", "a"]
+
+    for i in 1:(TerminalPager._MAX_HISTORY + 10)
+        TerminalPager._push_history!(entries, string(i))
+    end
+    @test length(entries) == TerminalPager._MAX_HISTORY
+    @test entries[end] == string(TerminalPager._MAX_HISTORY + 10)
+
+    # A confirmed search pattern is recorded, an invalid one is not.
+    empty!(TerminalPager._SEARCH_HISTORY)
+    pagerd = _create_modal_pagerd(["line one", "line two"], "line\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test TerminalPager._SEARCH_HISTORY == ["line"]
+
+    pagerd = _create_modal_pagerd(["line one", "line two"], "[\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test TerminalPager._SEARCH_HISTORY == ["line"]
+
+    # The recalled pattern is searched again.
+    pagerd = _create_modal_pagerd(["line one", "line two"], "\e[A\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :searching
+    @test length(pagerd.ordered_search_matches) == 2
+    empty!(TerminalPager._SEARCH_HISTORY)
 end

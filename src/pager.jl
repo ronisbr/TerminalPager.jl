@@ -970,7 +970,7 @@ function _pager_event_process!(pagerd::Pager)
         _request_redraw!(pagerd)
 
     elseif event == :search
-        cmd_input = _read_cmd!(pagerd)
+        cmd_input = _read_cmd!(pagerd; history = _SEARCH_HISTORY)
 
         # Do not search if the prompt was cancelled or if the regex is empty.
         if !isnothing(cmd_input) && !isempty(cmd_input)
@@ -979,6 +979,7 @@ function _pager_event_process!(pagerd::Pager)
             if isnothing(match_regex)
                 _set_message!(pagerd, "Invalid regex: $cmd_input"; kind = :error)
             else
+                _push_history!(_SEARCH_HISTORY, cmd_input)
                 _find_matches!(pagerd, match_regex)
                 _change_active_match!(pagerd, true)
                 _move_view_to_match!(pagerd)

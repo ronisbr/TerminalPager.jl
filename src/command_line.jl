@@ -409,11 +409,43 @@ function _redraw_status_bar!(pagerd::Pager)
     return nothing
 end
 
+# Search patterns confirmed in this session, from the oldest to the newest, recalled with
+# the up and down keys at the search prompt.
+const _SEARCH_HISTORY = String[]
+const _MAX_HISTORY = 100
+
 """
-    _read_cmd!(pagerd::Pager; prefix::String = "/") -> Union{Nothing, String}
+    _push_history!(history::Vector{String}, entry::String) -> Nothing
+
+Append `entry` to `history` as its newest element, removing a previous copy of it and the
+oldest entries beyond `_MAX_HISTORY`. An empty entry is ignored.
+
+# Arguments
+
+- `history::Vector{String}`: History to update.
+- `entry::String`: Command to record.
+"""
+function _push_history!(history::Vector{String}, entry::String)
+    isempty(entry) && return nothing
+    filter!(!=(entry), history)
+    push!(history, entry)
+
+    while length(history) > _MAX_HISTORY
+        popfirst!(history)
+    end
+
+    return nothing
+end
+
+"""
+    _read_cmd!(pagerd::Pager; kwargs...) -> Union{Nothing, String}
 
 Read and edit one command from the pager input, returning `nothing` if the user cancels it
 with ESC or CTRL-C.
+
+The editor supports the cursor keys, Home, End, Backspace, Delete, CTRL-A and CTRL-E to jump
+to the beginning and to the end of the command, CTRL-W to delete the word before the cursor,
+CTRL-U to clear the command, and the up and down keys to recall the commands in `history`.
 
 # Arguments
 
@@ -423,8 +455,13 @@ with ESC or CTRL-C.
 
 - `prefix::String`: Prompt displayed before the command.
     (**Default**: `"/"`)
+- `history::Union{Nothing, Vector{String}}`: Previous commands, from the oldest to the
+    newest, or `nothing` to disable the recall.
+    (**Default**: `nothing`)
 """
-function _read_cmd!(pagerd::Pager; prefix::String = "/")
+function _read_cmd!(
+    pagerd::Pager; prefix::String = "/", history::Union{Nothing, Vector{String}} = nothing
+)
     # Unpack values.
     display_size = pagerd.display_size
 
@@ -435,6 +472,13 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
     cursor = 1
     prefix_width = textwidth(prefix)
     redraw = true
+
+    # The history is browsed from the newest entry to the oldest one. The command typed
+    # before the browsing started is kept, so that it is restored when going past the newest
+    # entry.
+    history_length = isnothing(history) ? 0 : length(history)
+    history_index = history_length + 1
+    draft = Char[]
 
     try
         while true
@@ -473,17 +517,19 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
             end
 
             k = _read_keystroke!(pagerd.input)
+            value = k.value
 
-            if k.value == "<enter>"
+            if value == "<enter>"
                 break
 
-            elseif (k.value == "<esc>") || (k.ctrl && (k.value == "c"))
+            elseif (value == "<esc>") || (k.ctrl && (value == "c"))
                 # A cancelled command is different from an empty one: the callers keep their
                 # current state instead of applying an empty value. Notice that the raw mode
                 # delivers CTRL-C as a keystroke instead of raising an interrupt.
                 return nothing
 
-            elseif k.value == "<backspace>"
+            elseif (value == "<backspace>") || (k.ctrl && (value == "h"))
+                # Some terminals send CTRL-H for the Backspace key.
                 if isempty(chars)
                     break
                 elseif cursor > 1
@@ -493,40 +539,88 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
                     redraw = true
                 end
 
-            elseif k.value == "<delete>"
+            elseif value == "<delete>"
                 if cursor <= length(chars)
                     deleteat!(chars, cursor)
                     redraw = true
                 end
 
-            elseif k.value == "<left>"
+            elseif value == "<left>"
                 if cursor > 1
                     cursor -= 1
                     redraw = true
                 end
 
-            elseif k.value == "<right>"
+            elseif value == "<right>"
                 if cursor <= length(chars)
                     cursor += 1
                     redraw = true
                 end
 
-            elseif k.value == "<home>"
+            elseif (value == "<home>") || (k.ctrl && (value == "a"))
                 cursor = 1
                 redraw = true
 
-            elseif k.value == "<end>"
+            elseif (value == "<end>") || (k.ctrl && (value == "e"))
                 cursor = length(chars) + 1
                 redraw = true
 
+            elseif value == "<shiftin>"
+                # CTRL-U clears the command. Notice that the raw mode reports the key with
+                # this name.
+                empty!(chars)
+                cursor = 1
+                redraw = true
+
+            elseif k.ctrl && (value == "w")
+                # Delete the word before the cursor together with the spaces after it.
+                stop = cursor - 1
+
+                while (stop >= 1) && isspace(chars[stop])
+                    stop -= 1
+                end
+
+                while (stop >= 1) && !isspace(chars[stop])
+                    stop -= 1
+                end
+
+                if stop < cursor - 1
+                    deleteat!(chars, (stop + 1):(cursor - 1))
+                    cursor = stop + 1
+                    redraw = true
+                end
+
+            elseif (value == "<up>") && !isnothing(history)
+                if history_index > 1
+                    (history_index == history_length + 1) && (draft = copy(chars))
+                    history_index -= 1
+                    chars = collect(history[history_index])
+                    cursor = length(chars) + 1
+                    redraw = true
+                end
+
+            elseif (value == "<down>") && !isnothing(history)
+                if history_index <= history_length
+                    history_index += 1
+
+                    chars = if history_index > history_length
+                        draft
+                    else
+                        collect(history[history_index])
+                    end
+
+                    cursor = length(chars) + 1
+                    redraw = true
+                end
+
             elseif _is_printable_keystroke(k)
-                insert!(chars, cursor, only(k.value))
+                insert!(chars, cursor, only(value))
                 cursor += 1
                 redraw = true
             end
 
-            # Every other keystroke is ignored. Otherwise, names such as `<up>` or `<F1>`
-            # would be inserted verbatim into the command.
+            # Every other keystroke is ignored. Otherwise, names such as `<F1>` would be
+            # inserted verbatim into the command.
         end
     finally
         # The cursor is hidden for the rest of the session.
