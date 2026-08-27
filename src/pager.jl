@@ -111,6 +111,7 @@ function _update_display_size!(p::Pager)
 
     if newdsize != p.display_size
         p.display_size = newdsize
+        _clamp_viewport!(p)
 
         # The terminal dropped or revealed rows, so we no longer know what is on screen.
         _invalidate_frame!(p)
@@ -118,6 +119,56 @@ function _update_display_size!(p::Pager)
     end
 
     return nothing
+end
+
+"""
+    _clamp_viewport!(p::Pager) -> Nothing
+
+Keep the viewport of `p` inside the text after the display size changed.
+
+A view that ends past the last line or past the last column is pulled back so that the
+screen stays full, like `less` does. The first visible row and column never move into the
+frozen region.
+
+# Arguments
+
+- `p::Pager`: Pager state to update.
+"""
+function _clamp_viewport!(p::Pager)
+    rows, cols = _get_pager_display_size(p)
+    ((rows <= 0) || (cols <= 0)) && return nothing
+
+    min_row = max(1, p.frozen_rows + 1)
+    view_rows = rows - p.frozen_rows
+    max_row = max(min_row, p.num_lines - view_rows + 1)
+    p.start_row = clamp(p.start_row, min_row, max_row)
+
+    min_col = max(1, p.frozen_columns + 1)
+    ruler_width = p.show_ruler ? _ruler_width(p.num_lines) : 0
+    view_cols = cols - p.frozen_columns - ruler_width
+    max_col = max(min_col, _text_width(p) - view_cols + 1)
+    p.start_column = clamp(p.start_column, min_col, max_col)
+
+    return nothing
+end
+
+"""
+    _text_width(p::Pager) -> Int
+
+Return the printable width of the widest line of `p`, computing and caching it on the first
+call.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+function _text_width(p::Pager)
+    if p.text_width < 0
+        # The layout measured every line while it was prepared.
+        p.text_width = maximum(p.text_layout._printable_widths; init = 0)
+    end
+
+    return p.text_width
 end
 
 ############################################################################################

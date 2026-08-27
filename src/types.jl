@@ -151,6 +151,8 @@ Store the mutable state for one pager session.
 - `start_column::Int`: First visible printable column.
 - `text_layout::TextViewLayout`: Canonical prepared text layout.
 - `num_lines::Int`: Number of source lines.
+- `text_width::Int`: Printable width of the widest source line, or a negative number if it
+    was not computed yet. Read it with `_text_width`.
 - `cropped_lines::Int`: Number of lines cropped below the viewport.
 - `cropped_columns::Int`: Number of columns cropped to the right.
 - `display_config::DisplayConfig`: Display configuration for the session.
@@ -185,6 +187,7 @@ Base.@kwdef mutable struct Pager
     start_column::Int = 1
     text_layout::TextViewLayout
     num_lines::Int = 0
+    text_width::Int = -1
     cropped_lines::Int = 0
     cropped_columns::Int = 0
     display_config::DisplayConfig = DisplayConfig()
