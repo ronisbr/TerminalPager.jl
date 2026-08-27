@@ -137,3 +137,44 @@ end
     @test pagerd.start_row == 1
     @test pagerd.start_column == 1
 end
+
+@testset "Visual Mode Backward Moves Scroll the Overflow" begin
+    # The view has nine rows. A backward move that crosses the top row must scroll the view
+    # by the overflow, mirroring the forward moves.
+    pagerd = _create_redraw_pagerd(["line $i" for i in 1:40]; display_size = (10, 20))
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+    pagerd.start_row = 10
+    pagerd.cropped_lines = 22
+    pagerd.visual_mode_line = 3
+
+    fastup = TerminalPager.Keystroke(; value = "<up>", shift = true)
+    TerminalPager._pager_key_process!(pagerd, fastup)
+    @test pagerd.visual_mode_line == 1
+    @test pagerd.start_row == 7
+
+    halfpageup = TerminalPager.Keystroke(; value = "u")
+    TerminalPager._pager_key_process!(pagerd, halfpageup)
+    @test pagerd.visual_mode_line == 1
+    @test pagerd.start_row == 3
+
+    # The view never scrolls above the first line.
+    TerminalPager._pager_key_process!(pagerd, halfpageup)
+    @test pagerd.visual_mode_line == 1
+    @test pagerd.start_row == 1
+
+    # The forward twin scrolls by the overflow past the last row.
+    pagerd.visual_mode_line = 7
+    pagerd.cropped_lines = 31
+    fastdown = TerminalPager.Keystroke(; value = "<down>", shift = true)
+    TerminalPager._pager_key_process!(pagerd, fastdown)
+    @test pagerd.visual_mode_line == 9
+    @test pagerd.start_row == 4
+
+    # Page moves pin the cursor to the edge instead.
+    pageup = TerminalPager.Keystroke(; value = "<pageup>")
+    pagerd.visual_mode_line = 5
+    TerminalPager._pager_key_process!(pagerd, pageup)
+    @test pagerd.visual_mode_line == 1
+    @test pagerd.start_row == 1
+end

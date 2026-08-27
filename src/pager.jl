@@ -416,7 +416,8 @@ end
 """
     _pager_key_process!(pagerd::Pager, k::Keystroke) -> Union{Nothing, Symbol}
 
-Process `k`, update pager state, and return the resolved action.
+Process `k`, update the viewport, the visual cursor, and the pending event of `pagerd`, and
+return the resolved action.
 
 # Arguments
 
@@ -424,317 +425,211 @@ Process `k`, update pager state, and return the resolved action.
 - `k::Keystroke`: Keystroke to process.
 """
 function _pager_key_process!(pagerd::Pager, k::Keystroke)
-    # Unpack variables.
-    cropped_columns = pagerd.cropped_columns
     display_size = pagerd.display_size
-    features = pagerd.features
-    frozen_columns = pagerd.frozen_columns
     frozen_rows = pagerd.frozen_rows
-    cropped_lines = pagerd.cropped_lines
     num_lines = pagerd.num_lines
-    start_column = pagerd.start_column
-    start_row = pagerd.start_row
-    visual_mode = pagerd.visual_mode
-    visual_mode_line = pagerd.visual_mode_line
 
-    event = nothing
     action = _pager_action(k)
 
-    # Compute the minimum values for start row and start column.
+    # Compute the minimum value for the start row.
     min_row = max(1, frozen_rows + 1)
-    min_col = max(1, frozen_columns + 1)
 
     # A page has the size of the view, which excludes the command line and the frozen rows.
     # Using the full display height here skipped `frozen_rows` lines at every page movement,
     # and those lines were never shown. Both values are clamped so that paging always moves
     # at least one line.
-    page_rows = max(display_size[1] - 1 - frozen_rows, 1)
-    half_page_rows = max(div(display_size[1] - 1 - frozen_rows, 2), 1)
+    view_rows = display_size[1] - 1 - frozen_rows
+    page_rows = max(view_rows, 1)
+    half_page_rows = max(div(view_rows, 2), 1)
 
     # We should disable the visual line mode if there is no selectable line, that is, if all
     # lines are frozen or if the first content row is beyond the view. Notice that the view
     # has `display_size[1] - 1` rows, because the last one is the command line, and that at
     # `min_row == num_lines` exactly one selectable line remains.
-    if (min_row > num_lines) || (min_row > display_size[1] - 1)
-        if visual_mode
-            visual_mode = false
-            visual_mode_line = 1
+    if pagerd.visual_mode && ((min_row > num_lines) || (min_row > display_size[1] - 1))
+        pagerd.visual_mode = false
+        pagerd.visual_mode_line = 1
 
-            # The selections must not survive the forced disable. Otherwise, they reappear
-            # the next time the visual mode is enabled.
-            empty!(pagerd.visual_mode_selected_lines)
-        end
+        # The selections must not survive the forced disable. Otherwise, they reappear the
+        # next time the visual mode is enabled.
+        empty!(pagerd.visual_mode_selected_lines)
     end
 
-    if action == :quit
-        event = :quit
+    axis, step, policy = _movement(action, page_rows, half_page_rows)
 
-    elseif action == :help
-        if :help ∈ features
-            event = :help
-        end
-
-    elseif action == :down
-        if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
-            visual_mode_line += 1
-
-            _request_redraw!(pagerd)
-        else
-            if cropped_lines > 0
-                start_row += 1
-                _request_redraw!(pagerd)
-            end
-        end
-
-    elseif action == :fastdown
-        if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
-            visual_mode_line += 5
-
-            # If we passed the last line, we should keep the visual line in the last line,
-            # but scroll the view.
-            Δy = visual_mode_line - (display_size[1] - frozen_rows - 1)
-
-            if Δy > 0
-                start_row += min(Δy, cropped_lines)
-                visual_mode_line = display_size[1] - frozen_rows - 1
-            end
-
-            _request_redraw!(pagerd)
-        else
-            if cropped_lines > 0
-                start_row += min(5, cropped_lines)
-                _request_redraw!(pagerd)
-            end
-        end
-
-    elseif action == :up
-        if visual_mode && (visual_mode_line > 1)
-            visual_mode_line -= 1
-            _request_redraw!(pagerd)
-        else
-            if start_row > min_row
-                start_row -= 1
-                _request_redraw!(pagerd)
-            end
-        end
-
-    elseif action == :fastup
-        if visual_mode && (visual_mode_line > 1)
-            visual_mode_line -= 5
-
-            if visual_mode_line < 1
-                visual_mode_line = 1
-            end
-
-            _request_redraw!(pagerd)
-        else
-            if start_row > min_row
-                start_row -= 5
-                _request_redraw!(pagerd)
-            end
-
-            if start_row < min_row
-                start_row = min_row
-            end
-        end
-
-    elseif action == :right
-        if cropped_columns > 0
-            start_column += 1
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :fastright
-        if cropped_columns > 0
-            start_column += min(10, cropped_columns)
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :eol
-        if cropped_columns > 0
-            start_column += cropped_columns
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :left
-        if start_column > min_col
-            start_column -= 1
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :fastleft
-        if start_column > min_col
-            start_column -= 10
-
-            if start_column < min_col
-                start_column = min_col
-            end
-
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :bol
-        if start_column ≠ min_col
-            start_column = min_col
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == (:end)
-        if cropped_lines > 0
-            start_row += cropped_lines
-            _request_redraw!(pagerd)
-        end
-
-        if visual_mode && (visual_mode_line ≠ display_size[1] - frozen_rows - 1)
-            visual_mode_line = display_size[1] - frozen_rows - 1
-
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :home
-        if start_row ≠ min_row
-            start_row = min_row
-            _request_redraw!(pagerd)
-        end
-
-        if visual_mode && (visual_mode_line != 1)
-            visual_mode_line = 1
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :pagedown
-        if cropped_lines > 0
-            start_row += min(page_rows, cropped_lines)
-
-            _request_redraw!(pagerd)
-        end
-
-        if visual_mode && (visual_mode_line ≠ display_size[1] - frozen_rows - 1)
-            visual_mode_line = display_size[1] - frozen_rows - 1
-
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :pageup
-        if start_row ≠ min_row
-            start_row -= page_rows
-
-            if start_row < min_row
-                start_row = min_row
-            end
-
-            _request_redraw!(pagerd)
-        end
-
-        if visual_mode && (visual_mode_line ≠ 1)
-            visual_mode_line = 1
-            _request_redraw!(pagerd)
-        end
-
-    elseif action == :halfpagedown
-        if visual_mode && (visual_mode_line < display_size[1] - frozen_rows - 1)
-            visual_mode_line += half_page_rows
-
-            # If we passed the last line, we should keep the visual line in the last line,
-            # but scroll the view.
-            Δy = visual_mode_line - (display_size[1] - frozen_rows - 1)
-
-            if Δy > 0
-                start_row += min(Δy, cropped_lines)
-                visual_mode_line = display_size[1] - frozen_rows - 1
-            end
-
-            _request_redraw!(pagerd)
-        else
-            if cropped_lines > 0
-                start_row += min(half_page_rows, cropped_lines)
-                _request_redraw!(pagerd)
-            end
-        end
-
-    elseif action == :halfpageup
-        if visual_mode && (visual_mode_line > 1)
-            visual_mode_line -= half_page_rows
-
-            if visual_mode_line < 1
-                visual_mode_line = 1
-            end
-
-            _request_redraw!(pagerd)
-        else
-            if start_row ≠ min_row
-                start_row -= half_page_rows
-
-                if start_row < min_row
-                    start_row = min_row
-                end
-
-                _request_redraw!(pagerd)
-            end
-        end
-
-    elseif action == :search
-        event = :search
-
-    elseif action == :next_match
-        event = :next_match
-
-    elseif action == :previous_match
-        event = :previous_match
-
-    elseif action == :quit_search
-        event = :quit_search
-
-    elseif action == :change_freeze
-        if :change_freeze ∈ features
-            event = :change_freeze
-        end
-
-    elseif action == :change_title_rows
-        if :change_freeze ∈ features
-            event = :change_title_rows
-        end
-
-    elseif action == :toggle_ruler
-        event = :toggle_ruler
-
-    elseif action == :toggle_visual_mode
-        if :visual_mode ∈ features
-            event = :toggle_visual_mode
-        end
-
-    elseif action == :select_visual_mode_line
-        if :visual_mode ∈ features
-            event = :select_visual_mode_line
-        end
-
-    elseif action == :yank
-        if :visual_mode ∈ features
-            event = :yank
-        end
-
-    elseif action == :quit_eot
-        event = :quit_eot
+    if axis === :vertical
+        _scroll_vertical!(pagerd, step, policy)
+    elseif axis === :horizontal
+        _scroll_horizontal!(pagerd, step)
     end
+
+    pagerd.event = _action_event(action, pagerd.features)
 
     # The visual line is relative to the viewport, so it must always agree with `start_row`
-    # and with the number of rows the view has. Clamping it inside each movement branch left
-    # the cursor past the last line whenever the state was changed elsewhere, for example by
+    # and with the number of rows the view has. Clamping it inside each movement left the
+    # cursor past the last line whenever the state was changed elsewhere, for example by
     # `:change_freeze`, and the yank then indexed the layout out of bounds.
-    if visual_mode
-        max_visual_line = min(display_size[1] - frozen_rows - 1, num_lines - start_row + 1)
-        visual_mode_line = clamp(visual_mode_line, 1, max(1, max_visual_line))
+    if pagerd.visual_mode
+        max_visual_line = min(view_rows, num_lines - pagerd.start_row + 1)
+        pagerd.visual_mode_line = clamp(pagerd.visual_mode_line, 1, max(1, max_visual_line))
     end
 
-    # Repack values. Notice that `cropped_lines` and `cropped_columns` are not written back,
-    # because they are owned by `_update_crop_after_action!` and `_view!`.
-    pagerd.start_column = start_column
-    pagerd.start_row = start_row
-    pagerd.event = event
-    pagerd.visual_mode = visual_mode
-    pagerd.visual_mode_line = visual_mode_line
-
     return action
+end
+
+"""
+    _movement(action::Union{Nothing, Symbol}, page_rows::Int, half_page_rows::Int) ->
+        Tuple{Symbol, Int, Symbol}
+
+Return the axis, the signed step, and the visual cursor policy of the movement `action`.
+
+The axis is `:vertical`, `:horizontal`, or `:none` when `action` is not a movement. A step of
+`typemax(Int)` or `-typemax(Int)` moves as far as possible. The policy is `:follow` when the
+visual cursor moves by the step and the view scrolls only by the part of the step that
+crosses its edge, or `:pin` when the view scrolls by the step and the cursor is pinned to the
+edge in the direction of the movement. Notice that `:follow` steps are always finite.
+
+# Arguments
+
+- `action::Union{Nothing, Symbol}`: Resolved pager action.
+- `page_rows::Int`: Number of lines of a page.
+- `half_page_rows::Int`: Number of lines of half a page.
+"""
+function _movement(action, page_rows::Int, half_page_rows::Int)
+    action === :down && return :vertical, 1, :follow
+    action === :fastdown && return :vertical, 5, :follow
+    action === :halfpagedown && return :vertical, half_page_rows, :follow
+    action === :pagedown && return :vertical, page_rows, :pin
+    action === :end && return :vertical, typemax(Int), :pin
+    action === :up && return :vertical, -1, :follow
+    action === :fastup && return :vertical, -5, :follow
+    action === :halfpageup && return :vertical, -half_page_rows, :follow
+    action === :pageup && return :vertical, -page_rows, :pin
+    action === :home && return :vertical, -typemax(Int), :pin
+    action === :right && return :horizontal, 1, :pin
+    action === :fastright && return :horizontal, 10, :pin
+    action === :eol && return :horizontal, typemax(Int), :pin
+    action === :left && return :horizontal, -1, :pin
+    action === :fastleft && return :horizontal, -10, :pin
+    action === :bol && return :horizontal, -typemax(Int), :pin
+    return :none, 0, :pin
+end
+
+"""
+    _scroll_vertical!(pagerd::Pager, step::Int, policy::Symbol) -> Nothing
+
+Scroll the view of `pagerd` by `step` lines, positive downwards, and request a redraw if the
+viewport or the visual cursor changed.
+
+The view never scrolls past the last cropped line nor above the first non-frozen line. In
+visual mode, `policy` selects how the cursor moves, as described in [`_movement`](@ref).
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `step::Int`: Signed number of lines to move.
+- `policy::Symbol`: Visual cursor policy, `:follow` or `:pin`.
+"""
+function _scroll_vertical!(pagerd::Pager, step::Int, policy::Symbol)
+    frozen_rows = pagerd.frozen_rows
+    min_row = max(1, frozen_rows + 1)
+    view_rows = pagerd.display_size[1] - 1 - frozen_rows
+    cropped_lines = pagerd.cropped_lines
+    start_row = pagerd.start_row
+    visual_mode_line = pagerd.visual_mode_line
+
+    if pagerd.visual_mode && (policy === :follow)
+        visual_mode_line += step
+
+        if visual_mode_line > view_rows
+            start_row += min(visual_mode_line - view_rows, cropped_lines)
+            visual_mode_line = view_rows
+        elseif visual_mode_line < 1
+            start_row = max(start_row - (1 - visual_mode_line), min_row)
+            visual_mode_line = 1
+        end
+    else
+        if step > 0
+            start_row += min(step, cropped_lines)
+        else
+            start_row = max(start_row + step, min_row)
+        end
+
+        pagerd.visual_mode && (visual_mode_line = step > 0 ? view_rows : 1)
+    end
+
+    if (start_row != pagerd.start_row) || (visual_mode_line != pagerd.visual_mode_line)
+        pagerd.start_row = start_row
+        pagerd.visual_mode_line = visual_mode_line
+        _request_redraw!(pagerd)
+    end
+
+    return nothing
+end
+
+"""
+    _scroll_horizontal!(pagerd::Pager, step::Int) -> Nothing
+
+Scroll the view of `pagerd` by `step` columns, positive rightwards, and request a redraw if
+the viewport changed.
+
+The view never scrolls past the last cropped column nor before the first non-frozen column.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `step::Int`: Signed number of columns to move.
+"""
+function _scroll_horizontal!(pagerd::Pager, step::Int)
+    min_col = max(1, pagerd.frozen_columns + 1)
+    start_column = pagerd.start_column
+
+    if step > 0
+        start_column += min(step, pagerd.cropped_columns)
+    else
+        start_column = max(start_column + step, min_col)
+    end
+
+    if start_column != pagerd.start_column
+        pagerd.start_column = start_column
+        _request_redraw!(pagerd)
+    end
+
+    return nothing
+end
+
+"""
+    _action_event(action::Union{Nothing, Symbol}, features::Vector{Symbol}) ->
+        Union{Nothing, Symbol}
+
+Return the event raised by `action`, or `nothing` if it raises none or requires a feature
+that is not in `features`.
+
+# Arguments
+
+- `action::Union{Nothing, Symbol}`: Resolved pager action.
+- `features::Vector{Symbol}`: Features enabled for the session.
+"""
+function _action_event(action, features::Vector{Symbol})
+    isnothing(action) && return nothing
+
+    if action in (
+        :quit, :quit_eot, :search, :next_match, :previous_match, :quit_search, :toggle_ruler
+    )
+        return action
+    end
+
+    action === :help && return :help ∈ features ? action : nothing
+
+    if action in (:change_freeze, :change_title_rows)
+        return :change_freeze ∈ features ? action : nothing
+    end
+
+    if action in (:toggle_visual_mode, :select_visual_mode_line, :yank)
+        return :visual_mode ∈ features ? action : nothing
+    end
+
+    return nothing
 end
 
 """
