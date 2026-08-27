@@ -226,7 +226,7 @@ const _HELP_SECTIONS = HelpSection[
 """
     _help_string(use_color::Bool, display_config::DisplayConfig = DisplayConfig()) -> String
 
-Assemble the pager help screen from [`_HELP_SECTIONS`](@ref) and the current key bindings.
+Assemble the pager help screen from `_HELP_SECTIONS` and the current key bindings.
 
 The screen is a cheat sheet with one row per action: the keys, the description, and the
 action name to use with [`set_keybinding`](@ref). Long key lists and descriptions continue
