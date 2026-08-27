@@ -78,8 +78,14 @@ macro stdout_to_pager(ex_in, args...)
         old_stdout = stdout
         buf = IOBuffer()
 
+        # The display size must be forwarded. Otherwise, everything that consults it, such
+        # as Markdown, is rendered for the default 80 columns.
         io = IOContext(
-            buf, :bypass_pager => bypass_pager, :color => hascolor, :limit => false
+            buf,
+            :bypass_pager => bypass_pager,
+            :color => hascolor,
+            :displaysize => displaysize(stdout),
+            :limit => false,
         )
 
         try

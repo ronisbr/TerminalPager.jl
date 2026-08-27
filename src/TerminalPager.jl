@@ -141,10 +141,14 @@ For more information, see: [`TerminalPager.set_preference!`](@ref),
 [`TerminalPager.drop_preference!`](@ref), and [`TerminalPager.drop_all_preferences!`](@ref).
 """
 function pager(obj::Any; kwargs...)
-    # The color support of the current output must be honored. Rendering with color
-    # unconditionally showed raw ANSI escapes on terminals without color support.
+    # The rendering must honor the color support and the size of the current output.
+    # Rendering with color unconditionally showed raw ANSI escapes on terminals without
+    # color support, and rendering without the display size wrapped Markdown, and any other
+    # object that consults it, at the default 80 columns regardless of the terminal width.
+    # The limit is disabled explicitly because the pager exists to show the whole object.
     hascolor = get(stdout, :color, true)::Bool
-    str = sprint(show, MIME"text/plain"(), obj; context = :color => hascolor)
+    context = (:color => hascolor, :displaysize => displaysize(stdout), :limit => false)
+    str = sprint(show, MIME"text/plain"(), obj; context = context)
     return pager(str; kwargs...)
 end
 
