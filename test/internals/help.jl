@@ -51,13 +51,38 @@ end
     @test occursin("TerminalPager.jl", plain)
     @test !occursin('\e', plain)
 
-    # Every action documented in the help screen must list at least one keybinding, so a
-    # renamed action cannot silently produce an empty "Keybindings:" entry.
-    for line in eachsplit(plain, '\n')
-        if occursin("Keybindings:", line)
-            @test !isempty(strip(last(split(line, "Keybindings:"))))
-        end
+    # Every bound action must be documented, and every documented action must list at
+    # least one key, so that a renamed action cannot silently vanish from the help screen.
+    documented = Set(
+        entry.action for section in TerminalPager._HELP_SECTIONS for
+        entry in section.actions
+    )
+
+    for action in values(TerminalPager._KEYBINDINGS)
+        @test action in documented
     end
+
+    for action in documented
+        @test !isempty(TerminalPager._action_keys(action))
+        @test occursin(":$action", plain)
+    end
+
+    # The cheat sheet fits its width, and the features are shown.
+    @test occursin("── Movement ", plain)
+    @test occursin("(feature :visual_mode)", plain)
+    @test occursin(":help [help]", plain)
+
+    for line in eachsplit(plain, '\n')
+        @test textwidth(line) <= TerminalPager._HELP_WIDTH
+    end
+
+    # The wrapping helpers break only between names and words.
+    @test TerminalPager._wrap_keys(["a", "bb"], 5) == ["a, bb"]
+    @test TerminalPager._wrap_keys(["a", "bb", "ccc"], 5) == ["a, bb,", "ccc"]
+    @test TerminalPager._wrap_keys(["abcdefgh"], 5) == ["abcdefgh"]
+    @test TerminalPager._wrap_keys(String[], 5) == String[]
+    @test TerminalPager._wrap_words("one two three", 7) == ["one two", "three"]
+    @test TerminalPager._wrap_words("", 7) == String[]
 end
 
 # Tests for evaluating help in a specific module (see issue #90). Define a module with a

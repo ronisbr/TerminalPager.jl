@@ -212,7 +212,8 @@ end
     @test TerminalPager._pretty_key(("<F1>", false, false, true)) == "Shift-F1"
     @test TerminalPager._pretty_key((" ", false, false, false)) == "Space"
     @test TerminalPager._pretty_key(("<eot>", false, false, false)) == "Ctrl-D"
-    @test TerminalPager._pretty_key(("a", false, true, false)) == "Ctrl-a"
+    @test TerminalPager._pretty_key(("a", false, true, false)) == "Ctrl-A"
+    @test TerminalPager._pretty_key(("j", true, false, false)) == "Alt-j"
     @test TerminalPager._pretty_key(("<", false, false, false)) == "<"
 
     # The hints follow the key bindings and pick the shortest name.

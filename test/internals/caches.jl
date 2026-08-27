@@ -63,10 +63,10 @@ end
 
 @testset "Action Key Bindings" begin
     TerminalPager.reset_keybindings()
-    bindings = TerminalPager._action_keybindings()
+    bindings = TerminalPager._action_keys()
 
     # The cache must be reused while the keybindings do not change.
-    @test TerminalPager._action_keybindings() === bindings
+    @test TerminalPager._action_keys() === bindings
 
     # Every action in `_KEYBINDINGS` must be described.
     for action in values(TerminalPager._KEYBINDINGS)
@@ -74,26 +74,23 @@ end
         @test !isempty(bindings[action])
     end
 
-    # The descriptions must be sorted, so that the help screen is deterministic instead of
-    # depending on the iteration order of a `Dict`.
-    for description in values(bindings)
-        keys_listed = split(description, ", ")
-        @test keys_listed == sort(keys_listed)
+    # The names must be sorted, so that the help screen is deterministic instead of depending
+    # on the iteration order of a `Dict`.
+    for names in values(bindings)
+        @test names == sort(names; by = name -> (textwidth(name), name))
     end
 
-    # An unbound action must yield an empty description instead of throwing.
-    @test TerminalPager._getkb(:action_that_does_not_exist) == ""
+    # An unbound action must yield no name instead of throwing.
+    @test isempty(TerminalPager._action_keys(:action_that_does_not_exist))
 
     try
         TerminalPager.set_keybinding("Z", :quit)
-        updated = TerminalPager._action_keybindings()
-        @test occursin("Z", updated[:quit])
-        @test !occursin("Z", bindings[:quit]) || bindings === updated
+        @test "Z" in TerminalPager._action_keys()[:quit]
     finally
         TerminalPager.reset_keybindings()
     end
 
-    @test !occursin("Z", TerminalPager._action_keybindings()[:quit])
+    @test !("Z" in TerminalPager._action_keys()[:quit])
 end
 
 @testset "Help Screen Cache" begin

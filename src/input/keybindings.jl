@@ -132,6 +132,9 @@ function _pretty_key(kb::Tuple{String, Bool, Bool, Bool})
         key = is_special ? value[2:(end - 1)] : value
     end
 
+    # The CTRL combinations with a letter are always reported in lowercase.
+    kb[3] && (length(key) == 1) && (key = uppercase(key))
+
     kb[4] && (key = "Shift-" * key)
     kb[3] && (key = "Ctrl-" * key)
     kb[2] && (key = "Alt-" * key)

@@ -8,14 +8,19 @@
 #                                        Constants                                         #
 ############################################################################################
 
-# The help screen only depends on the keybindings. Hence, everything derived from them is
+# The help screen only depends on the key bindings. Hence, everything derived from them is
 # cached and rebuilt when `_KEYBINDINGS_GENERATION` changes.
-const _ACTION_KEYBINDINGS = Dict{Symbol, String}()
-const _ACTION_KEYBINDINGS_GENERATION = Ref(-1)
+const _ACTION_KEYS = Dict{Symbol, Vector{String}}()
+const _ACTION_KEYS_GENERATION = Ref(-1)
 
 # One cache entry per color support, holding the generation it was built for, the help text,
 # and its prepared layout.
 const _HELP_CACHE = Dict{Bool, Tuple{Int, String, TextViewLayout}}()
+
+# Layout of the help screen: its width, and the widths of the key and description columns.
+const _HELP_WIDTH = 90
+const _HELP_KEY_WIDTH = 20
+const _HELP_DESCRIPTION_WIDTH = 40
 
 """
     _help!(pagerd::Pager) -> Nothing
@@ -51,7 +56,8 @@ end
 """
     _help_screen(use_color::Bool) -> Tuple{String, TextViewLayout}
 
-Return the help text and its prepared layout, rebuilding them only when the keybindings change.
+Return the help text and its prepared layout, rebuilding them only when the keybindings
+change.
 
 # Arguments
 
@@ -77,8 +83,8 @@ end
 
 Return the version of this package.
 
-Notice that this must not be stored in a constant. `pkgversion` evaluated while the package is
-precompiled captures the version that was current at that moment, so the help screen kept
+Notice that this must not be stored in a constant. `pkgversion` evaluated while the package
+is precompiled captures the version that was current at that moment, so the help screen kept
 showing a stale one after a new version was released.
 """
 _pkg_version() = pkgversion(@__MODULE__)
@@ -91,7 +97,7 @@ Describe one pager action in the help screen.
 # Fields
 
 - `action::Symbol`: Pager action.
-- `description::String`: Description of the action, possibly spanning multiple lines.
+- `description::String`: Short description of the action.
 - `feature::Union{Nothing, Symbol}`: Feature required by the action, or `nothing`.
 """
 struct ActionHelp
@@ -108,7 +114,7 @@ Describe the pager `action` with `description` when it does not require a featur
 # Arguments
 
 - `action::Symbol`: Pager action.
-- `description::String`: Description of the action, possibly spanning multiple lines.
+- `description::String`: Short description of the action.
 """
 ActionHelp(action::Symbol, description::String) = ActionHelp(action, description, nothing)
 
@@ -120,12 +126,14 @@ Group the actions of the help screen under a title.
 # Fields
 
 - `title::String`: Section title.
+- `description::String`: Introduction shown under the title, or an empty string.
 - `feature::Union{Nothing, Symbol}`: Feature required by every action in the section, or
     `nothing`.
 - `actions::Vector{ActionHelp}`: Actions documented in the section.
 """
 struct HelpSection
     title::String
+    description::String
     feature::Union{Nothing, Symbol}
     actions::Vector{ActionHelp}
 end
@@ -135,140 +143,85 @@ end
 const _HELP_SECTIONS = HelpSection[
     HelpSection(
         "General",
+        "",
         nothing,
         ActionHelp[
             ActionHelp(:help, "Show this screen.", :help),
             ActionHelp(:quit, "Quit the pager."),
-            ActionHelp(
-                :quit_eot,
-                """
-                This is a special quit action designed for the
-                END OF TRANSMISSION (^D) keycode. If we are in a search
-                operation, then it quits the search. If not, then it
-                quits the pager.""",
-            ),
-            ActionHelp(:toggle_ruler, "Toggle the vertical ruler."),
+            ActionHelp(:quit_eot, "Quit the search, or the pager."),
+            ActionHelp(:toggle_ruler, "Toggle the line number ruler."),
             ActionHelp(:toggle_scrollbar, "Toggle the scrollbar."),
         ],
     ),
     HelpSection(
         "Movement",
+        "In the visual mode, the movements are relative to the visual line.",
         nothing,
         ActionHelp[
-            ActionHelp(:up, "Move the display one line up."),
-            ActionHelp(:down, "Move the display one line down."),
-            ActionHelp(:left, "Move the display one column to the left."),
-            ActionHelp(:right, "Move the display one column to the right."),
-            ActionHelp(:fastup, "Move the display five lines up."),
-            ActionHelp(:fastdown, "Move the display five lines down."),
-            ActionHelp(:fastleft, "Move the display ten columns to the left."),
-            ActionHelp(:fastright, "Move the display ten columns to the right."),
-            ActionHelp(
-                :pageup,
-                "Move the display one page up (a page has the same size as the view).",
-            ),
-            ActionHelp(
-                :pagedown,
-                "Move the display one page down (a page has the same size as the view).",
-            ),
-            ActionHelp(
-                :halfpageup,
-                "Move the display half page up (a page has the same size as the view).",
-            ),
-            ActionHelp(
-                :halfpagedown,
-                "Move the display half page down (a page has the same size as the view).",
-            ),
-            ActionHelp(:bol, "Move the display to the first column."),
-            ActionHelp(:eol, "Move the display to show the last column."),
-            ActionHelp(:home, "Move the display to the first line."),
-            ActionHelp(:end, "Move the display to show the last line."),
-            ActionHelp(
-                :goto_line,
-                "Request a line number in the command line and move the display to it.",
-            ),
-            ActionHelp(:wheel_up, "Move the display three lines up."),
-            ActionHelp(:wheel_down, "Move the display three lines down."),
+            ActionHelp(:up, "One line up."),
+            ActionHelp(:down, "One line down."),
+            ActionHelp(:left, "One column left."),
+            ActionHelp(:right, "One column right."),
+            ActionHelp(:fastup, "Five lines up."),
+            ActionHelp(:fastdown, "Five lines down."),
+            ActionHelp(:fastleft, "Ten columns left."),
+            ActionHelp(:fastright, "Ten columns right."),
+            ActionHelp(:wheel_up, "Three lines up."),
+            ActionHelp(:wheel_down, "Three lines down."),
+            ActionHelp(:pageup, "One page up."),
+            ActionHelp(:pagedown, "One page down."),
+            ActionHelp(:halfpageup, "Half a page up."),
+            ActionHelp(:halfpagedown, "Half a page down."),
+            ActionHelp(:bol, "First column."),
+            ActionHelp(:eol, "Last column."),
+            ActionHelp(:home, "First line."),
+            ActionHelp(:end, "Last line."),
+            ActionHelp(:goto_line, "Go to a line number."),
         ],
     ),
     HelpSection(
         "Searching",
+        "The search is case-insensitive unless the pattern has an uppercase letter.",
         nothing,
         ActionHelp[
-            ActionHelp(
-                :search,
-                "Request a regex in the command line and highlight all the matches.",
-            ),
-            ActionHelp(:next_match, "Go to the next match of the search."),
-            ActionHelp(:previous_match, "Go to the previous match of the search."),
-            ActionHelp(
-                :quit_search,
-                "Quit searching, removing all the highlights (only during search mode).",
-            ),
+            ActionHelp(:search, "Search for a regex."),
+            ActionHelp(:next_match, "Go to the next match."),
+            ActionHelp(:previous_match, "Go to the previous match."),
+            ActionHelp(:quit_search, "Quit the search."),
         ],
     ),
     HelpSection(
         "Freezing Data",
+        "Frozen rows and columns stay visible while scrolling. Title rows are frozen rows " *
+            "that do not scroll horizontally either.",
         :change_freeze,
         ActionHelp[
-            ActionHelp(
-                :change_freeze,
-                """
-                Two values will be requested in the command line. The first is the
-                number of rows and the second is the number of columns that will be
-                frozen. If a value is equal to or lower than 0, then no row or column
-                will be frozen.""",
-            ),
-            ActionHelp(
-                :change_title_rows,
-                """
-                Define the number of rows within the frozen rows that will be
-                considered as titles. In this case, these rows will not scroll
-                horizontally.""",
-            ),
+            ActionHelp(:change_freeze, "Set the frozen rows and columns."),
+            ActionHelp(:change_title_rows, "Set the title rows."),
         ],
     ),
     HelpSection(
         "Visual Mode",
+        "The visual line is highlighted, and the marked lines can be copied to the " *
+            "clipboard. Marks are cleared when the mode is left.",
         :visual_mode,
         ActionHelp[
-            ActionHelp(
-                :toggle_visual_mode,
-                """
-                Toggle visual mode, where a visual line is displayed on the screen.
-                In this mode, the movements are slightly modified to be relative to
-                the visual line.""",
-            ),
-            ActionHelp(
-                :select_visual_mode_line,
-                """
-                Mark the current visual line. Notice that if the line is already
-                marked, it will be unmarked. All the lines are unmarked when we exit
-                the visual mode.""",
-            ),
-            ActionHelp(
-                :mouse_select,
-                """
-                Move the visual line to the clicked line, or mark the clicked line
-                when it is already the visual line.""",
-            ),
-            ActionHelp(
-                :yank,
-                """
-                Copy (yank) the selected and current visual lines to the system
-                clipboard.""",
-            ),
+            ActionHelp(:toggle_visual_mode, "Toggle the visual mode."),
+            ActionHelp(:select_visual_mode_line, "Mark or unmark the visual line."),
+            ActionHelp(:mouse_select, "Move or mark the clicked line."),
+            ActionHelp(:yank, "Copy the marked lines to the clipboard."),
         ],
     ),
 ]
-
-# Width used to center the section titles of the help screen.
-const _HELP_WIDTH = 92
 
 """
     _help_string(use_color::Bool) -> String
 
 Assemble the pager help screen from [`_HELP_SECTIONS`](@ref) and the current key bindings.
+
+The screen is a cheat sheet with one row per action: the keys, the description, and the
+action name to use with [`set_keybinding`](@ref). Long key lists and descriptions continue
+on the following rows.
 
 # Arguments
 
@@ -296,36 +249,42 @@ function _help_string(use_color::Bool)
     print(buf, "  ", _cb, "TerminalPager.jl ", _pkg_version(), _d, "\n\n")
     print(
         buf,
-        "  The pager can execute several types of actions, as shown below. The key\n",
-        "  bindings of each action can be changed using the function\n",
-        "  ", _c, "set_keybinding", _d, ".\n\n",
-        "  Some actions are only available if a feature is enabled. The enabled\n",
-        "  features depend on how the pager was called and on the object being\n",
-        "  displayed.\n",
+        "  The key bindings can be changed with ", _c, "set_keybinding", _d, ". A section or\n",
+        "  an action marked with a feature is only available when the feature is enabled,\n",
+        "  which depends on how the pager was called.\n",
     )
 
     for section in _HELP_SECTIONS
         title = section.title
-        print(buf, '\n', _b, " "^div(_HELP_WIDTH - length(title), 2), title, _d, '\n')
+        isnothing(section.feature) || (title *= " (feature :$(section.feature))")
+        rule = "─"^max(_HELP_WIDTH - textwidth(title) - 4, 0)
+        print(buf, '\n', _b, "── ", title, " ", rule, _d, '\n')
 
-        if !isnothing(section.feature)
-            feature = section.feature
-            print(buf, _g, "  These actions require the feature :", feature, ".", _d, '\n')
+        for line in _wrap_words(section.description, _HELP_WIDTH - 2)
+            print(buf, "  ", _g, line, _d, '\n')
         end
 
         for entry in section.actions
-            print(buf, _y, "  :", entry.action, _d, '\n')
+            key_rows = _wrap_keys(_action_keys(entry.action), _HELP_KEY_WIDTH)
+            description_rows = _wrap_words(entry.description, _HELP_DESCRIPTION_WIDTH)
+            num_rows = max(length(key_rows), length(description_rows), 1)
 
-            for line in eachsplit(entry.description, '\n')
-                print(buf, "    ", line, '\n')
-            end
+            for i in 1:num_rows
+                keys = i <= length(key_rows) ? key_rows[i] : ""
+                description = i <= length(description_rows) ? description_rows[i] : ""
 
-            print(buf, _c, "    Keybindings: ", _getkb(entry.action), _d, '\n')
+                print(buf, "  ", _c, keys, _d)
+                print(buf, " "^max(_HELP_KEY_WIDTH - textwidth(keys), 0), "  ")
 
-            if !isnothing(entry.feature)
-                feature = entry.feature
-                note = "    This action requires the feature :"
-                print(buf, _g, note, feature, ".", _d, '\n')
+                if i == 1
+                    padding = max(_HELP_DESCRIPTION_WIDTH - textwidth(description), 0)
+                    print(buf, description, " "^padding, "  ", _y, ':', entry.action, _d)
+                    isnothing(entry.feature) || print(buf, _g, " [", entry.feature, "]", _d)
+                else
+                    print(buf, description)
+                end
+
+                print(buf, '\n')
             end
         end
     end
@@ -338,63 +297,103 @@ end
 ############################################################################################
 
 """
-    _getkb(action::Symbol) -> String
+    _action_keys() -> Dict{Symbol, Vector{String}}
 
-Return a comma-separated description of every keybinding assigned to `action`.
+Return the human-readable names of the keys bound to every action, keyed by action and
+sorted from the shortest name to the longest one.
 
-# Arguments
-
-- `action::Symbol`: Pager action whose keybindings are described.
+The result is cached until the key bindings change and must not be modified.
 """
-_getkb(action::Symbol) = get(_action_keybindings(), action, "")
-
-"""
-    _action_keybindings() -> Dict{Symbol, String}
-
-Return a description of the keybindings of every action, keyed by action.
-
-The result is cached until the keybindings change. Without the cache, opening the help
-screen scanned `_KEYBINDINGS` once per action, that is, 27 times.
-
-The descriptions of each action are sorted, so that the help screen does not depend on the
-iteration order of `_KEYBINDINGS`.
-"""
-function _action_keybindings()
+function _action_keys()
     generation = _KEYBINDINGS_GENERATION[]
-    _ACTION_KEYBINDINGS_GENERATION[] == generation && return _ACTION_KEYBINDINGS
+    _ACTION_KEYS_GENERATION[] == generation && return _ACTION_KEYS
 
-    descriptions = Dict{Symbol, Vector{String}}()
+    empty!(_ACTION_KEYS)
 
     for (kb, action) in _KEYBINDINGS
-        push!(get!(() -> String[], descriptions, action), _kbtostr(kb))
+        push!(get!(() -> String[], _ACTION_KEYS, action), _pretty_key(kb))
     end
 
-    empty!(_ACTION_KEYBINDINGS)
-
-    for (action, keys) in descriptions
-        _ACTION_KEYBINDINGS[action] = join(sort!(keys), ", ")
+    for names in values(_ACTION_KEYS)
+        sort!(names; by = name -> (textwidth(name), name))
     end
 
-    _ACTION_KEYBINDINGS_GENERATION[] = generation
+    _ACTION_KEYS_GENERATION[] = generation
 
-    return _ACTION_KEYBINDINGS
+    return _ACTION_KEYS
 end
 
 """
-    _kbtostr(kb::Tuple{String, Bool, Bool, Bool}) -> String
+    _action_keys(action::Symbol) -> Vector{String}
 
-Convert a keybinding tuple to a human-readable description.
+Return the human-readable names of the keys bound to `action`, which must not be modified.
 
 # Arguments
 
-- `kb::Tuple{String, Bool, Bool, Bool}`: Key value and ALT, CTRL, and SHIFT flags.
+- `action::Symbol`: Pager action.
 """
-function _kbtostr(kb::Tuple{String, Bool, Bool, Bool})
-    str = kb[1] == " " ? "space" : string(kb[1])
+_action_keys(action::Symbol) = get(_action_keys(), action, String[])
 
-    kb[2] && (str = "ALT " * str)
-    kb[3] && (str = "CTRL " * str)
-    kb[4] && (str = "SHIFT " * str)
+"""
+    _wrap_keys(names::Vector{String}, width::Int) -> Vector{String}
 
-    return str
+Join the key `names` with commas into rows of at most `width` columns, breaking only between
+names. A name wider than `width` gets a row of its own.
+
+# Arguments
+
+- `names::Vector{String}`: Key names to lay out.
+- `width::Int`: Maximum width of a row.
+"""
+function _wrap_keys(names::Vector{String}, width::Int)
+    rows = String[]
+    isempty(names) && return rows
+
+    row = ""
+
+    for name in names
+        if isempty(row)
+            row = name
+        elseif textwidth(row) + 2 + textwidth(name) <= width
+            row *= ", " * name
+        else
+            push!(rows, row * ",")
+            row = name
+        end
+    end
+
+    push!(rows, row)
+
+    return rows
+end
+
+"""
+    _wrap_words(text::String, width::Int) -> Vector{String}
+
+Wrap `text` greedily at the spaces into rows of at most `width` columns. A word wider than
+`width` gets a row of its own. An empty text yields no row.
+
+# Arguments
+
+- `text::String`: Text to wrap.
+- `width::Int`: Maximum width of a row.
+"""
+function _wrap_words(text::String, width::Int)
+    rows = String[]
+    row = ""
+
+    for word in eachsplit(text, ' '; keepempty = false)
+        if isempty(row)
+            row = String(word)
+        elseif textwidth(row) + 1 + textwidth(word) <= width
+            row *= " " * word
+        else
+            push!(rows, row)
+            row = String(word)
+        end
+    end
+
+    isempty(row) || push!(rows, row)
+
+    return rows
 end
