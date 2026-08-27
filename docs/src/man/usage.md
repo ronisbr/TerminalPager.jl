@@ -19,6 +19,29 @@ julia> @doc(write) |> pager
 All the functionalities can be seen in the built-in help system, accessible by typing `?`
 inside the `pager`.
 
+## Inside the Pager
+
+The last row is a status bar showing the current mode, the visible lines and columns, the
+enabled features, the scroll position, and the keys to open the help and to quit. The
+movements follow `less` and Vi: the arrow keys, `j`, `k`, `h`, `l`, `Space`, `PgUp`, `PgDn`,
+`Home`, `End`, `g`, and `G`. Typing `:` followed by a line number moves the display to that
+line, `r` toggles a line number ruler, `s` toggles a scrollbar, and `q` quits.
+
+The mouse wheel scrolls the text, and `SHIFT` and the wheel scroll it horizontally. Notice
+that, while the pager reports the mouse, selecting text with the terminal requires holding
+`SHIFT`, or `OPTION` on some terminals. The preference `"mouse"` disables the reporting.
+
+Typing `/` searches for a regular expression. The matches are highlighted while the pattern
+is typed, `n` and `N` navigate them, and `ESC` leaves the search. The search is
+case-insensitive unless the pattern has an uppercase letter. The up and down keys at the
+prompt recall the previous patterns of the session.
+
+The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
+move. `m` marks the visual line, and `y` copies the marked lines to the clipboard.
+
+Rows and columns can be frozen with `f`, so that they stay visible while scrolling, and `t`
+selects how many frozen rows are titles, which do not scroll horizontally either.
+
 ## Helpers
 
 The following macros are available to help calling the pager.
@@ -71,5 +94,5 @@ of the REPL command line. If the mode is loaded correctly, the prompt `julia>` i
 
 In pager mode, you can also type `?` at the beginning of the command line to access the pager
 help mode. In this case, the prompt is changed to `pager?>`. Any docstring accessed in this
-mode is rendered inside a pager. By default, we use the alternate screen buffer,
-allowing to keep the screen content after exiting the pager.
+mode is rendered inside a pager. The pager uses the alternate screen buffer, so the screen
+content is restored after exiting it.

@@ -1,6 +1,71 @@
 TerminalPager.jl
 ================
 
+Version 0.8.0
+-------------
+
+- ![BREAKING][badge-breaking] Breaking Change: The pager now opens on the alternate screen
+  buffer by default, so the terminal restores the previous screen when it quits. The keyword
+  `use_alternate_screen_buffer` defaults to `true`, and the preference
+  `"block_alternate_screen_buffer"` disables the alternate screen buffer globally.
+- ![BREAKING][badge-breaking] Breaking Change: The search uses smart case. A pattern without
+  uppercase letters is case-insensitive, and a pattern with one is case-sensitive.
+- ![Deprecation][badge-deprecation] The preference
+  `"always_use_alternate_screen_buffer_in_repl_mode"` is deprecated and ignored, because the
+  alternate screen buffer is now used by default. Setting it warns.
+- ![Feature][badge-feature] The command line was replaced by a status bar with a mode badge,
+  the visible lines and columns, the search and visual mode state, the enabled features, the
+  scroll position, and key hints derived from the current key bindings. The bar adapts to
+  narrow displays, and the cursor is hidden while the pager is open.
+- ![Feature][badge-feature] The command line editor supports CTRL-A, CTRL-E, CTRL-W, CTRL-U,
+  and CTRL-H, and the up and down keys recall the search patterns of the session.
+- ![Feature][badge-feature] The search is incremental: the matches are previewed while the
+  pattern is typed, and the prompt shows the active match. Cancelling the prompt restores the
+  previous search and viewport. Wrapping around the ends of the text is announced.
+- ![Feature][badge-feature] Typing `:` followed by a line number moves the display to that
+  line.
+- ![Feature][badge-feature] The mouse is supported: the wheel scrolls the text, SHIFT and the
+  wheel scroll it horizontally, and clicking a line in the visual mode moves the visual line
+  to it or marks it. The new preference `"mouse"` disables the reporting, which requires
+  holding SHIFT to select text with the terminal.
+- ![Feature][badge-feature] A scrollbar can be shown at the right edge of the view with the
+  keyword `show_scrollbar`, the new preference `"show_scrollbar"`, or the key `s`.
+- ![Enhancement][badge-enhancement] Scrolling asks the terminal to shift the rows already on
+  screen and repaints only the rows that entered the view. A one line scroll on a 60 by 220
+  terminal writes about 250 bytes instead of 13 KB. The new preference
+  `"use_scroll_regions"` disables the shift on terminals without support for it.
+- ![Enhancement][badge-enhancement] The messages are shown on the status bar with an icon
+  and a color telling their kind, until the next keystroke, which is processed normally.
+  They used to be modal and consumed the next keystroke. The error messages include the
+  rejected input, the freeze and title events confirm the new values, and the numeric
+  prompts show the current value.
+- ![Enhancement][badge-enhancement] The help screen is a cheat sheet with the keys, a short
+  description, and the action name of every action, grouped under ruled section titles.
+- ![Enhancement][badge-enhancement] The backward visual mode moves by five lines and by
+  half a page scroll the view by the part of the step that crosses the top row, like the
+  forward moves do at the bottom row.
+- ![Enhancement][badge-enhancement] The status bar row is cleared when a session without
+  the alternate screen buffer ends, so that the scrollback ends with the last page.
+- ![Bugfix][badge-bugfix] The Home and End keys work on xterm-compatible terminals, which
+  send `\eOH` and `\eOF` in the application cursor key mode the pager enables, and on the
+  Linux console, tmux, and rxvt.
+- ![Bugfix][badge-bugfix] `pager(obj)` and `@stdout_to_pager` render the object for the
+  actual display size. Markdown, and any other object consulting it, was wrapped at 80
+  columns regardless of the terminal width.
+- ![Bugfix][badge-bugfix] ESC and CTRL-C cancel the command line prompts, keeping the
+  current state. CTRL-C also quits an active search. Both used to do nothing.
+- ![Bugfix][badge-bugfix] Without a terminal on the standard input or output, for example in
+  a script with a redirected output, the text is printed instead of painting escape
+  sequences into the output and throwing an `EOFError`.
+- ![Bugfix][badge-bugfix] A `pager>` command that prints something and then throws no longer
+  loses the output printed before the error.
+- ![Bugfix][badge-bugfix] The prompt is repainted after the `F1` and `ALT-h` shortcuts, which
+  left it blank when the alternate screen buffer was blocked.
+- ![Bugfix][badge-bugfix] Growing the terminal while the view shows the end of the text pulls
+  the view back so that the screen stays full instead of showing blank rows.
+- ![Bugfix][badge-bugfix] The view buffer takes its color flag from the session terminal
+  instead of the global `stdout`.
+
 Version 0.7.2
 -------------
 
