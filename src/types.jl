@@ -146,6 +146,9 @@ what is on screen row `i` for every `i` in `1:num_rows`. An empty row is represe
 - `new_last::Vector{Int}`: Last index of each row of the frame being painted, inclusive.
 - `out::IOBuffer`: Reused buffer assembling everything sent to the terminal.
 - `valid::Bool`: Whether the snapshot describes the screen.
+- `start_row::Int`: First visible source row when the snapshot was painted.
+- `start_column::Int`: First visible printable column when the snapshot was painted.
+- `frozen_rows::Int`: Number of frozen rows when the snapshot was painted.
 """
 Base.@kwdef mutable struct FrameCache
     bytes::Vector{UInt8} = UInt8[]
@@ -156,6 +159,9 @@ Base.@kwdef mutable struct FrameCache
     new_last::Vector{Int} = Int[]
     out::IOBuffer = IOBuffer(; sizehint = 8192)
     valid::Bool = false
+    start_row::Int = 0
+    start_column::Int = 0
+    frozen_rows::Int = 0
 end
 
 """
@@ -193,6 +199,8 @@ Store the mutable state for one pager session.
 - `title_rows::Int`: Number of title rows.
 - `show_ruler::Bool`: Whether to show the line-number ruler.
 - `show_scrollbar::Bool`: Whether to show the scrollbar at the right edge of the view.
+- `scroll_regions::Bool`: Whether scrolling may shift the rows already on screen with the
+    terminal scroll region sequences instead of repainting them.
 - `view_buf::IOBuffer`: Reused buffer holding the rendered view before the scrollbar is added
     to it.
 - `visual_mode::Bool`: Whether visual selection mode is active.
@@ -232,6 +240,7 @@ Base.@kwdef mutable struct Pager
     title_rows::Int = 0
     show_ruler::Bool = false
     show_scrollbar::Bool = false
+    scroll_regions::Bool = true
     view_buf::IOBuffer = IOBuffer()
     visual_mode::Bool = false
     visual_mode_line::Int = 1

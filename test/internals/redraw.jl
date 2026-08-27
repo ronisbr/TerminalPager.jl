@@ -133,8 +133,9 @@ end
 
 Apply the terminal output `str` to `screen`.
 
-This understands only the sequences the redraw path emits: `\\e[i;jH`, `\\e[0K`, `\\e[2J`,
-SGR sequences, carriage returns, and line feeds.
+This understands only the sequences the redraw path emits: `\\e[i;jH`, `\\e[nG`, `\\e[0K`,
+`\\e[2J`, the scroll region sequences `\\e[t;br`, `\\e[r`, `\\e[nS`, and `\\e[nT`, SGR
+sequences, carriage returns, and line feeds.
 
 # Arguments
 
@@ -144,6 +145,8 @@ SGR sequences, carriage returns, and line feeds.
 function _emulate!(screen::Vector{String}, str::AbstractString)
     row = 1
     column = 1
+    top = 1
+    bottom = length(screen)
 
     """
         _overwrite(line::String, column::Int, text::AbstractString) -> String
@@ -198,6 +201,40 @@ function _emulate!(screen::Vector{String}, str::AbstractString)
                 fill!(screen, "")
                 row = 1
                 column = 1
+
+            elseif final == 'G'
+                column = isempty(parameters) ? 1 : parse(Int, parameters)
+
+            elseif final == 'r'
+                # Setting or resetting the scroll region moves the cursor to the home
+                # position.
+                parts = split(parameters, ';')
+                top = isempty(parts[1]) ? 1 : parse(Int, parts[1])
+                bottom =
+                    (length(parts) > 1) && !isempty(parts[2]) ? parse(Int, parts[2]) :
+                    length(screen)
+                row = 1
+                column = 1
+
+            elseif final == 'S'
+                # Scroll up: the rows of the region move up, and the bottom ones are blank.
+                n = isempty(parameters) ? 1 : parse(Int, parameters)
+                for i in top:(bottom - n)
+                    screen[i] = screen[i + n]
+                end
+                for i in max(bottom - n + 1, top):bottom
+                    screen[i] = ""
+                end
+
+            elseif final == 'T'
+                # Scroll down: the rows of the region move down, and the top ones are blank.
+                n = isempty(parameters) ? 1 : parse(Int, parameters)
+                for i in bottom:-1:(top + n)
+                    screen[i] = screen[i - n]
+                end
+                for i in top:min(top + n - 1, bottom)
+                    screen[i] = ""
+                end
             end
 
             # Every other sequence (SGR, cursor visibility) does not move the cursor nor
@@ -309,6 +346,7 @@ end
 
 @testset "Shrinking Frame" begin
     pagerd = _create_redraw_pagerd(["line $i" for i in 1:8]; display_size = (10, 20))
+    pagerd.scroll_regions = false
     _paint!(pagerd)
     @test pagerd.frame_cache.num_rows == 8
 
@@ -327,6 +365,18 @@ end
     # Painting the same short frame again must clear nothing.
     TerminalPager._request_redraw!(pagerd)
     @test isempty(_paint!(pagerd))
+
+    # With the scroll regions, the terminal shifts the rows away and blanks the vacated
+    # ones, so nothing needs to be painted nor cleared.
+    pagerd = _create_redraw_pagerd(["line $i" for i in 1:8]; display_size = (10, 20))
+    screen = fill("", 10)
+    _emulate!(screen, _paint!(pagerd))
+    pagerd.start_row = 6
+    output = _paint!(pagerd)
+    @test output == "\e[1;9r\e[5S\e[r"
+    _emulate!(screen, output)
+    @test screen[1:9] == ["line 6", "line 7", "line 8", "", "", "", "", "", ""]
+    @test pagerd.frame_cache.num_rows == 3
 end
 
 @testset "Frame Invalidation" begin
@@ -365,7 +415,9 @@ end
     @test pagerd.frame_cache.valid == false
 
     # A failure while flushing must not leave a snapshot describing a half-painted screen.
+    # The rows are repainted instead of shifted, so that the payload is long enough to fail.
     pagerd = _create_redraw_pagerd(["line $i" for i in 1:5])
+    pagerd.scroll_regions = false
     _paint!(pagerd)
     pagerd.start_row = 2
     TerminalPager._view!(pagerd)
@@ -566,4 +618,96 @@ end
 
     # The scan must stop at the number of rows the display can show.
     @test _scan("a\nb\nc\nd", 2) == ["a", "b"]
+end
+
+@testset "Scroll Regions" begin
+    lines = ["line $i" for i in 1:40]
+    pagerd = _create_redraw_pagerd(lines; display_size = (10, 20))
+    screen = fill("", 10)
+    _emulate!(screen, _paint!(pagerd))
+    @test screen[1:9] == lines[1:9]
+
+    # A one line scroll shifts the region and paints only the row that entered the view.
+    pagerd.start_row = 2
+    output = _paint!(pagerd)
+    @test occursin("\e[1;9r\e[1S\e[r", output)
+    @test count("\e[0K", output) == 1
+    _emulate!(screen, output)
+    @test screen[1:9] == lines[2:10]
+
+    # Scrolling back shifts the other way.
+    pagerd.start_row = 1
+    output = _paint!(pagerd)
+    @test occursin("\e[1;9r\e[1T\e[r", output)
+    @test count("\e[0K", output) == 1
+    _emulate!(screen, output)
+    @test screen[1:9] == lines[1:9]
+
+    # A larger step shifts by the step.
+    pagerd.start_row = 5
+    output = _paint!(pagerd)
+    @test occursin("\e[1;9r\e[4S\e[r", output)
+    @test count("\e[0K", output) == 4
+    _emulate!(screen, output)
+    @test screen[1:9] == lines[5:13]
+
+    # A step as large as the region repaints everything without shifting.
+    pagerd.start_row = 14
+    output = _paint!(pagerd)
+    @test !occursin("\e[1;9r", output)
+    @test count("\e[0K", output) == 9
+    _emulate!(screen, output)
+    @test screen[1:9] == lines[14:22]
+
+    # The frozen rows are outside the region. Changing them repaints everything first.
+    pagerd.frozen_rows = 2
+    output = _paint!(pagerd)
+    @test !occursin("r\e[", output)
+    _emulate!(screen, output)
+    pagerd.start_row = 15
+    output = _paint!(pagerd)
+    @test occursin("\e[3;9r\e[1S\e[r", output)
+    @test count("\e[0K", output) == 1
+    _emulate!(screen, output)
+    @test screen[1:2] == lines[1:2]
+    @test screen[3:9] == lines[15:21]
+
+    # A horizontal move disables the shift.
+    pagerd.start_column = 2
+    pagerd.start_row = 16
+    output = _paint!(pagerd)
+    @test !occursin("\e[3;9r", output)
+    _emulate!(screen, output)
+    @test screen[3:9] == [line[2:end] for line in lines[16:22]]
+
+    # The preference disables the shift.
+    pagerd.scroll_regions = false
+    pagerd.start_row = 17
+    output = _paint!(pagerd)
+    @test !occursin("\e[3;9r", output)
+    _emulate!(screen, output)
+    @test screen[3:9] == [line[2:end] for line in lines[17:23]]
+
+    # An unchanged frame still records the viewport, so that the next shift is right.
+    lines = fill("same", 40)
+    lines[11] = "mark"
+    pagerd = _create_redraw_pagerd(lines; display_size = (10, 20))
+    _paint!(pagerd)
+    pagerd.start_row = 2
+    @test _paint!(pagerd) == ""
+    @test pagerd.frame_cache.start_row == 2
+    pagerd.start_row = 3
+    output = _paint!(pagerd)
+    @test occursin("\e[1;9r\e[1S\e[r", output)
+    @test count("\e[0K", output) == 1
+
+    # A text shorter than the view: the rows after its end stay blank.
+    pagerd = _create_redraw_pagerd(["a", "b", "c", "d"]; display_size = (10, 20))
+    screen = fill("", 10)
+    _emulate!(screen, _paint!(pagerd))
+    pagerd.start_row = 2
+    pagerd.cropped_lines = 0
+    output = _paint!(pagerd)
+    _emulate!(screen, output)
+    @test screen[1:9] == ["b", "c", "d", "", "", "", "", "", ""]
 end

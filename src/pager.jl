@@ -453,6 +453,7 @@ function _pager!(
             num_lines = num_tokens,
             show_ruler = show_ruler,
             show_scrollbar = show_scrollbar,
+            scroll_regions = _get_preference("use_scroll_regions")::Bool,
             start_column = max(1, frozen_columns + 1),
             start_row = min(max(1, frozen_rows + 1), num_tokens),
             term = term,
@@ -1456,11 +1457,17 @@ function _redraw!(pagerd::Pager)
         (num_rows == frame_cache.num_rows) &&
         (num_bytes == length(snapshot)) &&
         _bytes_equal(snapshot, 1, data, 1, num_bytes)
+        _record_viewport!(frame_cache, pagerd)
         pagerd.redraw = false
         return nothing
     end
 
     out = _screen_buffer!(pagerd)
+
+    # When the view only scrolled, the terminal shifts the rows it already shows, and the
+    # snapshot is shifted the same way. The comparison below then repaints only the rows
+    # that entered the view, which is much cheaper than repainting every row.
+    valid && pagerd.scroll_regions && _shift_frame!(out, frame_cache, pagerd, max_rows)
 
     # We must not use the ANSI escape sequence `\e[2J` to clear the screen because it adds new
     # lines to it. Hence, every row we paint is cleared to the end of the line.
@@ -1500,7 +1507,9 @@ function _redraw!(pagerd::Pager)
     # is not valid, we do not know what is on screen, so we must clear everything.
     last_stale = valid ? min(frame_cache.num_rows, max_rows) : max_rows
 
-    for i in (num_rows + 1):last_stale
+    @inbounds for i in (num_rows + 1):last_stale
+        # A row recorded as empty is already blank.
+        valid && (row_last[i] < row_first[i]) && continue
         _move_cursor(out, i, 1)
         write(out, _CRAYON_RESET)
         _clear_to_eol(out)
@@ -1514,11 +1523,112 @@ function _redraw!(pagerd::Pager)
     _flush_screen!(pagerd)
 
     _store_frame!(frame_cache, data, num_bytes, num_rows)
+    _record_viewport!(frame_cache, pagerd)
 
     # Indicate that the redraw request was accomplished.
     pagerd.redraw = false
 
     return nothing
+end
+
+"""
+    _record_viewport!(frame_cache::FrameCache, pagerd::Pager) -> Nothing
+
+Record in `frame_cache` the viewport of `pagerd` that the snapshot describes.
+
+# Arguments
+
+- `frame_cache::FrameCache`: Cache to update.
+- `pagerd::Pager`: Pager state whose viewport is recorded.
+"""
+function _record_viewport!(frame_cache::FrameCache, pagerd::Pager)
+    frame_cache.start_row = pagerd.start_row
+    frame_cache.start_column = pagerd.start_column
+    frame_cache.frozen_rows = pagerd.frozen_rows
+    return nothing
+end
+
+"""
+    _shift_frame!(out::IOBuffer, frame_cache::FrameCache, pagerd::Pager, max_rows::Int) ->
+        Bool
+
+Shift the scrollable rows of the terminal and of the snapshot in `frame_cache` by the
+vertical movement of the viewport of `pagerd` since the snapshot was painted, and return
+whether the shift was performed.
+
+The shift is performed only for a pure vertical movement smaller than the scrollable region,
+that is, when the first visible column and the frozen rows are unchanged. The sequences
+asking the terminal to shift the rows are written to `out`. The rows the terminal blanks
+while shifting are recorded as empty in the snapshot, so that the comparison with the new
+frame repaints exactly the rows that entered the view.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer assembling everything sent to the terminal.
+- `frame_cache::FrameCache`: Cache whose snapshot is shifted.
+- `pagerd::Pager`: Pager state with the current viewport.
+- `max_rows::Int`: Number of rows the screen can show.
+"""
+function _shift_frame!(out::IOBuffer, frame_cache::FrameCache, pagerd::Pager, max_rows::Int)
+    delta = pagerd.start_row - frame_cache.start_row
+    top = pagerd.frozen_rows + 1
+    bottom = max_rows
+    height = bottom - top + 1
+
+    (frame_cache.start_column == pagerd.start_column) || return false
+    (frame_cache.frozen_rows == pagerd.frozen_rows) || return false
+    ((height >= 2) && (0 < abs(delta) < height)) || return false
+
+    # Ask the terminal to shift the rows of the scrollable region.
+    write(out, CSI)
+    _write_decimal(out, top)
+    write(out, UInt8(';'))
+    _write_decimal(out, bottom)
+    write(out, UInt8('r'))
+    write(out, CSI)
+    _write_decimal(out, abs(delta))
+    write(out, delta > 0 ? UInt8('S') : UInt8('T'))
+    write(out, _RESET_SCROLL_REGION)
+
+    # Shift the snapshot rows the same way. The rows after the ones the snapshot describes
+    # were cleared by the previous redraws, and the rows vacated by the shift are blanked by
+    # the terminal, so both are recorded as empty rows.
+    row_first = frame_cache.row_first
+    row_last = frame_cache.row_last
+    num_known = length(row_first)
+    resize!(row_first, max_rows)
+    resize!(row_last, max_rows)
+
+    @inbounds for i in (num_known + 1):max_rows
+        row_first[i] = 1
+        row_last[i] = 0
+    end
+
+    @inbounds if delta > 0
+        for i in top:(bottom - delta)
+            row_first[i] = row_first[i + delta]
+            row_last[i] = row_last[i + delta]
+        end
+
+        for i in (bottom - delta + 1):bottom
+            row_first[i] = 1
+            row_last[i] = 0
+        end
+    else
+        for i in bottom:-1:(top - delta)
+            row_first[i] = row_first[i + delta]
+            row_last[i] = row_last[i + delta]
+        end
+
+        for i in top:(top - delta - 1)
+            row_first[i] = 1
+            row_last[i] = 0
+        end
+    end
+
+    frame_cache.num_rows = max_rows
+
+    return true
 end
 
 """

@@ -20,6 +20,10 @@ const _CURSOR_KEYS_ON = "$(CSI)?1h"
 const _HIDE_CURSOR = "$(CSI)?25l"
 const _SHOW_CURSOR = "$(CSI)?25h"
 
+# Resetting the scroll region restores the whole screen as the region. Notice that the
+# sequence also moves the cursor to the home position.
+const _RESET_SCROLL_REGION = "$(CSI)r"
+
 # The mouse is reported with the SGR encoding, which is unambiguous for any position.
 const _MOUSE_ON = "$(CSI)?1000h$(CSI)?1006h"
 const _MOUSE_OFF = "$(CSI)?1006l$(CSI)?1000l"

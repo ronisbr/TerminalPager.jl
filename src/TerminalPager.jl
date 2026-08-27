@@ -143,6 +143,11 @@ The user can define custom preferences using the function
 - `"show_scrollbar"`: If `true`, the pager shows a scrollbar at the right edge of the view
     unless the keyword `show_scrollbar` says otherwise.
     (**Default**: `false`)
+- `"use_scroll_regions"`: If `true`, scrolling asks the terminal to shift the rows it
+    already shows and repaints only the new ones, which makes scrolling much cheaper on
+    large windows and slow connections. Disable it if your terminal does not support the
+    XTerm scroll region sequences.
+    (**Default**: `true`)
 - `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
     selected lines in the visual mode.
     (**Default**: `"100"`)

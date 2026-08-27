@@ -20,6 +20,7 @@ const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, String}}(
     "mouse" => true,
     "pager_mode" => "default",
     "show_scrollbar" => false,
+    "use_scroll_regions" => true,
     "visual_mode_line_background" => "100",
     "visual_mode_active_line_background" => "44",
 )
