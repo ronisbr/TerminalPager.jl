@@ -35,6 +35,15 @@ const keycodes = Dict(
     "\e\e[C" => Keystroke("\e\e[C", "<right>", true, false, false),
     "\e[D" => Keystroke("\e[D", "<left>", false, false, false),
     "\e\e[D" => Keystroke("\e\e[D", "<left>", true, false, false),
+    # The pager enables the application cursor key mode, in which xterm-compatible terminals
+    # send SS3 sequences for Home and End. The Linux console, tmux, and rxvt use their own
+    # CSI sequences.
+    "\eOH" => Keystroke("\eOH", "<home>", false, false, false),
+    "\eOF" => Keystroke("\eOF", "<end>", false, false, false),
+    "\e[1~" => Keystroke("\e[1~", "<home>", false, false, false),
+    "\e[4~" => Keystroke("\e[4~", "<end>", false, false, false),
+    "\e[7~" => Keystroke("\e[7~", "<home>", false, false, false),
+    "\e[8~" => Keystroke("\e[8~", "<end>", false, false, false),
     "\e[H" => Keystroke("\e[H", "<home>", false, false, false),
     "\e[1;2H" => Keystroke("\e[1;2H", "<home>", false, false, true),
     "\e[1;5H" => Keystroke("\e[1;5H", "<home>", false, true, false),

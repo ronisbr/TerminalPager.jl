@@ -154,3 +154,26 @@ end
     @test isconcretetype(keytype(TerminalPager._KEYBINDINGS))
     @test keytype(TerminalPager._DEFAULT_KEYBINDINGS) == keytype(TerminalPager._KEYBINDINGS)
 end
+
+@testset "Home and End Sequences" begin
+    # The pager enables the application cursor key mode, in which xterm-compatible terminals
+    # send SS3 sequences for Home and End. The Linux console, tmux, and rxvt use their own
+    # CSI sequences. All of them used to decode to `<undefined>`.
+    for (sequence, value) in (
+        "\eOH" => "<home>",
+        "\eOF" => "<end>",
+        "\e[1~" => "<home>",
+        "\e[4~" => "<end>",
+        "\e[7~" => "<home>",
+        "\e[8~" => "<end>",
+        "\e[H" => "<home>",
+        "\e[F" => "<end>",
+    )
+        bytes = collect(codeunits(sequence))
+        status, key, consumed = TerminalPager._decode_keystroke(bytes)
+        @test status === :complete
+        @test key.value == value
+        @test consumed == length(bytes)
+        @test !key.alt && !key.ctrl && !key.shift
+    end
+end
