@@ -192,6 +192,9 @@ Store the mutable state for one pager session.
 - `frozen_rows::Int`: Number of frozen leading rows.
 - `title_rows::Int`: Number of title rows.
 - `show_ruler::Bool`: Whether to show the line-number ruler.
+- `show_scrollbar::Bool`: Whether to show the scrollbar at the right edge of the view.
+- `view_buf::IOBuffer`: Reused buffer holding the rendered view before the scrollbar is added
+    to it.
 - `visual_mode::Bool`: Whether visual selection mode is active.
 - `visual_mode_line::Int`: Active visual line relative to the viewport.
 - `visual_mode_selected_lines::Vector{Int}`: Selected source-line indices.
@@ -228,6 +231,8 @@ Base.@kwdef mutable struct Pager
     frozen_rows::Int = 0
     title_rows::Int = 0
     show_ruler::Bool = false
+    show_scrollbar::Bool = false
+    view_buf::IOBuffer = IOBuffer()
     visual_mode::Bool = false
     visual_mode_line::Int = 1
     visual_mode_selected_lines::Vector{Int} = Int[]

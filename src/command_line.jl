@@ -272,7 +272,7 @@ function _redraw_status_bar!(pagerd::Pager)
     # Visible columns: " cols a–b/W ", only when the text is wider than the view.
     frozen_columns = pagerd.frozen_columns
     ruler_width = pagerd.show_ruler ? _ruler_width(num_lines) : 0
-    view_cols = cols - frozen_columns - ruler_width
+    view_cols = _get_pager_display_size(pagerd)[2] - frozen_columns - ruler_width
     text_width = _text_width(pagerd)
     first_col = pagerd.start_column
     last_col = min(text_width, first_col + view_cols - 1)

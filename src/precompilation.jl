@@ -40,6 +40,8 @@ PrecompileTools.@setup_workload begin
 
             # Ruler.
             write(stdin_wr, "r")
+            # Scrollbar on and off.
+            write(stdin_wr, "ss")
             # Freeze rows and columns.
             write(stdin_wr, "f10\n10\n")
             # Title rows.

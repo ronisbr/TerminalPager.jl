@@ -312,3 +312,34 @@ end
 
     @test TerminalPager._get_preference("mouse") == true
 end
+
+@testset "Status Bar With the Scrollbar" begin
+    # The visible columns exclude the scrollbar column.
+    pagerd, output = _create_status_pagerd(["x"^100]; display_size = (10, 50))
+    pagerd.show_scrollbar = true
+    @test occursin(" cols 1–49/100 ", _status_bar_text(pagerd, output))
+
+    # The keyword and the preference select the initial state.
+    input = IOBuffer("q")
+    out = IOBuffer()
+    term = REPL.Terminals.TTYTerminal("", input, out, out)
+    TerminalPager._pager!(
+        term, "a\nb"; input = TerminalPager.PagerInput(input), show_scrollbar = true
+    )
+    @test occursin(TerminalPager._SCROLLBAR_THUMB, String(take!(out)))
+
+    input = IOBuffer("q")
+    term = REPL.Terminals.TTYTerminal("", input, out, out)
+    TerminalPager._pager!(term, "a\nb"; input = TerminalPager.PagerInput(input))
+    @test !occursin(TerminalPager._SCROLLBAR_THUMB, String(take!(out)))
+
+    try
+        TerminalPager.set_preference!("show_scrollbar", true)
+        input = IOBuffer("q")
+        term = REPL.Terminals.TTYTerminal("", input, out, out)
+        TerminalPager._pager!(term, "a\nb"; input = TerminalPager.PagerInput(input))
+        @test occursin(TerminalPager._SCROLLBAR_THUMB, String(take!(out)))
+    finally
+        TerminalPager.drop_preference!("show_scrollbar")
+    end
+end

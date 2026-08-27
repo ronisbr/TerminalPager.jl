@@ -98,6 +98,8 @@ Call the pager to show the output of the object `obj`.
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown in the pager with the line
     numbers.
     (**Default**: `false`)
+- `show_scrollbar::Bool`: If `true`, a scrollbar is shown at the right edge of the view.
+    (**Default**: the value of the preference `"show_scrollbar"`)
 - `use_alternate_screen_buffer::Bool`: If `true`, the pager will use the alternate screen
     buffer, which restores the current screen when exiting the pager and lets the mouse
     wheel scroll the pager in most terminals. Notice, however, that we use the XTerm escape
@@ -138,6 +140,9 @@ The user can define custom preferences using the function
 - `"pager_mode"`: If it is `"vi"`, some keybindings are modified to match the behavior of Vi.
     Notice that this change only takes effect when a new Julia session is initialized.
     (**Default**: `"default"`)
+- `"show_scrollbar"`: If `true`, the pager shows a scrollbar at the right edge of the view
+    unless the keyword `show_scrollbar` says otherwise.
+    (**Default**: `false`)
 - `"visual_mode_line_background"`: `String` with the ANSI code of the background for the
     selected lines in the visual mode.
     (**Default**: `"100"`)

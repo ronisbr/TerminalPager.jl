@@ -148,6 +148,7 @@ const _HELP_SECTIONS = HelpSection[
                 quits the pager.""",
             ),
             ActionHelp(:toggle_ruler, "Toggle the vertical ruler."),
+            ActionHelp(:toggle_scrollbar, "Toggle the scrollbar."),
         ],
     ),
     HelpSection(

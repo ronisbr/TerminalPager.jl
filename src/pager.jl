@@ -11,7 +11,8 @@
 """
     _get_pager_display_size(p::Pager) -> Tuple{Int, Int}
 
-Return the available pager rows and columns after reserving the command line.
+Return the available pager rows and columns after reserving the status bar row and the
+scrollbar column, if it is shown.
 
 # Arguments
 
@@ -20,9 +21,10 @@ Return the available pager rows and columns after reserving the command line.
 function _get_pager_display_size(p::Pager)
     rows, cols = p.display_size
 
-    # We need to remove one row due to the command line. Notice that a degenerate terminal
-    # must not produce a negative number of rows.
+    # We need to remove one row due to the status bar and one column due to the scrollbar.
+    # Notice that a degenerate terminal must not produce negative sizes.
     rows = max(rows - 1, 0)
+    p.show_scrollbar && (cols = max(cols - 1, 0))
 
     return rows, cols
 end
@@ -313,6 +315,8 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
     (**Default**: `true`)
 - `show_ruler::Bool`: Show the line-number ruler initially.
     (**Default**: `false`)
+- `show_scrollbar::Bool`: Show the scrollbar initially.
+    (**Default**: the value of the preference `"show_scrollbar"`)
 - `use_alternate_screen_buffer::Bool`: Request the terminal's alternate screen
     buffer.
     (**Default**: `true`)
@@ -350,6 +354,7 @@ function _pager!(
     hashelp::Bool = true,
     has_visual_mode::Bool = true,
     show_ruler::Bool = false,
+    show_scrollbar::Bool = _get_preference("show_scrollbar")::Bool,
     use_alternate_screen_buffer::Bool = true,
     input::Union{Nothing, PagerInput} = nothing,
     lines::Union{Nothing, AbstractVector{<:AbstractString}} = nothing,
@@ -447,6 +452,7 @@ function _pager!(
             input = session_input,
             num_lines = num_tokens,
             show_ruler = show_ruler,
+            show_scrollbar = show_scrollbar,
             start_column = max(1, frozen_columns + 1),
             start_row = min(max(1, frozen_rows + 1), num_tokens),
             term = term,
@@ -832,6 +838,7 @@ function _action_event(action, features::Vector{Symbol})
         :previous_match,
         :quit_search,
         :toggle_ruler,
+        :toggle_scrollbar,
     )
         return action
     end
@@ -1132,6 +1139,17 @@ function _pager_event_process!(pagerd::Pager)
                     1,
                 )
             end
+        end
+
+        _request_redraw!(pagerd)
+
+    elseif event == :toggle_scrollbar
+        pagerd.show_scrollbar = !pagerd.show_scrollbar
+
+        # Hiding the scrollbar reclaims one column that the cropped text can use. Like the
+        # ruler, the reclaimed column must not push the view into the frozen region.
+        if !pagerd.show_scrollbar && (pagerd.cropped_columns == 0)
+            pagerd.start_column = max(pagerd.start_column - 1, pagerd.frozen_columns + 1, 1)
         end
 
         _request_redraw!(pagerd)
