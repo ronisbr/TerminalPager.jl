@@ -7,6 +7,10 @@ makedocs(;
         prettyurls = !("local" in ARGS),
         canonical = "https://ronisbr.github.io/TerminalPager.jl/stable/",
         edit_link = "main",
+        # The library page documents every function, including the private ones, which
+        # exceeds the default thresholds.
+        size_threshold = 400 * 2^10,
+        size_threshold_warn = 300 * 2^10,
     ),
     sitename = "Terminal Pager",
     authors = "Ronan Arraes Jardim Chagas",
