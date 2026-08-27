@@ -36,7 +36,7 @@ PrecompileTools.@setup_workload begin
             # like `pager` does and drives the session directly.
             a = vcat(reshape(fill(0.1986, 100), 1, :), zeros(100, 100))
             str = _render_object(a)
-            t = @async _pager(str)
+            t = @async _pager(str; use_alternate_screen_buffer = false)
 
             # Ruler.
             write(stdin_wr, "r")
@@ -82,8 +82,8 @@ PrecompileTools.@setup_workload begin
 
             wait(t)
 
-            # Pager with the alternate screen buffer.
-            t = @async _pager(str; use_alternate_screen_buffer = true)
+            # Pager with the alternate screen buffer, which is the default.
+            t = @async _pager(str)
             write(stdin_wr, "q")
             wait(t)
 

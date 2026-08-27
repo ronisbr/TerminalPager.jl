@@ -94,6 +94,17 @@ julia> TerminalPager.set_preference!("visual_mode_line_background", "44")
 """
 function set_preference!(pref::String, value)
     validated_value = _validate_preference(pref, value)
+
+    # The alternate screen buffer is now used by default, so this preference has no effect.
+    # It is still accepted so that existing configurations keep loading.
+    if pref == "always_use_alternate_screen_buffer_in_repl_mode"
+        @warn(
+            "The preference \"always_use_alternate_screen_buffer_in_repl_mode\" is " *
+                "deprecated and ignored: the alternate screen buffer is now used by " *
+                "default. Use \"block_alternate_screen_buffer\" to disable it."
+        )
+    end
+
     @set_preferences!(pref => validated_value)
     _invalidate_preference_cache!()
     return nothing

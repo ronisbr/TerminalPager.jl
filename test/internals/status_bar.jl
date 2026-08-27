@@ -242,22 +242,25 @@ end
     input = IOBuffer("q")
     output = IOBuffer()
     term = REPL.Terminals.TTYTerminal("", input, output, output)
-    TerminalPager._pager!(term, "a\nb\nc"; input = TerminalPager.PagerInput(input))
+    TerminalPager._pager!(
+        term,
+        "a\nb\nc";
+        input = TerminalPager.PagerInput(input),
+        use_alternate_screen_buffer = false,
+    )
     session = String(take!(output))
     rows = displaysize(output)[1]
 
     @test occursin("\e[?25l", session)
     @test endswith(session, "\e[$(rows);1H\e[0m\e[0K\e[?25h\e[?1l")
 
-    # With the alternate screen buffer, the terminal restores the previous content, so the
-    # status bar row is not cleared.
+    # With the alternate screen buffer, which is the default, the terminal restores the
+    # previous content, so the status bar row is not cleared.
     input = IOBuffer("q")
     term = REPL.Terminals.TTYTerminal("", input, output, output)
-    TerminalPager._pager!(
-        term, "a\nb\nc"; input = TerminalPager.PagerInput(input),
-        use_alternate_screen_buffer = true,
-    )
+    TerminalPager._pager!(term, "a\nb\nc"; input = TerminalPager.PagerInput(input))
     session = String(take!(output))
+    @test occursin("\e[?1049h", session)
     @test endswith(session, "\e[?25h\e[?1049l\e[?1l")
 
     # A nested session leaves the cursor alone.

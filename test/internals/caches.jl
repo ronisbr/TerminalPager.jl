@@ -175,3 +175,18 @@ end
         @test isnothing(pager(sub; auto = true))
     end
 end
+
+@testset "Deprecated Alternate Screen Preference" begin
+    # The alternate screen buffer is now the default, so the preference is accepted for
+    # existing configurations but ignored, and setting it warns.
+    pref = "always_use_alternate_screen_buffer_in_repl_mode"
+
+    try
+        @test_logs (:warn, r"deprecated") TerminalPager.set_preference!(pref, true)
+        @test TerminalPager._get_preference(pref) == true
+    finally
+        TerminalPager.drop_preference!(pref)
+    end
+
+    @test TerminalPager._get_preference(pref) == false
+end

@@ -315,7 +315,7 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
     (**Default**: `false`)
 - `use_alternate_screen_buffer::Bool`: Request the terminal's alternate screen
     buffer.
-    (**Default**: `false`)
+    (**Default**: `true`)
 - `input::Union{Nothing, PagerInput}`: Input state associated with the terminal
     input stream, or `nothing` to create one.
     (**Default**: `nothing`)
@@ -346,7 +346,7 @@ function _pager!(
     hashelp::Bool = true,
     has_visual_mode::Bool = true,
     show_ruler::Bool = false,
-    use_alternate_screen_buffer::Bool = false,
+    use_alternate_screen_buffer::Bool = true,
     input::Union{Nothing, PagerInput} = nothing,
     lines::Union{Nothing, AbstractVector{<:AbstractString}} = nothing,
     text_layout::Union{Nothing, TextViewLayout} = nothing,

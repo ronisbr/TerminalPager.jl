@@ -906,7 +906,10 @@ end
     input_stream = IOBuffer("q")
     term = REPL.Terminals.TTYTerminal("", input_stream, output, output)
     @test_throws ErrorException TerminalPager._pager!(
-        term, "long"; input = TerminalPager.PagerInput(input_stream)
+        term,
+        "long";
+        input = TerminalPager.PagerInput(input_stream),
+        use_alternate_screen_buffer = false,
     )
     @test occursin("\e[?1h", String(take!(output.data)))
 

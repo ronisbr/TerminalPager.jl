@@ -361,11 +361,6 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         Base.eval(:(stdout = $old_stdout))
 
         if !is_error
-            # Check if we need to use the alternate screen.
-            use_alternate_screen_buffer = _get_preference(
-                "always_use_alternate_screen_buffer_in_repl_mode"
-            )::Bool
-
             copy_to_clipboard = _get_preference(
                 "copy_stdout_to_clipboard_in_repl_mode"
             )::Bool
@@ -374,7 +369,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             # pager will only be called if there is not space in the display to show
             # everything.
             str = String(take!(buf))
-            pager(str; auto = true, use_alternate_screen_buffer)
+            pager(str; auto = true)
 
             copy_to_clipboard && clipboard(remove_decorations(str))
         end

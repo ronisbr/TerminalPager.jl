@@ -99,10 +99,12 @@ Call the pager to show the output of the object `obj`.
     numbers.
     (**Default**: `false`)
 - `use_alternate_screen_buffer::Bool`: If `true`, the pager will use the alternate screen
-    buffer, which keeps the current screen when exiting the pager. Notice, however, that we
-    use the XTerm escape sequences here. Hence, if your terminal is different, this option
-    can lead to rendering problems.
-    (**Default**: `false`)
+    buffer, which restores the current screen when exiting the pager and lets the mouse
+    wheel scroll the pager in most terminals. Notice, however, that we use the XTerm escape
+    sequences here. Hence, if your terminal is different, this option can lead to rendering
+    problems, in which case it can be disabled globally with the preference
+    `"block_alternate_screen_buffer"`.
+    (**Default**: `true`)
 
 # Preferences
 
@@ -117,8 +119,9 @@ The user can define custom preferences using the function
     inactive search element. One can easily obtain this sequence by converting a `Crayon` to
     string.
     (**Default**: `string(crayon"black bg:light_gray")`)
-- `"always_use_alternate_screen_buffer_in_repl_mode"`: If `true`, we will always use the
-    alternate screen buffer when showing the pager in REPL mode.
+- `"always_use_alternate_screen_buffer_in_repl_mode"`: Deprecated and ignored, because the
+    alternate screen buffer is now used by default. Use `"block_alternate_screen_buffer"` to
+    disable it.
     (**Default**: `false`)
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
