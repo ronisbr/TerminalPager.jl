@@ -950,14 +950,11 @@ function _pager_event_process!(pagerd::Pager)
         pagerd.mode = :view
 
     elseif event == :change_freeze
-        cmd_input = _read_cmd!(pagerd; prefix = "Frozen rows ($(pagerd.frozen_rows)): ")
-        frozen_rows = tryparse(Int, cmd_input; base = 10)
+        status, frozen_rows = _prompt_number!(pagerd, "Frozen rows", pagerd.frozen_rows)
 
-        if isnothing(frozen_rows) && !isempty(cmd_input)
-            _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
-            _read_keystroke!(pagerd.input)
-        else
-            if !isnothing(frozen_rows)
+        # An invalid number of rows also skips the prompt for the columns.
+        if status !== :invalid
+            if status === :value
                 # The clamped field value must be used here, not the raw parsed one, and the
                 # first visible row must stay inside the text.
                 pagerd.frozen_rows = max(0, frozen_rows)
@@ -974,16 +971,11 @@ function _pager_event_process!(pagerd::Pager)
                 pagerd.cropped_columns = 0
             end
 
-            cmd_input = _read_cmd!(
-                pagerd; prefix = "Frozen columns ($(pagerd.frozen_columns)): "
+            status, frozen_columns = _prompt_number!(
+                pagerd, "Frozen columns", pagerd.frozen_columns
             )
-            frozen_columns = tryparse(Int, cmd_input; base = 10)
 
-            if isnothing(frozen_columns) && !isempty(cmd_input)
-                _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
-                _read_keystroke!(pagerd.input)
-
-            elseif !isnothing(frozen_columns)
+            if status === :value
                 pagerd.frozen_columns = max(0, frozen_columns)
                 pagerd.start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
                 pagerd.cropped_lines = 0
@@ -994,16 +986,8 @@ function _pager_event_process!(pagerd::Pager)
         _request_redraw!(pagerd)
 
     elseif event == :change_title_rows
-        cmd_input = _read_cmd!(pagerd; prefix = "Title rows ($(pagerd.title_rows)): ")
-        title_rows = tryparse(Int, cmd_input; base = 10)
-
-        if isnothing(title_rows) && !isempty(cmd_input)
-            _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
-            _read_keystroke!(pagerd.input)
-        elseif !isnothing(title_rows)
-            pagerd.title_rows = max(0, title_rows)
-        end
-
+        status, title_rows = _prompt_number!(pagerd, "Title rows", pagerd.title_rows)
+        (status === :value) && (pagerd.title_rows = max(0, title_rows))
         _request_redraw!(pagerd)
 
     elseif event == :toggle_ruler

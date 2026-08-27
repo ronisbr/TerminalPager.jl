@@ -93,6 +93,38 @@ function _print_cmd_message!(pagerd::Pager, msg::String; crayon::Crayon = Crayon
 end
 
 """
+    _prompt_number!(pagerd::Pager, label::String, current::Int) -> Tuple{Symbol, Int}
+
+Prompt for an integer on the command line of `pagerd`, showing `label` and the `current`
+value, and return the status and the number typed by the user.
+
+The status is `:value` when a number was typed, `:empty` when the prompt was left empty, and
+`:invalid` when the input is not a number. In the last case, an error message is shown and
+the function waits for a keystroke before returning. The number is `0` unless the status is
+`:value`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose terminal and input are used.
+- `label::String`: Description of the requested number, shown in the prompt.
+- `current::Int`: Current value, shown in the prompt.
+"""
+function _prompt_number!(pagerd::Pager, label::String, current::Int)
+    cmd_input = _read_cmd!(pagerd; prefix = "$label ($current): ")
+    isempty(cmd_input) && return :empty, 0
+
+    value = tryparse(Int, cmd_input; base = 10)
+
+    if isnothing(value)
+        _print_cmd_message!(pagerd, "Invalid data!"; crayon = crayon"red bold")
+        _read_keystroke!(pagerd.input)
+        return :invalid, 0
+    end
+
+    return :value, value
+end
+
+"""
     _redraw_cmd_line!(pagerd::Pager) -> Nothing
 
 Redraw the pager command line and status information.
