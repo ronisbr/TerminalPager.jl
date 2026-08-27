@@ -306,8 +306,10 @@ function _pager!(
 
         # The pager is divided into a view and a command line. Everything in the view is
         # written to this buffer and then flushed to the screen.
+        # The color flag must come from the session terminal, not from the global `stdout`,
+        # so that a terminal built for another stream honors its own color support.
         iobuf = IOBuffer()
-        hascolor = get(stdout, :color, true)::Bool
+        hascolor = get(term.out_stream, :color, true)::Bool
         buf = IOContext(iobuf, :color => hascolor)
 
         features = Symbol[]
