@@ -330,6 +330,9 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
     (**Default**: `TextViewLayout`)
 - `manage_cursor_key_mode::Bool`: Enable and restore terminal cursor-key mode.
     (**Default**: `true`)
+- `manage_cursor::Bool`: Hide the cursor during the session, and show it and clear the
+    status bar row when the session ends. A nested session must not do this.
+    (**Default**: `true`)
 """
 function _pager!(
     @nospecialize(term::REPL.Terminals.TTYTerminal),
@@ -349,6 +352,7 @@ function _pager!(
     text_layout::Union{Nothing, TextViewLayout} = nothing,
     _layout_factory = TextViewLayout,
     manage_cursor_key_mode::Bool = true,
+    manage_cursor::Bool = true,
 )
     # Reuse a supplied layout or line vector; the raw text is split only when neither is
     # available, and the result feeds both the auto-fit check and the layout construction.
@@ -381,6 +385,7 @@ function _pager!(
 
     cursor_key_mode_enabled = false
     alternate_screen_enabled = false
+    cursor_hidden = false
     try
         if manage_cursor_key_mode
             cursor_key_mode_enabled = true
@@ -395,6 +400,14 @@ function _pager!(
             _turn_on_alternate_screen_buffer(term.out_stream)
         else
             _clear_screen(term.out_stream)
+        end
+
+        # The cursor has nothing to point at in the view. Hence, it is hidden for the whole
+        # session and shown only while a command is edited. As above, the flag is set before
+        # the write.
+        if manage_cursor
+            cursor_hidden = true
+            _hide_cursor(term.out_stream)
         end
 
         # The pager is divided into a view and a command line. Everything in the view is
@@ -438,7 +451,7 @@ function _pager!(
             if pagerd.redraw
                 _view!(pagerd)
                 _redraw!(pagerd)
-                _redraw_cmd_line!(pagerd)
+                _redraw_status_bar!(pagerd)
             end
 
             # Wait for user input. A message on the command line is shown until this
@@ -453,10 +466,59 @@ function _pager!(
             _pager_event_process!(pagerd) || break
         end
     finally
+        _restore_terminal(
+            term.out_stream;
+            clear_status_row = cursor_hidden && !alternate_screen_enabled,
+            show_cursor = cursor_hidden,
+            alternate_screen = alternate_screen_enabled,
+            cursor_key_mode = cursor_key_mode_enabled,
+        )
+    end
+
+    return nothing
+end
+
+"""
+    _restore_terminal(io::IO; kwargs...) -> Nothing
+
+Undo the changes a pager session made to the terminal `io`, performing every requested step
+even if a previous one throws.
+
+# Arguments
+
+- `io::IO`: Terminal output stream to restore.
+
+# Keywords
+
+- `clear_status_row::Bool`: Clear the last row of the display, where the status bar was.
+- `show_cursor::Bool`: Show the cursor.
+- `alternate_screen::Bool`: Leave the alternate screen buffer.
+- `cursor_key_mode::Bool`: Disable the cursor key mode.
+"""
+function _restore_terminal(
+    @nospecialize(io::IO);
+    clear_status_row::Bool,
+    show_cursor::Bool,
+    alternate_screen::Bool,
+    cursor_key_mode::Bool,
+)
+    try
+        if clear_status_row
+            # Without the alternate screen buffer, the status bar would be left right above
+            # the next prompt. Clearing it ends the scrollback with the last page instead.
+            _move_cursor(io, displaysize(io)[1], 1)
+            write(io, _CRAYON_RESET)
+            _clear_to_eol(io)
+        end
+    finally
         try
-            alternate_screen_enabled && _turn_off_alternate_screen_buffer(term.out_stream)
+            show_cursor && _show_cursor(io)
         finally
-            cursor_key_mode_enabled && _turn_off_cursor_key_mode(term.out_stream)
+            try
+                alternate_screen && _turn_off_alternate_screen_buffer(io)
+            finally
+                cursor_key_mode && _turn_off_cursor_key_mode(io)
+            end
         end
     end
 
@@ -1271,7 +1333,6 @@ Write the rows of the prepared view buffer that changed to the terminal.
 """
 function _redraw!(pagerd::Pager)
     frame_cache = pagerd.frame_cache
-    term = pagerd.term
     max_rows = _get_pager_display_size(pagerd)[1]
 
     data, num_bytes = _frame_bytes(pagerd.buf.io)
@@ -1343,18 +1404,8 @@ function _redraw!(pagerd::Pager)
     # a failure in between forces a full repaint instead of leaving a stale snapshot.
     frame_cache.valid = false
 
-    cursor_hidden = false
-    try
-        # Hide the cursor while drawing the frame. Notice that the flag is set before the
-        # write, because a failing write can still have reached the terminal. Hence, we must
-        # show the cursor again in that case.
-        cursor_hidden = true
-        _hide_cursor(term.out_stream)
-
-        _flush_screen!(pagerd)
-    finally
-        cursor_hidden && _show_cursor(term.out_stream)
-    end
+    # The cursor is hidden for the whole session, so the frame is flushed as is.
+    _flush_screen!(pagerd)
 
     _store_frame!(frame_cache, data, num_bytes, num_rows)
 

@@ -241,9 +241,9 @@ _loop_redraw(pagerd, n) = (
     end
 )
 
-_loop_redraw_cmd_line(pagerd, n) = (
+_loop_redraw_status_bar(pagerd, n) = (
     for _ in 1:n
-        TerminalPager._redraw_cmd_line!(pagerd)
+        TerminalPager._redraw_status_bar!(pagerd)
     end
 )
 
@@ -255,8 +255,8 @@ _loop_redraw_cmd_line(pagerd, n) = (
     pagerd = _create_redraw_pagerd(["line $i" for i in 1:5])
     output = _paint!(pagerd)
 
-    @test occursin("\e[?25l", output)
-    @test occursin("\e[?25h", output)
+    # The cursor visibility is managed by the session, not by the frame.
+    @test !occursin("\e[?25", output)
     @test occursin("\e[1;1H", output)
 
     for i in 1:5
@@ -451,7 +451,7 @@ end
 
     # Warm everything up and grow the reusable buffers.
     _loop_redraw(pagerd, 100)
-    _loop_redraw_cmd_line(pagerd, 100)
+    _loop_redraw_status_bar(pagerd, 100)
 
     # An unchanged frame must not allocate at all.
     @test (@allocated _loop_redraw(pagerd, 500)) == 0
@@ -464,19 +464,18 @@ end
     TerminalPager._view!(pagerd)
     @test (@allocated TerminalPager._redraw!(pagerd)) < 512
 
-    # The command line is constant except for the numbers in it.
-    @test (@allocated _loop_redraw_cmd_line(pagerd, 500)) == 0
+    # The status bar is constant except for the numbers in it.
+    @test (@allocated _loop_redraw_status_bar(pagerd, 500)) == 0
 
     # Every frame reaches the terminal in a single write. Otherwise, tearing is visible.
     _take_output!(pagerd.term.out_stream)
     pagerd.start_row = 20
     TerminalPager._view!(pagerd)
     TerminalPager._redraw!(pagerd)
-    TerminalPager._redraw_cmd_line!(pagerd)
+    TerminalPager._redraw_status_bar!(pagerd)
 
-    # One write to hide the cursor, one for the frame, one to show it, and one for the
-    # command line.
-    @test pagerd.term.out_stream.writes == 4
+    # One write for the frame and one for the status bar.
+    @test pagerd.term.out_stream.writes == 2
 end
 
 @testset "Visual Mode Buffers" begin

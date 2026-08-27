@@ -23,7 +23,7 @@ end
     @test pagerd.num_lines == 0
 
     # `round(Int, 100 * (1 - 0 / 0))` threw an `InexactError` because `0 / 0` is `NaN`.
-    TerminalPager._redraw_cmd_line!(pagerd)
+    TerminalPager._redraw_status_bar!(pagerd)
     output = String(take!(pagerd.term.out_stream))
     @test occursin("100%", output)
 

@@ -123,7 +123,7 @@ PrecompileTools.@setup_workload begin
             # the first one to be compiled. The terminal is `devnull`, hence this is silent.
             TerminalPager._view!(burst_pager)
             TerminalPager._redraw!(burst_pager)
-            TerminalPager._redraw_cmd_line!(burst_pager)
+            TerminalPager._redraw_status_bar!(burst_pager)
 
             # A second frame exercises the incremental path, which compares the frame
             # against the snapshot instead of painting every row.
@@ -132,7 +132,7 @@ PrecompileTools.@setup_workload begin
             TerminalPager._redraw!(burst_pager)
 
             burst_pager.mode = :searching
-            TerminalPager._redraw_cmd_line!(burst_pager)
+            TerminalPager._redraw_status_bar!(burst_pager)
 
             for prepared_lines in (
                 ["plain text", "second line"],

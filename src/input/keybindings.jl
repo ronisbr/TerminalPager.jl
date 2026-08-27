@@ -76,6 +76,80 @@ function _keybindings_changed!()
     return nothing
 end
 
+# Short names of the special keys, used wherever a key binding is shown to the user.
+const _KEY_NAMES = Dict{String, String}(
+    " " => "Space",
+    "<backspace>" => "Bksp",
+    "<delete>" => "Del",
+    "<down>" => "↓",
+    "<end>" => "End",
+    "<enter>" => "Enter",
+    "<eot>" => "Ctrl-D",
+    "<esc>" => "Esc",
+    "<home>" => "Home",
+    "<left>" => "←",
+    "<pagedown>" => "PgDn",
+    "<pageup>" => "PgUp",
+    "<right>" => "→",
+    "<shiftin>" => "Ctrl-U",
+    "<tab>" => "Tab",
+    "<up>" => "↑",
+)
+
+"""
+    _pretty_key(kb::Tuple{String, Bool, Bool, Bool}) -> String
+
+Return a short human-readable name for the key binding `kb`, such as `Alt-↑` or `Ctrl-D`.
+
+Special keys without a dedicated short name, such as the function keys, are shown without
+their angle brackets.
+
+# Arguments
+
+- `kb::Tuple{String, Bool, Bool, Bool}`: Key value and ALT, CTRL, and SHIFT flags.
+"""
+function _pretty_key(kb::Tuple{String, Bool, Bool, Bool})
+    value = kb[1]
+    key = get(_KEY_NAMES, value, nothing)
+
+    if isnothing(key)
+        is_special =
+            (ncodeunits(value) > 2) && startswith(value, '<') && endswith(value, '>')
+        key = is_special ? value[2:(end - 1)] : value
+    end
+
+    kb[4] && (key = "Shift-" * key)
+    kb[3] && (key = "Ctrl-" * key)
+    kb[2] && (key = "Alt-" * key)
+
+    return key
+end
+
+"""
+    _primary_key(action::Symbol) -> Union{Nothing, String}
+
+Return the shortest human-readable name among the keys bound to `action`, or `nothing` if
+the action is unbound.
+
+# Arguments
+
+- `action::Symbol`: Pager action.
+"""
+function _primary_key(action::Symbol)
+    best = nothing
+
+    for (kb, bound_action) in _KEYBINDINGS
+        bound_action === action || continue
+        name = _pretty_key(kb)
+
+        if isnothing(best) || ((textwidth(name), name) < (textwidth(best), best))
+            best = name
+        end
+    end
+
+    return best
+end
+
 """
     delete_keybinding(key::String; alt::Bool = false, ctrl::Bool = false,
         shift::Bool = false) -> Nothing

@@ -8,20 +8,35 @@
 #                                        Constants                                         #
 ############################################################################################
 
-# The command line hints are constant except for the numbers in them. Assembling them at every
-# frame allocated roughly 950 bytes per keystroke.
-const _CMD_HINT = "(↑ ↓ ← →:move, q:quit)"
-const _CMD_HINT_HELP = "(↑ ↓ ← →:move, ?:help, q:quit)"
-const _CMD_MATCH_PREFIX = "(match "
-const _CMD_MATCH_INFIX = " of "
-const _CMD_NO_MATCH = "(no match found)"
-const _CMD_ERROR = "ERROR"
+# The status bar is assembled from constant pieces and numbers, so that it does not allocate
+# at every keystroke. Every badge has the same width.
+const _BADGE_NORMAL = " NORMAL "
+const _BADGE_SEARCH = " SEARCH "
+const _BADGE_VISUAL = " VISUAL "
+const _BADGE_NORMAL_PLAIN = "[NORMAL]"
+const _BADGE_SEARCH_PLAIN = "[SEARCH]"
+const _BADGE_VISUAL_PLAIN = "[VISUAL]"
+const _BADGE_WIDTH = 8
 
-const _CMD_HINT_WIDTH = textwidth(_CMD_HINT)
-const _CMD_HINT_HELP_WIDTH = textwidth(_CMD_HINT_HELP)
+const _EMPTY = " empty "
+const _EMPTY_WIDTH = textwidth(_EMPTY)
+const _NO_MATCH = " no match "
+const _NO_MATCH_WIDTH = textwidth(_NO_MATCH)
+const _RULER = " ruler "
+const _RULER_WIDTH = textwidth(_RULER)
 
-# Width of "(match  of )", that is, everything but the two numbers.
-const _CMD_MATCH_WIDTH = textwidth(_CMD_MATCH_PREFIX) + textwidth(_CMD_MATCH_INFIX) + 1
+# The bar is drawn in reverse video, so that it works with light and dark themes. The badges
+# and the messages reset it and select their own colors.
+const _CRAYON_BAR = "$(CSI)0;7m"
+const _CRAYON_BADGE_NORMAL = "$(CSI)0;1;97;44m"
+const _CRAYON_BADGE_SEARCH = "$(CSI)0;1;30;43m"
+const _CRAYON_BADGE_VISUAL = "$(CSI)0;1;97;45m"
+const _CRAYON_MESSAGE_INFO = "$(CSI)0;7;1m"
+const _CRAYON_MESSAGE_ERROR = "$(CSI)0;1;97;41m"
+
+# Key hints of the status bar, rebuilt when the key bindings change. The entries are the
+# generation they were built for, the hints with the help action, and without it.
+const _STATUS_HINTS = Ref{Tuple{Int, String, String}}((-1, "", ""))
 
 # Padding is written directly from the bytes of this string, so that right-aligning the
 # hint does not allocate a full-width string at every frame.
@@ -87,114 +102,302 @@ function _prompt_number!(pagerd::Pager, label::String, current::Int)
 end
 
 """
-    _redraw_cmd_line!(pagerd::Pager) -> Nothing
+    _status_hint(with_help::Bool) -> String
 
-Redraw the pager command line and status information.
+Return the key hints shown at the right of the status bar, such as `?:help  q:quit`.
+
+The hints are rebuilt only when the key bindings change, so that the status bar does not
+allocate at every frame.
+
+# Arguments
+
+- `with_help::Bool`: Include the hint of the help action.
+"""
+function _status_hint(with_help::Bool)
+    generation = _KEYBINDINGS_GENERATION[]
+    cached = _STATUS_HINTS[]
+
+    if cached[1] != generation
+        quit = _primary_key(:quit)
+        help = _primary_key(:help)
+        without_help = isnothing(quit) ? "" : quit * ":quit"
+
+        hint_with_help = if isnothing(help)
+            without_help
+        elseif isempty(without_help)
+            help * ":help"
+        else
+            help * ":help  " * without_help
+        end
+
+        cached = (generation, hint_with_help, without_help)
+        _STATUS_HINTS[] = cached
+    end
+
+    return with_help ? cached[2] : cached[3]
+end
+
+"""
+    _redraw_status_bar!(pagerd::Pager) -> Nothing
+
+Redraw the status bar of `pagerd` on the last row of the display.
+
+The bar shows the mode badge, the visible lines and columns, the search and visual mode
+state, the enabled features, the scroll position, and the key hints. When the display is too
+narrow, the key hints are dropped first, then the segments from the least to the most
+important one. A pending message replaces every segment but the badge.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to redraw.
 """
-function _redraw_cmd_line!(pagerd::Pager)
-    # Unpack variables.
+function _redraw_status_bar!(pagerd::Pager)
     term = pagerd.term
-    display_size = pagerd.display_size
+    rows, cols = pagerd.display_size
     num_lines = pagerd.num_lines
-    cropped_lines = pagerd.cropped_lines
     mode = pagerd.mode
-
     use_color = get(term.out_stream, :color, true)::Bool
-
-    # Compute the scroll position. Notice that an empty text has nothing left to scroll, so
-    # we must not divide by `num_lines` here.
-    percentage = if num_lines > 0
-        clamp(round(Int, 100 * (1 - cropped_lines / num_lines)), 0, 100)
-    else
-        100
-    end
-
-    # Compute the information considering the current mode. Everything except the numbers is
-    # constant, so we only need the width of the hint here.
-    hint_width = 0
-    match_id = 0
-    num_matches = 0
-
-    if mode == :view
-        hint_width = if :help ∈ pagerd.features
-            _CMD_HINT_HELP_WIDTH
-        else
-            _CMD_HINT_WIDTH
-        end
-
-    elseif mode == :searching
-        match_id = pagerd.active_search_match_id
-        num_matches = length(pagerd.ordered_search_matches)
-
-        hint_width = if num_matches > 0
-            _CMD_MATCH_WIDTH + ndigits(match_id) + ndigits(num_matches)
-        else
-            length(_CMD_NO_MATCH)
-        end
-
-    else
-        hint_width = length(_CMD_ERROR)
-    end
-
-    # The scroll position is always rendered as " NNN%", with the number right-aligned in
-    # three columns. Since it is a percentage, it never needs more than three digits.
-    hint_width += 5
 
     out = _screen_buffer!(pagerd)
 
-    # Move the cursor to the last line and write the command line. The row must be cleared
-    # explicitly: on a terminal too narrow for the hint, nothing else overwrites the text
-    # left behind by the command editor.
-    _move_cursor(out, display_size[1], 1)
+    # Move the cursor to the last row. The row must be cleared explicitly, because nothing
+    # else overwrites the text left behind by the command editor.
+    _move_cursor(out, rows, 1)
     _clear_to_eol(out)
 
-    if !isempty(pagerd.message)
-        # The message replaces the prompt and the hint until the next keystroke.
-        use_color && write(out, pagerd.message_kind === :error ? _CRAYON_R : _CRAYON_B)
-        write(out, pagerd.message)
-        use_color && write(out, _CRAYON_RESET)
-        _move_cursor(out, display_size[1], 1)
+    if cols <= 0
         _flush_screen!(pagerd)
         return nothing
     end
 
-    write(out, UInt8(':'))
+    # == Badge =============================================================================
 
-    if display_size[2] > (hint_width + 4)
-        _write_blanks(out, display_size[2] - hint_width - 1)
-        use_color && write(out, _CRAYON_G)
-
-        if mode == :view
-            write(out, :help ∈ pagerd.features ? _CMD_HINT_HELP : _CMD_HINT)
-
-        elseif mode == :searching
-            if num_matches > 0
-                write(out, _CMD_MATCH_PREFIX)
-                _write_decimal(out, match_id)
-                write(out, _CMD_MATCH_INFIX)
-                _write_decimal(out, num_matches)
-                write(out, UInt8(')'))
-            else
-                write(out, _CMD_NO_MATCH)
-            end
-
-        else
-            write(out, _CMD_ERROR)
-        end
-
-        write(out, UInt8(' '))
-        _write_blanks(out, max(0, 3 - ndigits(percentage)))
-        _write_decimal(out, percentage)
-        write(out, UInt8('%'))
-
-        use_color && write(out, _CRAYON_RESET)
+    badge, badge_crayon = if pagerd.visual_mode
+        use_color ? (_BADGE_VISUAL, _CRAYON_BADGE_VISUAL) : (_BADGE_VISUAL_PLAIN, "")
+    elseif mode == :searching
+        use_color ? (_BADGE_SEARCH, _CRAYON_BADGE_SEARCH) : (_BADGE_SEARCH_PLAIN, "")
+    else
+        use_color ? (_BADGE_NORMAL, _CRAYON_BADGE_NORMAL) : (_BADGE_NORMAL_PLAIN, "")
     end
 
-    _move_cursor(out, display_size[1], 2)
+    use_color && write(out, badge_crayon)
+
+    if cols < _BADGE_WIDTH
+        # Every badge is ASCII, so the bytes are the columns.
+        GC.@preserve badge unsafe_write(out, pointer(badge), UInt(cols))
+        use_color && write(out, _CRAYON_RESET)
+        _move_cursor(out, rows, 1)
+        _flush_screen!(pagerd)
+        return nothing
+    end
+
+    write(out, badge)
+    use_color && write(out, _CRAYON_BAR)
+    used = _BADGE_WIDTH
+
+    # == Message ===========================================================================
+
+    message = pagerd.message
+
+    if !isempty(message)
+        # The message replaces every other segment until the next keystroke.
+        available = cols - used
+        width = 0
+
+        if use_color
+            is_error = pagerd.message_kind === :error
+            write(out, is_error ? _CRAYON_MESSAGE_ERROR : _CRAYON_MESSAGE_INFO)
+        end
+
+        if available >= 1
+            write(out, UInt8(' '))
+            width += 1
+        end
+
+        for c in message
+            character_width = textwidth(c)
+            (width + character_width > available) && break
+            write(out, c)
+            width += character_width
+        end
+
+        _write_blanks(out, available - width)
+        use_color && write(out, _CRAYON_RESET)
+        _move_cursor(out, rows, 1)
+        _flush_screen!(pagerd)
+        return nothing
+    end
+
+    # == Segment Widths ====================================================================
+
+    # Everything but the numbers is constant, so the widths are computed from the number of
+    # digits. Assembling strings here allocated at every keystroke.
+
+    # Visible lines: " lines a–b/N ".
+    last_line = num_lines - pagerd.cropped_lines
+    first_line = min(pagerd.start_row, last_line)
+    w_lines = if num_lines == 0
+        _EMPTY_WIDTH
+    else
+        10 + ndigits(first_line) + ndigits(last_line) + ndigits(num_lines)
+    end
+
+    # Search: " match i/n " or " no match ".
+    num_matches = length(pagerd.ordered_search_matches)
+    match_id = pagerd.active_search_match_id
+    w_search = if mode != :searching
+        0
+    elseif num_matches > 0
+        9 + ndigits(match_id) + ndigits(num_matches)
+    else
+        _NO_MATCH_WIDTH
+    end
+
+    # Visual mode: " n selected ".
+    num_selected = length(pagerd.visual_mode_selected_lines)
+    w_visual = pagerd.visual_mode ? 11 + ndigits(num_selected) : 0
+
+    # Visible columns: " cols a–b/W ", only when the text is wider than the view.
+    frozen_columns = pagerd.frozen_columns
+    ruler_width = pagerd.show_ruler ? _ruler_width(num_lines) : 0
+    view_cols = cols - frozen_columns - ruler_width
+    text_width = _text_width(pagerd)
+    first_col = pagerd.start_column
+    last_col = min(text_width, first_col + view_cols - 1)
+    show_cols = (text_width > view_cols) && (last_col >= first_col)
+    w_cols = if show_cols
+        9 + ndigits(first_col) + ndigits(last_col) + ndigits(text_width)
+    else
+        0
+    end
+
+    # Features: " frozen r×c ", " titles t ", and " ruler ".
+    frozen_rows = pagerd.frozen_rows
+    show_frozen = (frozen_rows > 0) || (frozen_columns > 0)
+    w_frozen = show_frozen ? 10 + ndigits(frozen_rows) + ndigits(frozen_columns) : 0
+    title_rows = pagerd.title_rows
+    w_titles = title_rows > 0 ? 9 + ndigits(title_rows) : 0
+    w_ruler = pagerd.show_ruler ? _RULER_WIDTH : 0
+
+    # Scroll position: " NNN% ". Notice that an empty text has nothing left to scroll, so we
+    # must not divide by `num_lines` here.
+    percentage = if num_lines > 0
+        clamp(round(Int, 100 * (1 - pagerd.cropped_lines / num_lines)), 0, 100)
+    else
+        100
+    end
+
+    # Key hints: " ?:help  q:quit  NNN% ".
+    hint = _status_hint(:help ∈ pagerd.features)
+
+    # == Fit ===============================================================================
+
+    # The scroll position is kept whenever it fits next to the visible lines. The remaining
+    # segments are added from the most to the least important one, and the key hints only
+    # take the space that is left at the end.
+    right = (used + w_lines + 6 <= cols) ? 6 : 0
+
+    show_lines = used + w_lines + right <= cols
+    show_lines && (used += w_lines)
+
+    show_search = (w_search > 0) && (used + w_search + right <= cols)
+    show_search && (used += w_search)
+
+    show_visual = (w_visual > 0) && (used + w_visual + right <= cols)
+    show_visual && (used += w_visual)
+
+    show_cols &= used + w_cols + right <= cols
+    show_cols && (used += w_cols)
+
+    show_frozen &= used + w_frozen + right <= cols
+    show_frozen && (used += w_frozen)
+
+    show_titles = (w_titles > 0) && (used + w_titles + right <= cols)
+    show_titles && (used += w_titles)
+
+    show_ruler = (w_ruler > 0) && (used + w_ruler + right <= cols)
+    show_ruler && (used += w_ruler)
+
+    show_hint = !isempty(hint) && (right > 0) && (used + textwidth(hint) + 8 <= cols)
+    show_hint && (right = textwidth(hint) + 8)
+
+    # == Rendering =========================================================================
+
+    if show_lines
+        if num_lines == 0
+            write(out, _EMPTY)
+        else
+            write(out, " lines ")
+            _write_decimal(out, first_line)
+            write(out, "–")
+            _write_decimal(out, last_line)
+            write(out, UInt8('/'))
+            _write_decimal(out, num_lines)
+            write(out, UInt8(' '))
+        end
+    end
+
+    if show_search
+        if num_matches > 0
+            write(out, " match ")
+            _write_decimal(out, match_id)
+            write(out, UInt8('/'))
+            _write_decimal(out, num_matches)
+            write(out, UInt8(' '))
+        else
+            write(out, _NO_MATCH)
+        end
+    end
+
+    if show_visual
+        write(out, UInt8(' '))
+        _write_decimal(out, num_selected)
+        write(out, " selected ")
+    end
+
+    if show_cols
+        write(out, " cols ")
+        _write_decimal(out, first_col)
+        write(out, "–")
+        _write_decimal(out, last_col)
+        write(out, UInt8('/'))
+        _write_decimal(out, text_width)
+        write(out, UInt8(' '))
+    end
+
+    if show_frozen
+        write(out, " frozen ")
+        _write_decimal(out, frozen_rows)
+        write(out, "×")
+        _write_decimal(out, frozen_columns)
+        write(out, UInt8(' '))
+    end
+
+    if show_titles
+        write(out, " titles ")
+        _write_decimal(out, title_rows)
+        write(out, UInt8(' '))
+    end
+
+    show_ruler && write(out, _RULER)
+
+    _write_blanks(out, cols - used - right)
+
+    if right > 0
+        write(out, UInt8(' '))
+
+        if show_hint
+            write(out, hint)
+            write(out, "  ")
+        end
+
+        _write_blanks(out, 3 - ndigits(percentage))
+        _write_decimal(out, percentage)
+        write(out, "% ")
+    end
+
+    use_color && write(out, _CRAYON_RESET)
+    _move_cursor(out, rows, 1)
 
     _flush_screen!(pagerd)
 
@@ -220,100 +423,109 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
     # Unpack values.
     display_size = pagerd.display_size
 
-    # The command is edited as a vector of characters. Rebuilding a `String` at every keypress
-    # made the cursor position and the string disagree whenever they were tracked separately.
+    # The command is edited as a vector of characters. Rebuilding a `String` at every
+    # keypress made the cursor position and the string disagree whenever they were tracked
+    # separately.
     chars = Char[]
     cursor = 1
     prefix_width = textwidth(prefix)
     redraw = true
 
-    while true
-        if redraw
-            out = _screen_buffer!(pagerd)
+    try
+        while true
+            if redraw
+                out = _screen_buffer!(pagerd)
 
-            # Clear the command line and write the prompt and the command.
-            _move_cursor(out, display_size[1], 1)
-            _clear_to_eol(out)
-            write(out, prefix)
+                # Clear the command line and write the prompt and the command. The cursor
+                # is hidden during the session, so it must be shown while the command is
+                # edited.
+                _move_cursor(out, display_size[1], 1)
+                _clear_to_eol(out)
+                write(out, _SHOW_CURSOR)
+                write(out, prefix)
 
-            # The command must be truncated at the right edge of the display. Otherwise,
-            # the terminal wraps the last row, the whole screen scrolls, and the frame
-            # snapshot no longer describes what is on it.
-            column = prefix_width + 1
+                # The command must be truncated at the right edge of the display. Otherwise,
+                # the terminal wraps the last row, the whole screen scrolls, and the frame
+                # snapshot no longer describes what is on it.
+                column = prefix_width + 1
 
-            for character in chars
-                character_width = textwidth(character)
-                column + character_width > display_size[2] + 1 && break
-                write(out, character)
-                column += character_width
+                for character in chars
+                    character_width = textwidth(character)
+                    column + character_width > display_size[2] + 1 && break
+                    write(out, character)
+                    column += character_width
+                end
+
+                _move_cursor(
+                    out,
+                    display_size[1],
+                    _cmd_cursor_column(chars, cursor, prefix_width, display_size[2]),
+                )
+
+                _flush_screen!(pagerd)
+
+                redraw = false
             end
 
-            _move_cursor(
-                out,
-                display_size[1],
-                _cmd_cursor_column(chars, cursor, prefix_width, display_size[2]),
-            )
+            k = _read_keystroke!(pagerd.input)
 
-            _flush_screen!(pagerd)
-
-            redraw = false
-        end
-
-        k = _read_keystroke!(pagerd.input)
-
-        if k.value == "<enter>"
-            break
-
-        elseif (k.value == "<esc>") || (k.ctrl && (k.value == "c"))
-            # A cancelled command is different from an empty one: the callers keep their
-            # current state instead of applying an empty value. Notice that the raw mode
-            # delivers CTRL-C as a keystroke instead of raising an interrupt.
-            return nothing
-
-        elseif k.value == "<backspace>"
-            if isempty(chars)
+            if k.value == "<enter>"
                 break
-            elseif cursor > 1
-                # Delete the character before the cursor, not the last one.
-                deleteat!(chars, cursor - 1)
-                cursor -= 1
-                redraw = true
-            end
 
-        elseif k.value == "<delete>"
-            if cursor <= length(chars)
-                deleteat!(chars, cursor)
-                redraw = true
-            end
+            elseif (k.value == "<esc>") || (k.ctrl && (k.value == "c"))
+                # A cancelled command is different from an empty one: the callers keep their
+                # current state instead of applying an empty value. Notice that the raw mode
+                # delivers CTRL-C as a keystroke instead of raising an interrupt.
+                return nothing
 
-        elseif k.value == "<left>"
-            if cursor > 1
-                cursor -= 1
-                redraw = true
-            end
+            elseif k.value == "<backspace>"
+                if isempty(chars)
+                    break
+                elseif cursor > 1
+                    # Delete the character before the cursor, not the last one.
+                    deleteat!(chars, cursor - 1)
+                    cursor -= 1
+                    redraw = true
+                end
 
-        elseif k.value == "<right>"
-            if cursor <= length(chars)
+            elseif k.value == "<delete>"
+                if cursor <= length(chars)
+                    deleteat!(chars, cursor)
+                    redraw = true
+                end
+
+            elseif k.value == "<left>"
+                if cursor > 1
+                    cursor -= 1
+                    redraw = true
+                end
+
+            elseif k.value == "<right>"
+                if cursor <= length(chars)
+                    cursor += 1
+                    redraw = true
+                end
+
+            elseif k.value == "<home>"
+                cursor = 1
+                redraw = true
+
+            elseif k.value == "<end>"
+                cursor = length(chars) + 1
+                redraw = true
+
+            elseif _is_printable_keystroke(k)
+                insert!(chars, cursor, only(k.value))
                 cursor += 1
                 redraw = true
             end
 
-        elseif k.value == "<home>"
-            cursor = 1
-            redraw = true
-
-        elseif k.value == "<end>"
-            cursor = length(chars) + 1
-            redraw = true
-
-        elseif _is_printable_keystroke(k)
-            insert!(chars, cursor, only(k.value))
-            cursor += 1
-            redraw = true
+            # Every other keystroke is ignored. Otherwise, names such as `<up>` or `<F1>`
+            # would be inserted verbatim into the command.
         end
-
-        # Every other keystroke is ignored. Otherwise, names such as `<up>` or `<F1>` would be
-        # inserted verbatim into the command.
+    finally
+        # The cursor is hidden for the rest of the session.
+        _hide_cursor(pagerd.term.out_stream)
     end
 
     return String(chars)
@@ -340,8 +552,8 @@ end
 
 Return the display column of the command line cursor.
 
-Notice that the column is a display width and not a character count, so that the cursor stays
-under the insertion point when the command contains wide characters.
+Notice that the column is a display width and not a character count, so that the cursor
+stays under the insertion point when the command contains wide characters.
 
 # Arguments
 

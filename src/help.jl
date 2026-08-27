@@ -41,6 +41,7 @@ function _help!(pagerd::Pager)
         input = pagerd.input,
         text_layout = help_layout,
         manage_cursor_key_mode = false,
+        manage_cursor = false,
     )
 
     return nothing
