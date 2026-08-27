@@ -71,13 +71,13 @@ const _FACES_PREFERENCE = "faces"
     set_face!(name::AbstractString; kwargs...) -> Nothing
 
 Customize the pager face `name` with the attributes set in `face`, or with the keywords
-accepted by `StyledStrings.Face`, such as `foreground`, `background`, `weight`, `slant`,
-`underline`, `strikethrough`, `inverse`, and `inherit`.
+accepted by `StyledStrings.Face`. The attributes and the available faces are listed in the
+extended help.
 
 The attributes are merged into the current face, so that the ones left unset keep their
 values, and they are persisted with **Preferences.jl** in the same format as `faces.toml`.
-The change applies to the next pager session, without restarting Julia. The available
-faces are listed in the documentation of [`pager`](@ref).
+The change applies to the next pager session, without restarting Julia. An unknown face or
+attribute is rejected with an error.
 
 See also: [`drop_face!`](@ref).
 
@@ -86,12 +86,92 @@ See also: [`drop_face!`](@ref).
 - `name::AbstractString`: Name of a pager face, without the prefix `terminalpager_`.
 - `face::Face`: Attributes to merge into the face.
 
-# Examples
+# Keywords
+
+- `kwargs...`: Attributes to merge into the face, as accepted by `StyledStrings.Face`.
+
+# Extended help
+
+## Attributes
+
+- `foreground` and `background`: Color, which can be the name of one of the 16 terminal
+    colors (`:black`, `:red`, `:green`, `:yellow`, `:blue`, `:magenta`, `:cyan`, `:white`,
+    and their `:bright_` variants, with `:grey` and `:gray` as aliases of
+    `:bright_black`), `:default` for the color of the terminal, a 24-bit color written as a
+    `"#rrggbb"` string or a `UInt32` like `0x005f87`, or the name of another face, whose
+    foreground is used. The 24-bit colors are approximated on terminals without true color
+    support.
+- `weight`: `:thin`, `:extralight`, `:light`, `:semilight`, `:normal`, `:medium`,
+    `:semibold`, `:bold`, `:extrabold`, or `:black`. The weights above `:normal` are shown
+    in bold, and the ones below it are shown faint.
+- `slant`: `:normal`, `:italic`, or `:oblique`. The last two are shown in italics.
+- `underline`: `true` or `false`. A color or a style, like `(:red, :curly)`, is accepted and
+    persisted, but the pager only underlines the text.
+- `strikethrough`: `true` or `false`.
+- `inverse`: `true` or `false` to swap the foreground and the background. Notice that the
+    terminal swaps the colors after applying them. Hence, a face with `inverse = true`
+    shows its background as the foreground and vice versa.
+- `inherit`: Name of a face, or a vector of names, whose attributes fill the ones left
+    unset, like `:bold` or `:terminalpager_help_key`.
+- `font` and `height`: Accepted and persisted, but they have no effect in the terminal.
+
+## Faces
+
+- `"status_bar"`: Status bar. It is drawn in reverse video by default, so that it matches
+    light and dark themes. Custom colors must come with `inverse = false`.
+    (**Default**: reverse video)
+- `"badge_normal"`: Mode badge in the normal mode.
+    (**Default**: bold, bright white on blue)
+- `"badge_search"`: Mode badge in the search mode.
+    (**Default**: bold, black on yellow)
+- `"badge_visual"`: Mode badge in the visual mode.
+    (**Default**: bold, bright white on magenta)
+- `"message_info"`: Informative message on the status bar.
+    (**Default**: bold, bright white on green)
+- `"message_error"`: Error message on the status bar.
+    (**Default**: bold, bright white on red)
+- `"search_match"`: Inactive search match.
+    (**Default**: black on white)
+- `"search_active_match"`: Active search match.
+    (**Default**: black on yellow)
+- `"visual_line"`: Lines marked in the visual mode. Only its background is used.
+    (**Default**: bright black background)
+- `"visual_active_line"`: Visual line. Only its background is used.
+    (**Default**: blue background)
+- `"ruler"`: Line number ruler.
+    (**Default**: bright black)
+- `"scrollbar_track"`: Track of the scrollbar.
+    (**Default**: bright black)
+- `"scrollbar_thumb"`: Thumb of the scrollbar.
+    (**Default**: no attributes)
+- `"command_status"`: Status shown at the right of the command line, like the number of
+    matches while searching.
+    (**Default**: bright black)
+- `"help_title"`: Title of the help screen.
+    (**Default**: bold cyan)
+- `"help_section"`: Section titles of the help screen.
+    (**Default**: bold)
+- `"help_description"`: Section descriptions and feature tags of the help screen.
+    (**Default**: bright black)
+- `"help_key"`: Keys of the help screen.
+    (**Default**: cyan)
+- `"help_action"`: Action names of the help screen.
+    (**Default**: bold yellow)
+
+## Throws
+
+- `ArgumentError`: If `name` is not a pager face, or if a keyword is not a face attribute.
+
+## Examples
 
 ```julia
 julia> TerminalPager.set_face!("search_active_match"; background = :red)
 
-julia> TerminalPager.set_face!("badge_normal", StyledStrings.Face(; background = "#005f87"))
+julia> TerminalPager.set_face!("badge_normal"; foreground = "#ffffff", background = 0x005f87)
+
+julia> TerminalPager.set_face!("status_bar"; foreground = :white, background = :blue, inverse = false)
+
+julia> TerminalPager.set_face!("help_key", StyledStrings.Face(; weight = :bold, inherit = :terminalpager_help_title))
 ```
 """
 function set_face!(name::AbstractString, face::Face)
