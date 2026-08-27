@@ -334,8 +334,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 REPL.eval_with_backend(ast, REPL.backend(repl))
             end
 
-            # If we have an error, print the information and stop the processing.
+            # If we have an error, print the information and stop the processing. The output
+            # captured so far must be shown first, otherwise everything the command printed
+            # before failing is lost.
             if is_error
+                print(old_stdout, String(take!(buf)))
                 val = Base.scrub_repl_backtrace(val)
                 Base.istrivialerror(val) || setglobal!(Base.MainInclude, :err, val)
                 Base.invokelatest(Base.display_error, repl.t.err_stream, val)
