@@ -17,7 +17,7 @@ Change the active match forward when `forward` is `true` and backward otherwise.
 """
 function _change_active_match!(pagerd::Pager, forward::Bool = true)
     active_search_match_id = pagerd.active_search_match_id
-    num_matches = pagerd.num_matches
+    num_matches = length(pagerd.ordered_search_matches)
 
     if num_matches != 0
         # Activate the next match according to the user preference.
@@ -52,11 +52,9 @@ Find every match of `regex` and store the search metadata in `pagerd`.
 function _find_matches!(pagerd::Pager, regex::Regex)
     search_matches = string_search_per_line(pagerd.text_layout, regex)
     ordered_search_matches = _ordered_search_matches(search_matches, pagerd.num_lines)
-    num_matches = length(ordered_search_matches)
 
     pagerd.search_matches = search_matches
     pagerd.ordered_search_matches = ordered_search_matches
-    pagerd.num_matches = num_matches
 
     # Start the navigation just before the first match at or after the top of the current view,
     # so that the following `_change_active_match!` selects it. Otherwise, searching always
@@ -238,7 +236,6 @@ Clear all search state in `pagerd`.
 function _quit_search!(pagerd::Pager)
     empty!(pagerd.search_matches)
     empty!(pagerd.ordered_search_matches)
-    pagerd.num_matches = 0
     pagerd.active_search_match_id = 0
     return nothing
 end

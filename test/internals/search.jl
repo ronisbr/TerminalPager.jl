@@ -81,7 +81,7 @@ end
     pagerd.start_row = 1
     TerminalPager._find_matches!(pagerd, r"match")
     TerminalPager._change_active_match!(pagerd, true)
-    @test pagerd.num_matches == 2
+    @test length(pagerd.ordered_search_matches) == 2
     @test pagerd.ordered_search_matches[pagerd.active_search_match_id].line == 1
 
     # Searching from below the first match must select the next one instead of jumping back to
@@ -106,7 +106,7 @@ end
     # No match at all must not select anything.
     TerminalPager._find_matches!(pagerd, r"nothing_here")
     TerminalPager._change_active_match!(pagerd, true)
-    @test pagerd.num_matches == 0
+    @test length(pagerd.ordered_search_matches) == 0
     @test pagerd.active_search_match_id == 0
 end
 
@@ -195,7 +195,7 @@ end
 
     @test TerminalPager._pager_event_process!(pagerd) != false
     @test pagerd.mode == :view
-    @test pagerd.num_matches == 0
+    @test length(pagerd.ordered_search_matches) == 0
     @test occursin("Invalid regex!", String(take!(pagerd.term.out_stream)))
 
     # A valid pattern must still work through the same code path.
@@ -204,6 +204,6 @@ end
 
     @test TerminalPager._pager_event_process!(pagerd) != false
     @test pagerd.mode == :searching
-    @test pagerd.num_matches == 3
+    @test length(pagerd.ordered_search_matches) == 3
     @test pagerd.active_search_match_id == 1
 end

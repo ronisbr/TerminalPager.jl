@@ -134,7 +134,7 @@ function _redraw_cmd_line!(pagerd::Pager)
 
     elseif mode == :searching
         match_id = pagerd.active_search_match_id
-        num_matches = pagerd.num_matches
+        num_matches = length(pagerd.ordered_search_matches)
 
         hint_width = if num_matches > 0
             _CMD_MATCH_WIDTH + ndigits(match_id) + ndigits(num_matches)

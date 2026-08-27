@@ -86,7 +86,6 @@ end
     pagerd.ordered_search_matches = TerminalPager._ordered_search_matches(
         pagerd.search_matches, pagerd.num_lines
     )
-    pagerd.num_matches = length(pagerd.ordered_search_matches)
 
     @test [(m.line, m.column, m.width) for m in pagerd.ordered_search_matches] == [(2, 5, 1), (2, 3, 1), (4, 1, 1)]
     @test [m.index_in_line for m in pagerd.ordered_search_matches] == [1, 2, 1]
@@ -108,19 +107,18 @@ end
     TerminalPager._quit_search!(pagerd)
     @test isempty(pagerd.search_matches)
     @test isempty(pagerd.ordered_search_matches)
-    @test pagerd.num_matches == 0
+    @test length(pagerd.ordered_search_matches) == 0
     @test pagerd.active_search_match_id == 0
 
     pagerd.search_matches = TerminalPager.SearchMatches(99 => [(99, 99)])
     pagerd.ordered_search_matches = [TerminalPager.SearchMatch(99, 1, 99, 99)]
-    pagerd.num_matches = 1
     pagerd.active_search_match_id = 1
     TerminalPager._find_matches!(pagerd, r"x")
     @test [(m.line, m.column) for m in pagerd.ordered_search_matches] == [(2, 3), (2, 5), (4, 1)]
     TerminalPager._find_matches!(pagerd, r"absent")
     @test isempty(pagerd.search_matches)
     @test isempty(pagerd.ordered_search_matches)
-    @test pagerd.num_matches == 0
+    @test length(pagerd.ordered_search_matches) == 0
     @test pagerd.active_search_match_id == 0
 end
 

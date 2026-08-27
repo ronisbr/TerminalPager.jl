@@ -157,7 +157,6 @@ Store the mutable state for one pager session.
 - `input::PagerInput`: Shared input state for the session.
 - `search_matches::SearchMatches`: Search matches grouped by source line.
 - `ordered_search_matches::Vector{SearchMatch}`: Matches in navigation order.
-- `num_matches::Int`: Number of search matches.
 - `active_search_match_id::Int`: Active match index in navigation order.
 - `redraw::Bool`: Whether the viewport needs to be redrawn.
 - `mode::Symbol`: Current pager mode.
@@ -189,7 +188,6 @@ Base.@kwdef mutable struct Pager
     input::PagerInput = PagerInput(stdin)
     search_matches::SearchMatches = SearchMatches()
     ordered_search_matches::Vector{SearchMatch} = SearchMatch[]
-    num_matches::Int = 0
     active_search_match_id::Int = 0
     redraw::Bool = true
     mode::Symbol = :view
