@@ -145,3 +145,27 @@ end
     @test cmd == "界界"
     @test endswith(output, "\e[10;4H")
 end
+
+@testset "Command Line Cancel" begin
+    # ESC used to be ignored, so the only ways to leave the prompt were Enter and Backspace on
+    # an empty command.
+    @test isnothing(first(_read_cmd("ab\e")))
+    @test isnothing(first(_read_cmd("\e")))
+
+    # Cancelling the search prompt keeps the view mode and records no match.
+    pagerd = _create_modal_pagerd(["line"], "li\e")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :view
+    @test isempty(pagerd.ordered_search_matches)
+
+    # Cancelling the frozen rows prompt skips the frozen columns prompt as well.
+    pagerd = _create_modal_pagerd(["line"], "\e")
+    pagerd.features = [:change_freeze]
+    pagerd.event = :change_freeze
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test (pagerd.frozen_rows, pagerd.frozen_columns) == (0, 0)
+    output = String(take!(pagerd.term.out_stream))
+    @test occursin("Frozen rows", output)
+    @test !occursin("Frozen columns", output)
+end

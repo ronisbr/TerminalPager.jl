@@ -98,10 +98,10 @@ end
 Prompt for an integer on the command line of `pagerd`, showing `label` and the `current`
 value, and return the status and the number typed by the user.
 
-The status is `:value` when a number was typed, `:empty` when the prompt was left empty, and
-`:invalid` when the input is not a number. In the last case, an error message is shown and
-the function waits for a keystroke before returning. The number is `0` unless the status is
-`:value`.
+The status is `:value` when a number was typed, `:empty` when the prompt was left empty,
+`:cancel` when the prompt was cancelled, and `:invalid` when the input is not a number. In
+the last case, an error message is shown and the function waits for a keystroke before
+returning. The number is `0` unless the status is `:value`.
 
 # Arguments
 
@@ -111,6 +111,7 @@ the function waits for a keystroke before returning. The number is `0` unless th
 """
 function _prompt_number!(pagerd::Pager, label::String, current::Int)
     cmd_input = _read_cmd!(pagerd; prefix = "$label ($current): ")
+    isnothing(cmd_input) && return :cancel, 0
     isempty(cmd_input) && return :empty, 0
 
     value = tryparse(Int, cmd_input; base = 10)
@@ -229,9 +230,10 @@ function _redraw_cmd_line!(pagerd::Pager)
 end
 
 """
-    _read_cmd!(pagerd::Pager; prefix::String = "/") -> String
+    _read_cmd!(pagerd::Pager; prefix::String = "/") -> Union{Nothing, String}
 
-Read and edit one command from the pager input.
+Read and edit one command from the pager input, returning `nothing` if the user cancels it
+with ESC.
 
 # Arguments
 
@@ -289,6 +291,11 @@ function _read_cmd!(pagerd::Pager; prefix::String = "/")
 
         if k.value == "<enter>"
             break
+
+        elseif k.value == "<esc>"
+            # A cancelled command is different from an empty one: the callers keep their
+            # current state instead of applying an empty value.
+            return nothing
 
         elseif k.value == "<backspace>"
             if isempty(chars)

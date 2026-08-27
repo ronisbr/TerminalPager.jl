@@ -815,8 +815,8 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :search
         cmd_input = _read_cmd!(pagerd)
 
-        # Do not search if the regex is empty.
-        if !isempty(cmd_input)
+        # Do not search if the prompt was cancelled or if the regex is empty.
+        if !isnothing(cmd_input) && !isempty(cmd_input)
             match_regex = _try_regex(cmd_input)
 
             if isnothing(match_regex)
@@ -849,8 +849,8 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :change_freeze
         status, frozen_rows = _prompt_number!(pagerd, "Frozen rows", pagerd.frozen_rows)
 
-        # An invalid number of rows also skips the prompt for the columns.
-        if status !== :invalid
+        # An invalid or cancelled number of rows also skips the prompt for the columns.
+        if status in (:value, :empty)
             if status === :value
                 # The clamped field value must be used here, not the raw parsed one, and the
                 # first visible row must stay inside the text.
