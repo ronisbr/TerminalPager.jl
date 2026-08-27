@@ -44,7 +44,8 @@ const _PREFERENCE_CACHE = Dict{String, Union{Bool, String}}()
 """
     drop_all_preferences!() -> Nothing
 
-Drop all preferences, and reset the faces to their built-in defaults.
+Drop all preferences, including the faces customized with [`set_face!`](@ref), which are
+reset to their built-in defaults.
 
 # Examples
 
@@ -61,6 +62,8 @@ function drop_all_preferences!()
     for pref in keys(_REPLACED_PREFERENCES)
         @delete_preferences!(pref)
     end
+
+    @delete_preferences!(_FACES_PREFERENCE)
 
     for (name, _) in _FACES
         resetfaces!(Symbol(_FACE_PREFIX, name))
@@ -197,7 +200,7 @@ end
     _check_preference_name(pref::String) -> Nothing
 
 Throw an `ArgumentError` if `pref` is not a supported preference. The error of a preference
-replaced by a face names the face.
+replaced by a face names the face and [`set_face!`](@ref).
 
 # Arguments
 
@@ -210,7 +213,8 @@ function _check_preference_name(pref::String)
         throw(
             ArgumentError(
                 "The preference \"$pref\" was replaced by the face " *
-                    "\"$(_REPLACED_PREFERENCES[pref])\".",
+                    "\"$(_REPLACED_PREFERENCES[pref])\". Use `TerminalPager.set_face!` " *
+                    "to customize it.",
             ),
         )
     end

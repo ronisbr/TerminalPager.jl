@@ -143,8 +143,9 @@ For more information, see: [`TerminalPager.set_preference!`](@ref),
 # Faces
 
 The colors and the text attributes of the pager are faces registered with
-**StyledStrings.jl** under the prefix `terminalpager_`. They can be customized in the file
-`config/faces.toml` of the Julia depot under the tables `[terminalpager.<name>]`. The
+**StyledStrings.jl** under the prefix `terminalpager_`. They can be customized with
+[`TerminalPager.set_face!`](@ref), which persists the change as a preference, or in the
+file `config/faces.toml` of the Julia depot under the tables `[terminalpager.<name>]`. The
 available faces are listed as follows:
 
 - `"status_bar"`: Status bar.
@@ -186,6 +187,9 @@ available faces are listed as follows:
     (**Default**: cyan)
 - `"help_action"`: Action names of the help screen.
     (**Default**: bold yellow)
+
+For more information, see: [`TerminalPager.set_face!`](@ref) and
+[`TerminalPager.drop_face!`](@ref).
 """
 pager(obj::Any; kwargs...) = pager(_render_object(obj); kwargs...)
 
@@ -276,8 +280,10 @@ function __init__()
     _invalidate_preference_cache!()
 
     # The faces live in the registry of StyledStrings.jl, which is not serialized with this
-    # package. Hence, they must be registered at every session start.
+    # package. Hence, they must be registered at every session start, and only then can the
+    # customized ones be applied.
     _register_faces!()
+    _load_face_preferences!()
 
     # Modify the key bindings if the user wants `vi` mode.
     _apply_mode_keybindings!()
