@@ -344,3 +344,22 @@ end
         TerminalPager.drop_preference!("show_scrollbar")
     end
 end
+
+@testset "Nested Help Keeps the Screen Buffer" begin
+    # Opening and closing the help used to toggle the alternate screen buffer a second time,
+    # which switched the terminal back to the normal screen while the parent session kept
+    # painting as if it were on the alternate one.
+    input = IOBuffer("?qq")
+    output = IOBuffer()
+    term = REPL.Terminals.TTYTerminal("", input, output, output)
+    lines = join(["row $i " * "x"^30 for i in 1:40], '\n')
+    TerminalPager._pager!(term, lines; input = TerminalPager.PagerInput(input))
+    session = String(take!(output))
+
+    @test count("\e[?1049h", session) == 1
+    @test count("\e[?1049l", session) == 1
+    @test count("\e[2J", session) == 1
+    @test endswith(session, "\e[?25h\e[?1049l\e[?1l")
+    @test count("\e[?1000h", session) == 1
+    @test count("\e[?25l", session) == 1
+end

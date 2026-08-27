@@ -37,6 +37,10 @@ function _help!(pagerd::Pager)
     # pager does not necessarily carry the flag.
     help_str, help_layout = _help_screen(get(pagerd.buf, :color, true)::Bool)
 
+    # The nested session must not toggle the alternate screen buffer: leaving it would
+    # switch the terminal back to the normal screen while the parent session keeps painting
+    # as if it were on the alternate one. The help clears the screen instead, and the parent
+    # repaints everything afterwards.
     _pager!(
         pagerd.term,
         help_str;
@@ -45,6 +49,7 @@ function _help!(pagerd::Pager)
         has_visual_mode = false,
         input = pagerd.input,
         text_layout = help_layout,
+        use_alternate_screen_buffer = false,
         manage_cursor_key_mode = false,
         manage_cursor = false,
         manage_mouse = false,
