@@ -209,7 +209,12 @@ Drop the customization of the pager face `name`, restoring its built-in default.
 The persisted preference is removed and the face is reset for the current session, which
 also discards any customization loaded from `faces.toml` until Julia is restarted.
 
-See also: [`set_face!`](@ref).
+All the faces can be restored at once with [`drop_all_preferences!`](@ref), which also drops
+the other preferences of the package. To reset only the faces, remove the tables
+`[TerminalPager.faces.<name>]` from the `LocalPreferences.toml` of the active environment
+and restart Julia.
+
+See also: [`set_face!`](@ref) and [`drop_all_preferences!`](@ref).
 
 # Arguments
 
@@ -219,6 +224,8 @@ See also: [`set_face!`](@ref).
 
 ```julia
 julia> TerminalPager.drop_face!("search_active_match")
+
+julia> TerminalPager.drop_all_preferences!()
 ```
 """
 function drop_face!(name::AbstractString)

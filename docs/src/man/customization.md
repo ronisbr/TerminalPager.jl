@@ -118,6 +118,13 @@ The default face can be restored with:
 julia> TerminalPager.drop_face!("search_active_match")
 ```
 
+All the faces can be restored at once with [`TerminalPager.drop_all_preferences!`](@ref),
+which also drops the other preferences of the package:
+
+```julia
+julia> TerminalPager.drop_all_preferences!()
+```
+
 The faces are stored in the preference `faces` with the same format as `faces.toml`, so they
 can also be edited directly in the `LocalPreferences.toml` of the active environment:
 
