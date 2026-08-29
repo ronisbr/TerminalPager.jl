@@ -23,9 +23,9 @@ module InlineHelpModule end
     default_config = TerminalPager.DisplayConfig()
     for (name, face) in TerminalPager._FACES
         expected = if name in (:visual_line, :visual_active_line)
-            TerminalPager._face_background_sgr(face)
+            TerminalPager.Decoration(face).background
         else
-            TerminalPager._face_sgr(face)
+            String(TerminalPager.Decoration(face))
         end
         @test getfield(default_config, name) == expected
     end

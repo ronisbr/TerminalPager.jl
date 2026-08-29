@@ -9,34 +9,24 @@ const _Face = TerminalPager.Face
 const _SimpleColor = TerminalPager.SimpleColor
 
 @testset "Face Rendering" begin
-    sgr = TerminalPager._face_sgr
+    # The faces are converted by StringManipulation.jl, which tests the conversion itself.
+    # Only the contract the pager relies on is checked here: the sequence resets the
+    # attributes first, and the visual faces keep only the parameters of the background.
+    sgr(face) = String(TerminalPager.Decoration(face))
 
     @test sgr(_Face()) == "\e[0m"
-    @test sgr(_Face(; inverse = true)) == "\e[0;7m"
+    @test sgr(_Face(; inverse = true)) == "\e[0m\e[7m"
     @test sgr(_Face(; weight = :bold, foreground = :bright_white, background = :blue)) ==
-        "\e[0;1m\e[97m\e[44m"
-    @test sgr(_Face(; weight = :light, slant = :italic, underline = true)) == "\e[0;2;3;4m"
-    @test sgr(_Face(; strikethrough = true, underline = (:red, :curly))) == "\e[0;4;9m"
-    @test sgr(_Face(; underline = false, strikethrough = false, inverse = false)) == "\e[0m"
+        "\e[0m\e[97m\e[44m\e[1m"
+    @test sgr(_Face(; weight = :light, slant = :italic, underline = true)) ==
+        "\e[0m\e[2m\e[3m\e[4m"
+    @test sgr(_Face(; strikethrough = true)) == "\e[0m\e[9m"
 
-    # The default colors are already selected by the reset.
-    @test sgr(_Face(; foreground = :default, background = :default)) == "\e[0m"
-
-    # Merged faces carry the defaults of every attribute, which must not be written.
-    @test sgr(_SS.getface(_Face(; weight = :bold))) == "\e[0;1m"
-
-    # A 24-bit color is written as such or approximated, depending on the terminal.
-    rgb = sgr(_Face(; foreground = "#ff8800", background = 0x005f87))
-    @test startswith(rgb, "\e[0m\e[38;")
-    @test occursin("m\e[48;", rgb)
-    @test endswith(rgb, "m")
-
-    background = TerminalPager._face_background_sgr
+    background(face) = TerminalPager.Decoration(face).background
     @test background(_Face(; background = :blue)) == "44"
     @test background(_Face(; background = :bright_black)) == "100"
     @test background(_Face(; foreground = :red)) == ""
     @test background(_Face(; background = :default)) == ""
-    @test background(_Face()) == ""
     @test startswith(background(_Face(; background = "#005f87")), "48;")
 end
 
@@ -52,15 +42,15 @@ end
 
     config = TerminalPager._display_config()
     @test config == TerminalPager.DisplayConfig()
-    @test config.status_bar == "\e[0;7m"
-    @test config.badge_normal == "\e[0;1m\e[97m\e[44m"
+    @test config.status_bar == "\e[0m\e[7m"
+    @test config.badge_normal == "\e[0m\e[97m\e[44m\e[1m"
     @test config.search_match == "\e[0m\e[30m\e[47m"
     @test config.search_active_match == "\e[0m\e[30m\e[43m"
     @test config.visual_line == "100"
     @test config.visual_active_line == "44"
     @test config.scrollbar_track == "\e[0m\e[90m"
     @test config.scrollbar_thumb == "\e[0m"
-    @test config.help_title == "\e[0;1m\e[36m"
+    @test config.help_title == "\e[0m\e[36m\e[1m"
 
     @test_throws ArgumentError TerminalPager._face_name("unknown")
     @test TerminalPager._face_name("badge_normal") == :terminalpager_badge_normal
@@ -130,7 +120,8 @@ end
         @test _SS.getface(face_name).weight == :bold
 
         # The next session renders the customized face.
-        @test TerminalPager._display_config().search_active_match == "\e[0;1m\e[30m\e[41m"
+        @test TerminalPager._display_config().search_active_match ==
+            "\e[0m\e[30m\e[41m\e[1m"
 
         # Dropping the face restores the default and removes the preference.
         TerminalPager.drop_face!(name)

@@ -357,6 +357,11 @@ _default_face(name::Symbol) = _DEFAULT_FACES[name]
 
 Render every pager face into the escape sequences used by a pager session.
 
+The faces are converted by **StringManipulation.jl**, so that each sequence resets the
+terminal attributes and then selects the ones set in the face. The visual faces keep only
+the SGR parameters of their background, like `"44"`, as `textview` expects for the visual
+line backgrounds.
+
 # Arguments
 
 - `face_of::F`: Callable object returning the `Face` of a pager face name without the
@@ -364,26 +369,29 @@ Render every pager face into the escape sequences used by a pager session.
     (**Default**: `_current_face`)
 """
 function _display_config(face_of::F = _current_face) where {F <: Function}
+    sgr(name::Symbol) = String(Decoration(face_of(name)))
+    background(name::Symbol) = Decoration(face_of(name)).background
+
     return DisplayConfig(
-        _face_sgr(face_of(:status_bar)),
-        _face_sgr(face_of(:badge_normal)),
-        _face_sgr(face_of(:badge_search)),
-        _face_sgr(face_of(:badge_visual)),
-        _face_sgr(face_of(:message_info)),
-        _face_sgr(face_of(:message_error)),
-        _face_sgr(face_of(:search_match)),
-        _face_sgr(face_of(:search_active_match)),
-        _face_background_sgr(face_of(:visual_line)),
-        _face_background_sgr(face_of(:visual_active_line)),
-        _face_sgr(face_of(:ruler)),
-        _face_sgr(face_of(:scrollbar_track)),
-        _face_sgr(face_of(:scrollbar_thumb)),
-        _face_sgr(face_of(:command_status)),
-        _face_sgr(face_of(:help_title)),
-        _face_sgr(face_of(:help_section)),
-        _face_sgr(face_of(:help_description)),
-        _face_sgr(face_of(:help_key)),
-        _face_sgr(face_of(:help_action)),
+        sgr(:status_bar),
+        sgr(:badge_normal),
+        sgr(:badge_search),
+        sgr(:badge_visual),
+        sgr(:message_info),
+        sgr(:message_error),
+        sgr(:search_match),
+        sgr(:search_active_match),
+        background(:visual_line),
+        background(:visual_active_line),
+        sgr(:ruler),
+        sgr(:scrollbar_track),
+        sgr(:scrollbar_thumb),
+        sgr(:command_status),
+        sgr(:help_title),
+        sgr(:help_section),
+        sgr(:help_description),
+        sgr(:help_key),
+        sgr(:help_action),
     )
 end
 
@@ -393,90 +401,6 @@ end
 Construct a display configuration from the built-in default faces.
 """
 DisplayConfig() = _display_config(_default_face)
-
-# NOTE: The rendering below relies on `StyledStrings.termcolor`, which is not part of the
-# public API of StyledStrings.jl. The public `termstyle` cannot be used because it consults
-# the terminfo database and silently drops the reverse video, on which the status bar
-# depends, when `TERM` is `dumb` or unset. `termcolor` has kept the same signature since the
-# first release of StyledStrings.jl, and it handles named colors, 24-bit colors with an
-# 8-bit fallback, and colors that name another face.
-
-"""
-    _face_sgr(face::Face) -> String
-
-Render `face` into an SGR escape sequence that resets the terminal attributes and then
-selects the ones set in `face`. The attributes left unset, or set to their defaults, are
-not written.
-
-# Arguments
-
-- `face::Face`: Face to render.
-"""
-function _face_sgr(face::Face)
-    buf = IOBuffer()
-
-    write(buf, CSI, '0')
-
-    weight = face.weight
-    (weight ∈ (:medium, :semibold, :bold, :extrabold, :black)) && write(buf, ";1")
-    (weight ∈ (:semilight, :light, :extralight, :thin)) && write(buf, ";2")
-    (face.slant ∈ (:italic, :oblique)) && write(buf, ";3")
-    (face.underline ∉ (nothing, false)) && write(buf, ";4")
-    (face.strikethrough === true) && write(buf, ";9")
-    (face.inverse === true) && write(buf, ";7")
-
-    write(buf, 'm')
-
-    _write_color(buf, face.foreground, '3')
-    _write_color(buf, face.background, '4')
-
-    return String(take!(buf))
-end
-
-"""
-    _face_background_sgr(face::Face) -> String
-
-Render the background of `face` into the parameters of an SGR escape sequence, like `"44"`
-or `"48;2;0;95;135"`, as `textview` expects for the visual line backgrounds. Return an empty
-string when the background is unset or the default one.
-
-# Arguments
-
-- `face::Face`: Face whose background is rendered.
-"""
-function _face_background_sgr(face::Face)
-    buf = IOBuffer()
-    _write_color(buf, face.background, '4')
-    sequence = String(take!(buf))
-    isempty(sequence) && return sequence
-
-    # `termcolor` writes `\\e[<parameters>m`. Only the parameters are returned.
-    return sequence[(ncodeunits(CSI) + 1):(end - 1)]
-end
-
-"""
-    _write_color(
-        buf::IOBuffer,
-        color::Union{Nothing, SimpleColor},
-        category::Char,
-    ) -> Nothing
-
-Write the SGR escape sequence selecting `color` for `category` to `buf`, where the category
-is `'3'` for the foreground and `'4'` for the background. Nothing is written when `color` is
-unset or the default one, which the reset written before already selects.
-
-# Arguments
-
-- `buf::IOBuffer`: Buffer receiving the sequence.
-- `color::Union{Nothing, SimpleColor}`: Color to select.
-- `category::Char`: SGR category of the color.
-"""
-function _write_color(buf::IOBuffer, color::Union{Nothing, SimpleColor}, category::Char)
-    isnothing(color) && return nothing
-    (color == SimpleColor(:default)) && return nothing
-    StyledStrings.termcolor(buf, color, category)
-    return nothing
-end
 
 """
     _face_spec(face::Face) -> Dict{String, Any}
