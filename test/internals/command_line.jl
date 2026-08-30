@@ -117,14 +117,14 @@ end
     # On a terminal too narrow for the hints, they are not written. Without an explicit
     # clear, the text left behind by the command editor persisted on the command line.
     pagerd = _create_modal_pagerd(["x", "y"], "")
-    pagerd.display_size = (10, 20)
+    pagerd.display_size = (10, 19)
     pagerd.features = [:help]
 
     TerminalPager._redraw_status_bar!(pagerd)
     output = String(take!(pagerd.term.out_stream))
 
     @test occursin("\e[10;1H\e[0K", output)
-    @test occursin("NORMAL", output)
+    @test occursin("All", output)
     @test !occursin("quit", output)
 end
 
@@ -187,7 +187,7 @@ end
     TerminalPager._redraw_status_bar!(pagerd)
     @test occursin("3 lines copied", String(take!(pagerd.term.out_stream)))
 
-    # The message is removed by the next keystroke, and the prompt is back.
+    # The message is removed by the next keystroke, and the key hints are back.
     pagerd.redraw = false
     TerminalPager._clear_message!(pagerd)
     @test pagerd.redraw
@@ -195,7 +195,7 @@ end
     TerminalPager._redraw_status_bar!(pagerd)
     output = String(take!(pagerd.term.out_stream))
     @test !occursin("3 lines copied", output)
-    @test occursin("NORMAL", output)
+    @test occursin("q:quit", output)
 
     # Clearing without a message does not request a redraw.
     pagerd.redraw = false

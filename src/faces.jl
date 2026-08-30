@@ -16,32 +16,12 @@ const _FACE_PREFIX = "terminalpager_"
 # Default faces, in the order they are documented. The public functions refer to them by the
 # name without the prefix.
 const _FACES = Pair{Symbol, Face}[
-    :status_bar => Face(; inverse = true),
-    :badge_normal => Face(;
-        weight = :bold,
-        foreground = :bright_white,
-        background = :blue,
-    ),
-    :badge_search => Face(;
-        weight = :bold,
-        foreground = :black,
-        background = :yellow,
-    ),
-    :badge_visual => Face(;
-        weight = :bold,
-        foreground = :bright_white,
-        background = :magenta,
-    ),
-    :message_info => Face(;
-        weight = :bold,
-        foreground = :bright_white,
-        background = :green,
-    ),
-    :message_error => Face(;
-        weight = :bold,
-        foreground = :bright_white,
-        background = :red,
-    ),
+    :status_bar => Face(),
+    :status_hint => Face(; foreground = :bright_black),
+    :mode_search => Face(; weight = :bold, foreground = :yellow),
+    :mode_visual => Face(; weight = :bold, foreground = :magenta),
+    :message_info => Face(; foreground = :green),
+    :message_error => Face(; foreground = :red),
     :search_match => Face(; foreground = :black, background = :white),
     :search_active_match => Face(; foreground = :black, background = :yellow),
     :visual_line => Face(; background = :bright_black),
@@ -117,19 +97,22 @@ See also: [`drop_face!`](@ref).
 
 ## Faces
 
-- `"status_bar"`: Status bar. It is drawn in reverse video by default, so that it matches
-    light and dark themes. Custom colors must come with `inverse = false`.
-    (**Default**: reverse video)
-- `"badge_normal"`: Mode badge in the normal mode.
-    (**Default**: bold, bright white on blue)
-- `"badge_search"`: Mode badge in the search mode.
-    (**Default**: bold, black on yellow)
-- `"badge_visual"`: Mode badge in the visual mode.
-    (**Default**: bold, bright white on magenta)
-- `"message_info"`: Informative message on the status bar.
-    (**Default**: bold, bright white on green)
-- `"message_error"`: Error message on the status bar.
-    (**Default**: bold, bright white on red)
+- `"status_bar"`: Base of the status line, which is the last row of the display. It holds
+    the prompt of the normal mode, the position, and the search and visual mode
+    details, and every other element of the row returns to it. Set `inverse = true` to draw
+    the row as a bar.
+    (**Default**: no attributes)
+- `"status_hint"`: Key hints, feature tags, and the hints that the text continues beyond
+    the edges of the view.
+    (**Default**: bright black)
+- `"mode_search"`: Name of the search mode on the status line.
+    (**Default**: bold yellow)
+- `"mode_visual"`: Name of the visual mode on the status line.
+    (**Default**: bold magenta)
+- `"message_info"`: Informative message on the status line.
+    (**Default**: green)
+- `"message_error"`: Error message on the status line.
+    (**Default**: red)
 - `"search_match"`: Inactive search match.
     (**Default**: black on white)
 - `"search_active_match"`: Active search match.
@@ -167,9 +150,9 @@ See also: [`drop_face!`](@ref).
 ```julia
 julia> TerminalPager.set_face!("search_active_match"; background = :red)
 
-julia> TerminalPager.set_face!("badge_normal"; foreground = "#ffffff", background = 0x005f87)
+julia> TerminalPager.set_face!("mode_search"; foreground = "#ffffff", background = 0x005f87)
 
-julia> TerminalPager.set_face!("status_bar"; foreground = :white, background = :blue, inverse = false)
+julia> TerminalPager.set_face!("status_bar"; inverse = true)
 
 julia> TerminalPager.set_face!("help_key", StyledStrings.Face(; weight = :bold, inherit = :terminalpager_help_title))
 ```
@@ -374,9 +357,9 @@ function _display_config(face_of::F = _current_face) where {F <: Function}
 
     return DisplayConfig(
         sgr(:status_bar),
-        sgr(:badge_normal),
-        sgr(:badge_search),
-        sgr(:badge_visual),
+        sgr(:status_hint),
+        sgr(:mode_search),
+        sgr(:mode_visual),
         sgr(:message_info),
         sgr(:message_error),
         sgr(:search_match),

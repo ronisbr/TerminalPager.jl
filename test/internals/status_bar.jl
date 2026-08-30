@@ -64,52 +64,56 @@ end
     pagerd.start_row = 5
     pagerd.cropped_lines = 11
 
-    # The bar fills the whole row: the badge, the key hints, and the position.
+    # In the normal mode, the row holds the prompt glyph, the key hints, and the position.
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL]" * " "^31 * " ?:help  q:quit  45% "
+    @test text == "❯" * " "^39 * "?:help  q:quit   45%"
     @test textwidth(text) == 60
 
     # Without the help feature, only the quit hint is shown.
     pagerd.features = Symbol[]
     text = _status_bar_text(pagerd, output)
-    @test endswith(text, " q:quit  45% ")
-    @test !occursin("help", text)
+    @test text == "❯" * " "^47 * "q:quit   45%"
     @test textwidth(text) == 60
 
-    # Searching shows the active match.
+    # Searching shows the mode name, the active match, and the hints of the search mode.
     pagerd.mode = :searching
     pagerd.ordered_search_matches = [TerminalPager.SearchMatch(i, 1, 1, 1) for i in 1:5]
     pagerd.active_search_match_id = 2
-    @test startswith(_status_bar_text(pagerd, output), "[SEARCH] match 2/5 ")
+    text = _status_bar_text(pagerd, output)
+    @test text == "SEARCH  match 2/5" * " "^12 * "n:next  N:prev  Esc:clear   45%"
+    @test textwidth(text) == 60
 
     empty!(pagerd.ordered_search_matches)
     pagerd.active_search_match_id = 0
-    @test startswith(_status_bar_text(pagerd, output), "[SEARCH] no match ")
+    @test startswith(_status_bar_text(pagerd, output), "SEARCH  no match ")
     pagerd.mode = :view
 
-    # The visual mode shows the number of selected lines.
+    # The visual mode shows the number of selected lines and its own hints.
     pagerd.visual_mode = true
     push!(pagerd.visual_mode_selected_lines, 3)
-    @test startswith(_status_bar_text(pagerd, output), "[VISUAL] 1 selected ")
+    text = _status_bar_text(pagerd, output)
+    @test text == "VISUAL  1 selected" * " "^13 * "m:mark  y:yank  v:leave   45%"
     pagerd.visual_mode = false
     empty!(pagerd.visual_mode_selected_lines)
 
-    # The enabled features are listed. The key hints only take the space that is left.
+    # The enabled features are tagged before the key hints.
     pagerd.frozen_rows = 2
     pagerd.frozen_columns = 3
     pagerd.title_rows = 1
     pagerd.show_ruler = true
     text = _status_bar_text(pagerd, output)
-    @test startswith(text, "[NORMAL] frozen 2×3  titles 1  ruler ")
-    @test endswith(text, " q:quit  45% ")
+    @test text == "❯" * " "^17 * "frozen 2×3  titles 1  ruler   q:quit   45%"
     @test textwidth(text) == 60
 
-    pagerd.display_size = (10, 45)
+    # The key hints are dropped before the tags when the display is too narrow.
+    pagerd.display_size = (10, 44)
     text = _status_bar_text(pagerd, output)
-    @test startswith(text, "[NORMAL] frozen 2×3  titles 1  ruler ")
-    @test endswith(text, " 45% ")
-    @test !occursin("quit", text)
-    @test textwidth(text) == 45
+    @test text == "❯ frozen 2×3  titles 1  ruler   q:quit   45%"
+
+    pagerd.display_size = (10, 43)
+    text = _status_bar_text(pagerd, output)
+    @test text == "❯" * " "^9 * "frozen 2×3  titles 1  ruler   45%"
+    @test textwidth(text) == 43
 end
 
 @testset "Status Bar Position" begin
@@ -119,54 +123,55 @@ end
     # The whole text is visible, the top, the bottom, or a percentage in between. The
     # percentage never reaches 100, because the bottom has its own token.
     pagerd.cropped_lines = 11
-    @test endswith(_status_bar_text(pagerd, output), " q:quit  Top ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   Top")
     pagerd.start_row = 12
     pagerd.cropped_lines = 0
-    @test endswith(_status_bar_text(pagerd, output), " q:quit  Bot ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   Bot")
     pagerd.start_row = 2
     pagerd.cropped_lines = 10
-    @test endswith(_status_bar_text(pagerd, output), " q:quit  50% ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   50%")
     pagerd.cropped_lines = 1
-    @test endswith(_status_bar_text(pagerd, output), " q:quit  95% ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   95%")
     pagerd.cropped_lines = 19
-    @test endswith(_status_bar_text(pagerd, output), " q:quit   5% ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit    5%")
 
     # With frozen rows, the top is the first scrollable row.
     pagerd.frozen_rows = 2
     pagerd.start_row = 3
     pagerd.cropped_lines = 11
-    @test endswith(_status_bar_text(pagerd, output), " Top ")
+    @test endswith(_status_bar_text(pagerd, output), "   Top")
     pagerd.start_row = 4
-    @test endswith(_status_bar_text(pagerd, output), " 45% ")
+    @test endswith(_status_bar_text(pagerd, output), "   45%")
 
     pagerd, output = _create_status_pagerd(["a", "b"]; display_size = (10, 30))
-    @test endswith(_status_bar_text(pagerd, output), " q:quit  All ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   All")
 
     pagerd, output = _create_status_pagerd(String[]; display_size = (10, 30))
-    @test _status_bar_text(pagerd, output) == "[NORMAL]" * " "^9 * " q:quit  All "
+    @test _status_bar_text(pagerd, output) == "❯" * " "^17 * "q:quit   All"
 end
 
 @testset "Status Bar Hidden Text Hints" begin
     # The hints tell that the text continues beyond the left or the right edge of the view.
+    # They keep a slot of two columns, so that the key hints do not move while scrolling.
     pagerd, output = _create_status_pagerd(["x"^100, "y"^50]; display_size = (10, 50))
     TerminalPager._view!(pagerd)
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL]" * " "^26 * " ›  q:quit  All "
+    @test text == "❯" * " "^33 * "q:quit    ›  All"
     @test textwidth(text) == 50
 
     pagerd.start_column = 30
     TerminalPager._view!(pagerd)
-    @test endswith(_status_bar_text(pagerd, output), " ‹›  q:quit  All ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   ‹›  All")
 
     pagerd.start_column = 51
     TerminalPager._view!(pagerd)
-    @test endswith(_status_bar_text(pagerd, output), " ‹  q:quit  All ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   ‹   All")
 
     # The frozen columns are never hidden.
     pagerd.frozen_columns = 5
     pagerd.start_column = 6
     TerminalPager._view!(pagerd)
-    @test endswith(_status_bar_text(pagerd, output), " ›  q:quit  All ")
+    @test endswith(_status_bar_text(pagerd, output), "q:quit    ›  All")
 
     pagerd, output = _create_status_pagerd(["short"]; display_size = (10, 40))
     TerminalPager._view!(pagerd)
@@ -184,21 +189,32 @@ end
 
     # The hints are dropped first, then the position.
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL]" * " "^1 * " ?:help  q:quit  45% "
+    @test text == "❯" * " "^9 * "?:help  q:quit   45%"
     @test textwidth(text) == 30
 
-    pagerd.display_size = (10, 22)
+    pagerd.display_size = (10, 19)
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL]" * " "^9 * " 45% "
-    @test textwidth(text) == 22
-
-    # The badge is the last segment to go, and it is cut at the display width.
-    pagerd.display_size = (10, 12)
-    text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL]" * " "^4
+    @test text == "❯" * " "^15 * "45%"
+    @test textwidth(text) == 19
 
     pagerd.display_size = (10, 5)
-    @test _status_bar_text(pagerd, output) == "[NORM"
+    @test _status_bar_text(pagerd, output) == "❯ 45%"
+
+    pagerd.display_size = (10, 2)
+    @test _status_bar_text(pagerd, output) == "❯ "
+
+    # The mode name is the last segment to go: first the details, then the position.
+    pagerd.mode = :searching
+    pagerd.ordered_search_matches = [TerminalPager.SearchMatch(i, 1, 1, 1) for i in 1:5]
+    pagerd.active_search_match_id = 2
+    pagerd.display_size = (10, 24)
+    @test _status_bar_text(pagerd, output) == "SEARCH  match 2/5    45%"
+    pagerd.display_size = (10, 20)
+    @test _status_bar_text(pagerd, output) == "SEARCH" * " "^11 * "45%"
+    pagerd.display_size = (10, 9)
+    @test _status_bar_text(pagerd, output) == "SEARCH" * " "^3
+    pagerd.display_size = (10, 5)
+    @test _status_bar_text(pagerd, output) == "SEARC"
 
     pagerd.display_size = (10, 0)
     @test _status_bar_text(pagerd, output) == ""
@@ -207,42 +223,55 @@ end
 @testset "Status Bar Messages and Colors" begin
     pagerd, output = _create_status_pagerd(["line"]; display_size = (10, 30))
 
-    # A message replaces every segment but the badge, carries an icon telling its kind, and
-    # is cut at the display width.
+    # A message replaces the left side, carries an icon telling its kind, keeps the position,
+    # and is cut at the display width.
     TerminalPager._set_message!(pagerd, "Invalid regex"; kind = :error)
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL] ✗ Invalid regex" * " "^6
+    @test text == "✗ Invalid regex" * " "^12 * "All"
     @test textwidth(text) == 30
 
     TerminalPager._set_message!(pagerd, "A very long message that does not fit the row")
     text = _status_bar_text(pagerd, output)
-    @test text == "[NORMAL] ✓ A very long message"
+    @test text == "✓ A very long message that All"
     @test textwidth(text) == 30
 
-    # With color, the bar is drawn in reverse video with a colored badge, and it ends with a
-    # reset before the cursor is parked.
+    # A message hides the mode name.
+    pagerd.mode = :searching
+    @test startswith(_status_bar_text(pagerd, output), "✓ A very long")
+    pagerd.mode = :view
+    TerminalPager._clear_message!(pagerd)
+
+    # With color, the row starts with the base face, the mode name and the hints have their
+    # own faces and return to the base, and the row ends with a reset before the cursor is
+    # parked.
     pagerd, output = _create_status_pagerd(["line"]; color = true, display_size = (10, 30))
+    config = pagerd.display_config
+    @test config.status_bar == "\e[0m"
     TerminalPager._redraw_status_bar!(pagerd)
     colored = String(take!(output))
-    config = pagerd.display_config
-    badge = config.badge_normal * " NORMAL " * config.status_bar
-    @test occursin(badge, colored)
-    @test endswith(colored, "\e[0m\e[10;1H")
+    @test occursin("\e[0K" * config.status_bar * "❯", colored)
+    @test occursin(config.status_hint * "q:quit" * config.status_bar, colored)
+    @test endswith(colored, "All\e[0m\e[10;1H")
 
     TerminalPager._set_message!(pagerd, "Invalid regex"; kind = :error)
     TerminalPager._redraw_status_bar!(pagerd)
     colored = String(take!(output))
-    @test occursin(config.message_error * " ✗ Invalid regex", colored)
+    @test occursin(config.message_error * "✗ Invalid regex" * config.status_bar, colored)
 
     TerminalPager._set_message!(pagerd, "3 lines copied")
     TerminalPager._redraw_status_bar!(pagerd)
     colored = String(take!(output))
-    @test occursin(config.message_info * " ✓ 3 lines copied", colored)
+    @test occursin(config.message_info * "✓ 3 lines copied", colored)
 
     pagerd.mode = :searching
     TerminalPager._clear_message!(pagerd)
     TerminalPager._redraw_status_bar!(pagerd)
-    @test occursin(config.badge_search * " SEARCH ", String(take!(output)))
+    @test occursin(config.mode_search * "SEARCH" * config.status_bar, String(take!(output)))
+
+    pagerd.mode = :view
+    pagerd.visual_mode = true
+    TerminalPager._redraw_status_bar!(pagerd)
+    @test occursin(config.mode_visual * "VISUAL" * config.status_bar, String(take!(output)))
 end
 
 @testset "Status Bar Key Hints" begin
@@ -254,25 +283,31 @@ end
     @test TerminalPager._pretty_key(("j", true, false, false)) == "Alt-j"
     @test TerminalPager._pretty_key(("<", false, false, false)) == "<"
 
-    # The hints follow the key bindings and pick the shortest name.
+    # The hints follow the key bindings and the mode, and pick the shortest name.
     try
         @test TerminalPager._primary_key(:quit) == "q"
         @test TerminalPager._primary_key(:home) == "<"
-        @test TerminalPager._status_hint(true) == "?:help  q:quit"
-        @test TerminalPager._status_hint(false) == "q:quit"
+        @test TerminalPager._status_hint(:normal, true) == "?:help  q:quit"
+        @test TerminalPager._status_hint(:normal, false) == "q:quit"
+        @test TerminalPager._status_hint(:search, true) == "n:next  N:prev  Esc:clear"
+        @test TerminalPager._status_hint(:visual, true) == "m:mark  y:yank  v:leave"
 
         TerminalPager.delete_keybinding("q")
         @test isnothing(TerminalPager._primary_key(:quit))
-        @test TerminalPager._status_hint(true) == "?:help"
-        @test TerminalPager._status_hint(false) == ""
+        @test TerminalPager._status_hint(:normal, true) == "?:help"
+        @test TerminalPager._status_hint(:normal, false) == ""
 
         TerminalPager.set_keybinding("<F10>", :quit)
-        @test TerminalPager._status_hint(false) == "F10:quit"
+        @test TerminalPager._status_hint(:normal, false) == "F10:quit"
+
+        # An unbound action is skipped without leaving a gap.
+        TerminalPager.delete_keybinding("N")
+        @test TerminalPager._status_hint(:search, false) == "n:next  Esc:clear"
     finally
         TerminalPager.reset_keybindings()
     end
 
-    @test TerminalPager._status_hint(true) == "?:help  q:quit"
+    @test TerminalPager._status_hint(:normal, true) == "?:help  q:quit"
 end
 
 @testset "Session Cursor and Exit" begin

@@ -8,19 +8,19 @@
 #                                        Constants                                         #
 ############################################################################################
 
-# The status bar is assembled from constant pieces and numbers, so that it does not allocate
-# at every keystroke. Every badge has the same width.
-const _BADGE_NORMAL = " NORMAL "
-const _BADGE_SEARCH = " SEARCH "
-const _BADGE_VISUAL = " VISUAL "
-const _BADGE_NORMAL_PLAIN = "[NORMAL]"
-const _BADGE_SEARCH_PLAIN = "[SEARCH]"
-const _BADGE_VISUAL_PLAIN = "[VISUAL]"
-const _BADGE_WIDTH = 8
+# The status line is assembled from constant pieces and numbers, so that it does not
+# allocate at every keystroke. The normal mode shows a prompt glyph, which must not be `:`
+# because that is the prompt of the go to line command, and the other modes show their
+# names, which have the same width.
+const _PROMPT = "❯"
+const _PROMPT_WIDTH = 1
+const _MODE_SEARCH = "SEARCH"
+const _MODE_VISUAL = "VISUAL"
+const _MODE_WIDTH = 6
 
-const _NO_MATCH = " no match "
+const _NO_MATCH = "no match"
 const _NO_MATCH_WIDTH = textwidth(_NO_MATCH)
-const _RULER = " ruler "
+const _RULER = "ruler"
 const _RULER_WIDTH = textwidth(_RULER)
 
 # Position tokens, like the ones of `vim`. Every token, including a percentage, is three
@@ -31,16 +31,25 @@ const _POSITION_BOTTOM = "Bot"
 const _POSITION_WIDTH = 3
 
 # Hints telling that the text continues beyond the left and the right edges of the view.
+# They occupy a slot of two columns whenever one of them is shown, so that the segments at
+# their left do not move while the view scrolls horizontally.
 const _HIDDEN_LEFT = "‹"
 const _HIDDEN_RIGHT = "›"
+const _HIDDEN_WIDTH = 2
 
 # Icons telling the kind of a message at a glance. Both have a display width of one.
 const _MESSAGE_INFO_ICON = "✓"
 const _MESSAGE_ERROR_ICON = "✗"
 
-# Key hints of the status bar, rebuilt when the key bindings change. The entries are the
-# generation they were built for, the hints with the help action, and without it.
-const _STATUS_HINTS = Ref{Tuple{Int, String, String}}((-1, "", ""))
+# Gaps of the status line: between the items of a group, like the feature tags, and between
+# the groups, like the key hints and the position.
+const _ITEM_GAP = 2
+const _GROUP_GAP = 3
+
+# Key hints of the status line, rebuilt when the key bindings change. The entries are the
+# generation they were built for, and the hints of the normal mode with and without the
+# help action, of the search mode, and of the visual mode.
+const _STATUS_HINTS = Ref{Tuple{Int, String, String, String, String}}((-1, "", "", "", ""))
 
 # Padding is written directly from the bytes of this string, so that right-aligning the
 # hint does not allocate a full-width string at every frame.
@@ -113,52 +122,86 @@ function _prompt_number!(pagerd::Pager, prefix::String)
 end
 
 """
-    _status_hint(with_help::Bool) -> String
+    _status_hint(mode::Symbol, with_help::Bool) -> String
 
-Return the key hints shown at the right of the status bar, such as `?:help  q:quit`.
+Return the key hints of the status line for `mode`, which is `:normal`, `:search`, or
+`:visual`, like `?:help  q:quit` or `n:next  N:prev  Esc:clear`.
 
-The hints are rebuilt only when the key bindings change, so that the status bar does not
+The hints are rebuilt only when the key bindings change, so that the status line does not
 allocate at every frame.
 
 # Arguments
 
-- `with_help::Bool`: Include the hint of the help action.
+- `mode::Symbol`: Mode whose hints are returned.
+- `with_help::Bool`: Include the hint of the help action in the normal mode.
 """
-function _status_hint(with_help::Bool)
+function _status_hint(mode::Symbol, with_help::Bool)
     generation = _KEYBINDINGS_GENERATION[]
     cached = _STATUS_HINTS[]
 
     if cached[1] != generation
-        quit = _primary_key(:quit)
-        help = _primary_key(:help)
-        without_help = isnothing(quit) ? "" : quit * ":quit"
-
-        hint_with_help = if isnothing(help)
-            without_help
-        elseif isempty(without_help)
-            help * ":help"
-        else
-            help * ":help  " * without_help
-        end
-
-        cached = (generation, hint_with_help, without_help)
+        cached = (
+            generation,
+            _join_hints((:help, "help"), (:quit, "quit")),
+            _join_hints((:quit, "quit")),
+            _join_hints(
+                (:next_match, "next"),
+                (:previous_match, "prev"),
+                (:quit_search, "clear"),
+            ),
+            _join_hints(
+                (:select_visual_mode_line, "mark"),
+                (:yank, "yank"),
+                (:toggle_visual_mode, "leave"),
+            ),
+        )
         _STATUS_HINTS[] = cached
     end
 
+    mode === :search && return cached[4]
+    mode === :visual && return cached[5]
     return with_help ? cached[2] : cached[3]
+end
+
+"""
+    _join_hints(entries::Tuple{Symbol, String}...) -> String
+
+Join the key hints of `entries`, each one an action and its label, like `n:next`, using the
+shortest key bound to the action and skipping the unbound ones.
+
+# Arguments
+
+- `entries::Tuple{Symbol, String}...`: Actions and their labels.
+"""
+function _join_hints(entries::Tuple{Symbol, String}...)
+    buf = IOBuffer()
+
+    for (action, label) in entries
+        key = _primary_key(action)
+        isnothing(key) && continue
+        (position(buf) > 0) && _write_blanks(buf, _ITEM_GAP)
+        write(buf, key, ':', label)
+    end
+
+    return String(take!(buf))
 end
 
 """
     _redraw_status_bar!(pagerd::Pager) -> Nothing
 
-Redraw the status bar of `pagerd` on the last row of the display.
+Redraw the status line of `pagerd` on the last row of the display.
 
-The bar shows the mode badge, the search and visual mode state, the enabled features, the
-hints that the text continues beyond the left or the right edge of the view, the key hints,
-and the position, which is `All` when the whole text is visible, `Top`, `Bot`, or the
-percentage of the text above the bottom of the view. When the display is too narrow, the
-key hints are dropped first, then the segments from the least to the most important one. A
-pending message replaces every segment but the badge.
+The row is quiet: nothing is drawn with a background. It begins with the prompt `❯` in the
+normal mode, or with the colored name of the search or the visual mode, followed by the
+active match or the number of selected lines. The right side
+holds, from the left, the tags of the enabled features, the key hints of the current mode,
+the hints that the text continues beyond the left or the right edge of the view, which
+keep a slot of two columns so that the key hints do not move while the view scrolls
+horizontally, and the position, which is `All` when the whole text is visible, `Top`,
+`Bot`, or the percentage of the text above the bottom of the view. A pending message
+replaces the left side. When the display is too narrow, the key hints are dropped first,
+then the feature tags, the hidden text hints, and the mode details, so that the mode name
+and the position survive longest.
 
 # Arguments
 
@@ -168,9 +211,9 @@ function _redraw_status_bar!(pagerd::Pager)
     term = pagerd.term
     rows, cols = pagerd.display_size
     num_lines = pagerd.num_lines
-    mode = pagerd.mode
     use_color = get(term.out_stream, :color, true)::Bool
     display_config = pagerd.display_config
+    base = display_config.status_bar
 
     out = _screen_buffer!(pagerd)
 
@@ -184,60 +227,62 @@ function _redraw_status_bar!(pagerd::Pager)
         return nothing
     end
 
-    # == Badge =============================================================================
+    use_color && write(out, base)
 
-    badge, badge_face = if pagerd.visual_mode
-        use_color ? (_BADGE_VISUAL, display_config.badge_visual) : (_BADGE_VISUAL_PLAIN, "")
-    elseif mode == :searching
-        use_color ? (_BADGE_SEARCH, display_config.badge_search) : (_BADGE_SEARCH_PLAIN, "")
+    # == Position ==========================================================================
+
+    # `All`, `Top`, `Bot`, or `NN%`. The percentage never reaches 100, because the bottom of
+    # the text has its own token, and an empty text has nothing to scroll.
+    frozen_rows = pagerd.frozen_rows
+    cropped_lines = pagerd.cropped_lines
+    at_top = pagerd.start_row <= max(1, frozen_rows + 1)
+    at_bottom = cropped_lines == 0
+    percentage = if num_lines > 0
+        clamp(round(Int, 100 * (1 - cropped_lines / num_lines)), 1, 99)
     else
-        use_color ? (_BADGE_NORMAL, display_config.badge_normal) : (_BADGE_NORMAL_PLAIN, "")
+        0
     end
-
-    use_color && write(out, badge_face)
-
-    if cols < _BADGE_WIDTH
-        # Every badge is ASCII, so the bytes are the columns.
-        GC.@preserve badge unsafe_write(out, pointer(badge), UInt(cols))
-        use_color && write(out, _SGR_RESET)
-        _move_cursor(out, rows, 1)
-        _flush_screen!(pagerd)
-        return nothing
-    end
-
-    write(out, badge)
-    use_color && write(out, display_config.status_bar)
-    used = _BADGE_WIDTH
+    w_position = _POSITION_WIDTH
 
     # == Message ===========================================================================
 
     message = pagerd.message
 
     if !isempty(message)
-        # The message replaces every other segment until the next keystroke. It is shown
-        # like a toast, with an icon and a color that tell its kind at a glance.
-        available = cols - used
-        width = 0
+        # The message replaces the left side until the next keystroke. It is shown with an
+        # icon and a color that tell its kind at a glance. The position is kept if it fits.
         is_error = pagerd.message_kind === :error
+        show_position = 1 + 1 + w_position <= cols
+        available = cols - (show_position ? w_position + 1 : 0)
+        width = 0
 
         message_face = is_error ? display_config.message_error : display_config.message_info
         use_color && write(out, message_face)
 
+        if available >= 1
+            write(out, is_error ? _MESSAGE_ERROR_ICON : _MESSAGE_INFO_ICON)
+            width += 1
+        end
+
         if available >= 3
             write(out, UInt8(' '))
-            write(out, is_error ? _MESSAGE_ERROR_ICON : _MESSAGE_INFO_ICON)
-            write(out, UInt8(' '))
-            width += 3
+            width += 1
+
+            for c in message
+                character_width = textwidth(c)
+                (width + character_width > available) && break
+                write(out, c)
+                width += character_width
+            end
         end
 
-        for c in message
-            character_width = textwidth(c)
-            (width + character_width > available) && break
-            write(out, c)
-            width += character_width
+        use_color && write(out, base)
+
+        if show_position
+            _write_blanks(out, cols - width - w_position)
+            _write_position(out, num_lines, at_top, at_bottom, percentage)
         end
 
-        _write_blanks(out, available - width)
         use_color && write(out, _SGR_RESET)
         _move_cursor(out, rows, 1)
         _flush_screen!(pagerd)
@@ -248,152 +293,207 @@ function _redraw_status_bar!(pagerd::Pager)
 
     # Everything but the numbers is constant, so the widths are computed from the number of
     # digits. Assembling strings here allocated at every keystroke.
+    # The prompt is written in the base face, whereas the mode names have their own faces.
+    in_visual = pagerd.visual_mode
+    in_search = pagerd.mode == :searching
+    show_mode = in_visual || in_search
+    w_mode = show_mode ? _MODE_WIDTH : _PROMPT_WIDTH
+    mode_name = in_visual ? _MODE_VISUAL : (in_search ? _MODE_SEARCH : _PROMPT)
+    mode_face = in_visual ? display_config.mode_visual : display_config.mode_search
 
-    # Search: " match i/n " or " no match ".
+    # Details of the mode: "n selected", "match i/n", or "no match".
+    num_selected = length(pagerd.visual_mode_selected_lines)
     num_matches = length(pagerd.ordered_search_matches)
     match_id = pagerd.active_search_match_id
-    w_search = if mode != :searching
-        0
-    elseif num_matches > 0
-        9 + ndigits(match_id) + ndigits(num_matches)
+    w_detail = if in_visual
+        ndigits(num_selected) + 9
+    elseif in_search
+        num_matches > 0 ? 7 + ndigits(match_id) + ndigits(num_matches) : _NO_MATCH_WIDTH
     else
-        _NO_MATCH_WIDTH
+        0
     end
 
-    # Visual mode: " n selected ".
-    num_selected = length(pagerd.visual_mode_selected_lines)
-    w_visual = pagerd.visual_mode ? 11 + ndigits(num_selected) : 0
-
-    # Features: " frozen r×c ", " titles t ", and " ruler ".
-    frozen_rows = pagerd.frozen_rows
+    # Feature tags: "frozen r×c", "titles t", and "ruler".
     frozen_columns = pagerd.frozen_columns
     show_frozen = (frozen_rows > 0) || (frozen_columns > 0)
-    w_frozen = show_frozen ? 10 + ndigits(frozen_rows) + ndigits(frozen_columns) : 0
+    w_frozen = show_frozen ? 8 + ndigits(frozen_rows) + ndigits(frozen_columns) : 0
     title_rows = pagerd.title_rows
-    w_titles = title_rows > 0 ? 9 + ndigits(title_rows) : 0
+    w_titles = title_rows > 0 ? 7 + ndigits(title_rows) : 0
     w_ruler = pagerd.show_ruler ? _RULER_WIDTH : 0
+    num_tags = (w_frozen > 0) + (w_titles > 0) + (w_ruler > 0)
+    w_tags = w_frozen + w_titles + w_ruler + max(num_tags - 1, 0) * _ITEM_GAP
+
+    # Key hints of the current mode.
+    hint_mode = in_visual ? :visual : (in_search ? :search : :normal)
+    hint = _status_hint(hint_mode, :help ∈ pagerd.features)
+    w_hint = textwidth(hint)
 
     # Hidden text: "‹" when the view is scrolled to the right and "›" when the text is cut
     # at the right edge. Notice that the hints follow the last rendered frame.
     hidden_left = pagerd.start_column > max(1, frozen_columns + 1)
     hidden_right = pagerd.cropped_columns > 0
-    w_hidden = hidden_left + hidden_right
-
-    # Position: " All ", " Top ", " Bot ", or " NN% ". The percentage never reaches 100,
-    # because the bottom of the text has its own token, and an empty text has nothing to
-    # scroll.
-    cropped_lines = pagerd.cropped_lines
-    at_top = pagerd.start_row <= max(1, frozen_rows + 1)
-    at_bottom = cropped_lines == 0
-    percentage = if num_lines > 0
-        clamp(round(Int, 100 * (1 - cropped_lines / num_lines)), 1, 99)
-    else
-        0
-    end
-
-    # Key hints: " ?:help  q:quit ".
-    hint = _status_hint(:help ∈ pagerd.features)
+    w_arrows = (hidden_left || hidden_right) ? _HIDDEN_WIDTH : 0
 
     # == Fit ===============================================================================
 
-    # The position is kept whenever it fits next to the badge. The remaining segments are
-    # added from the most to the least important one, and the key hints only take the space
-    # that is left at the end.
-    right = (used + _POSITION_WIDTH + 2 <= cols) ? _POSITION_WIDTH + 2 : 0
+    # The segments are added from the most to the least important one: the prompt or the
+    # mode name, the position, the mode details, the hidden text hints, the feature tags,
+    # and the key hints. At least one blank separates the left and the right sides.
+    if w_mode > cols
+        # Only a mode name can be cut, because the prompt is one column wide and the display
+        # has at least one. Every mode name is ASCII, so the bytes are the columns.
+        (use_color && show_mode) && write(out, mode_face)
+        GC.@preserve mode_name unsafe_write(out, pointer(mode_name), UInt(cols))
+        use_color && write(out, _SGR_RESET)
+        _move_cursor(out, rows, 1)
+        _flush_screen!(pagerd)
+        return nothing
+    end
 
-    show_search = (w_search > 0) && (used + w_search + right <= cols)
-    show_search && (used += w_search)
+    left = w_mode
+    gap = 1
 
-    show_visual = (w_visual > 0) && (used + w_visual + right <= cols)
-    show_visual && (used += w_visual)
+    show_position = left + gap + w_position <= cols
+    right = show_position ? w_position : 0
 
-    show_frozen &= used + w_frozen + right <= cols
-    show_frozen && (used += w_frozen)
+    show_detail = (w_detail > 0) && (left + _ITEM_GAP + w_detail + gap + right <= cols)
+    show_detail && (left += _ITEM_GAP + w_detail)
 
-    show_titles = (w_titles > 0) && (used + w_titles + right <= cols)
-    show_titles && (used += w_titles)
+    show_arrows =
+        (w_arrows > 0) &&
+        show_position &&
+        (left + gap + right + w_arrows + _ITEM_GAP <= cols)
+    show_arrows && (right += w_arrows + _ITEM_GAP)
 
-    show_ruler = (w_ruler > 0) && (used + w_ruler + right <= cols)
-    show_ruler && (used += w_ruler)
-
-    show_hidden = (w_hidden > 0) && (right > 0) && (used + right + w_hidden + 2 <= cols)
-    show_hidden && (right += w_hidden + 2)
+    show_tags =
+        (w_tags > 0) &&
+        show_position &&
+        (left + gap + right + w_tags + _GROUP_GAP <= cols)
+    show_tags && (right += w_tags + _GROUP_GAP)
 
     show_hint =
-        !isempty(hint) && (right > 0) && (used + right + textwidth(hint) + 2 <= cols)
-    show_hint && (right += textwidth(hint) + 2)
+        (w_hint > 0) &&
+        show_position &&
+        (left + gap + right + w_hint + _GROUP_GAP <= cols)
+    show_hint && (right += w_hint + _GROUP_GAP)
 
     # == Rendering =========================================================================
 
-    if show_search
-        if num_matches > 0
-            write(out, " match ")
+    (use_color && show_mode) && write(out, mode_face)
+    write(out, mode_name)
+    (use_color && show_mode) && write(out, base)
+
+    if show_detail
+        _write_blanks(out, _ITEM_GAP)
+
+        if in_visual
+            _write_decimal(out, num_selected)
+            write(out, " selected")
+        elseif num_matches > 0
+            write(out, "match ")
             _write_decimal(out, match_id)
             write(out, UInt8('/'))
             _write_decimal(out, num_matches)
-            write(out, UInt8(' '))
         else
             write(out, _NO_MATCH)
         end
     end
 
-    if show_visual
-        write(out, UInt8(' '))
-        _write_decimal(out, num_selected)
-        write(out, " selected ")
-    end
+    _write_blanks(out, cols - left - right)
 
-    if show_frozen
-        write(out, " frozen ")
-        _write_decimal(out, frozen_rows)
-        write(out, "×")
-        _write_decimal(out, frozen_columns)
-        write(out, UInt8(' '))
-    end
+    hint_face = display_config.status_hint
 
-    if show_titles
-        write(out, " titles ")
-        _write_decimal(out, title_rows)
-        write(out, UInt8(' '))
-    end
+    if show_tags
+        use_color && write(out, hint_face)
+        written = 0
 
-    show_ruler && write(out, _RULER)
-
-    _write_blanks(out, cols - used - right)
-
-    if right > 0
-        write(out, UInt8(' '))
-
-        if show_hidden
-            hidden_left && write(out, _HIDDEN_LEFT)
-            hidden_right && write(out, _HIDDEN_RIGHT)
-            write(out, "  ")
+        if show_frozen
+            write(out, "frozen ")
+            _write_decimal(out, frozen_rows)
+            write(out, "×")
+            _write_decimal(out, frozen_columns)
+            written += 1
         end
 
-        if show_hint
-            write(out, hint)
-            write(out, "  ")
+        if w_titles > 0
+            (written > 0) && _write_blanks(out, _ITEM_GAP)
+            write(out, "titles ")
+            _write_decimal(out, title_rows)
+            written += 1
         end
 
-        if (num_lines == 0) || (at_top && at_bottom)
-            write(out, _POSITION_ALL)
-        elseif at_top
-            write(out, _POSITION_TOP)
-        elseif at_bottom
-            write(out, _POSITION_BOTTOM)
-        else
-            _write_blanks(out, 2 - ndigits(percentage))
-            _write_decimal(out, percentage)
-            write(out, UInt8('%'))
+        if w_ruler > 0
+            (written > 0) && _write_blanks(out, _ITEM_GAP)
+            write(out, _RULER)
         end
 
-        write(out, UInt8(' '))
+        use_color && write(out, base)
+        _write_blanks(out, _GROUP_GAP)
     end
+
+    if show_hint
+        use_color && write(out, hint_face)
+        write(out, hint)
+        use_color && write(out, base)
+        _write_blanks(out, _GROUP_GAP)
+    end
+
+    if show_arrows
+        use_color && write(out, hint_face)
+        hidden_left ? write(out, _HIDDEN_LEFT) : write(out, UInt8(' '))
+        hidden_right ? write(out, _HIDDEN_RIGHT) : write(out, UInt8(' '))
+        use_color && write(out, base)
+        _write_blanks(out, _ITEM_GAP)
+    end
+
+    show_position && _write_position(out, num_lines, at_top, at_bottom, percentage)
 
     use_color && write(out, _SGR_RESET)
     _move_cursor(out, rows, 1)
 
     _flush_screen!(pagerd)
+
+    return nothing
+end
+
+"""
+    _write_position(
+        io::IO,
+        num_lines::Int,
+        at_top::Bool,
+        at_bottom::Bool,
+        percentage::Int
+    ) -> Nothing
+
+Write the position of the status line to `io`, which is always three columns wide: `All`
+if the whole text is visible, `Top`, `Bot`, or `percentage` right-aligned before `%`.
+
+# Arguments
+
+- `io::IO`: Output stream to update.
+- `num_lines::Int`: Number of lines of the text.
+- `at_top::Bool`: Whether the view shows the first scrollable line.
+- `at_bottom::Bool`: Whether the view shows the last line.
+- `percentage::Int`: Percentage of the text above the bottom of the view.
+"""
+function _write_position(
+    io::IO,
+    num_lines::Int,
+    at_top::Bool,
+    at_bottom::Bool,
+    percentage::Int,
+)
+    if (num_lines == 0) || (at_top && at_bottom)
+        write(io, _POSITION_ALL)
+    elseif at_top
+        write(io, _POSITION_TOP)
+    elseif at_bottom
+        write(io, _POSITION_BOTTOM)
+    else
+        _write_blanks(io, 2 - ndigits(percentage))
+        _write_decimal(io, percentage)
+        write(io, UInt8('%'))
+    end
 
     return nothing
 end

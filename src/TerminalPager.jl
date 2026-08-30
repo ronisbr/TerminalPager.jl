@@ -148,20 +148,22 @@ The colors and the text attributes of the pager are faces registered with
 file `config/faces.toml` of the Julia depot under the tables `[terminalpager.<name>]`. The
 available faces are listed as follows:
 
-- `"status_bar"`: Status bar. It is drawn in reverse video by default, so that it matches
-    light and dark themes. Since the terminal swaps the colors of a face with
-    `inverse = true`, custom colors must come with `inverse = false`.
-    (**Default**: reverse video)
-- `"badge_normal"`: Mode badge in the normal mode.
-    (**Default**: bold, bright white on blue)
-- `"badge_search"`: Mode badge in the search mode.
-    (**Default**: bold, black on yellow)
-- `"badge_visual"`: Mode badge in the visual mode.
-    (**Default**: bold, bright white on magenta)
-- `"message_info"`: Informative message on the status bar.
-    (**Default**: bold, bright white on green)
-- `"message_error"`: Error message on the status bar.
-    (**Default**: bold, bright white on red)
+- `"status_bar"`: Base of the status line, which is the last row of the display. It holds
+    the prompt of the normal mode, the position, and the search and visual mode
+    details, and every other element of the row returns to it. Set `inverse = true` to draw
+    the row as a bar.
+    (**Default**: no attributes)
+- `"status_hint"`: Key hints, feature tags, and the hints that the text continues beyond
+    the edges of the view.
+    (**Default**: bright black)
+- `"mode_search"`: Name of the search mode on the status line.
+    (**Default**: bold yellow)
+- `"mode_visual"`: Name of the visual mode on the status line.
+    (**Default**: bold magenta)
+- `"message_info"`: Informative message on the status line.
+    (**Default**: green)
+- `"message_error"`: Error message on the status line.
+    (**Default**: red)
 - `"search_match"`: Inactive search match.
     (**Default**: black on white)
 - `"search_active_match"`: Active search match.

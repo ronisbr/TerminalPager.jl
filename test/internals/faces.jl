@@ -15,12 +15,12 @@ const _SimpleColor = TerminalPager.SimpleColor
     sgr(face) = String(TerminalPager.Decoration(face))
 
     @test sgr(_Face()) == "\e[0m"
-    @test sgr(_Face(; inverse = true)) == "\e[0m\e[7m"
+    @test sgr(_Face(; inverse = true)) == "\e[0;7m"
     @test sgr(_Face(; weight = :bold, foreground = :bright_white, background = :blue)) ==
-        "\e[0m\e[97m\e[44m\e[1m"
+        "\e[0;97;44;1m"
     @test sgr(_Face(; weight = :light, slant = :italic, underline = true)) ==
-        "\e[0m\e[2m\e[3m\e[4m"
-    @test sgr(_Face(; strikethrough = true)) == "\e[0m\e[9m"
+        "\e[0;2;3;4m"
+    @test sgr(_Face(; strikethrough = true)) == "\e[0;9m"
 
     background(face) = TerminalPager.Decoration(face).background
     @test background(_Face(; background = :blue)) == "44"
@@ -42,18 +42,21 @@ end
 
     config = TerminalPager._display_config()
     @test config == TerminalPager.DisplayConfig()
-    @test config.status_bar == "\e[0m\e[7m"
-    @test config.badge_normal == "\e[0m\e[97m\e[44m\e[1m"
-    @test config.search_match == "\e[0m\e[30m\e[47m"
-    @test config.search_active_match == "\e[0m\e[30m\e[43m"
+    @test config.status_bar == "\e[0m"
+    @test config.status_hint == "\e[0;90m"
+    @test config.mode_search == "\e[0;33;1m"
+    @test config.mode_visual == "\e[0;35;1m"
+    @test config.message_info == "\e[0;32m"
+    @test config.search_match == "\e[0;30;47m"
+    @test config.search_active_match == "\e[0;30;43m"
     @test config.visual_line == "100"
     @test config.visual_active_line == "44"
-    @test config.scrollbar_track == "\e[0m\e[90m"
+    @test config.scrollbar_track == "\e[0;90m"
     @test config.scrollbar_thumb == "\e[0m"
-    @test config.help_title == "\e[0m\e[36m\e[1m"
+    @test config.help_title == "\e[0;36;1m"
 
     @test_throws ArgumentError TerminalPager._face_name("unknown")
-    @test TerminalPager._face_name("badge_normal") == :terminalpager_badge_normal
+    @test TerminalPager._face_name("mode_search") == :terminalpager_mode_search
 end
 
 @testset "Face Specification" begin
@@ -121,7 +124,7 @@ end
 
         # The next session renders the customized face.
         @test TerminalPager._display_config().search_active_match ==
-            "\e[0m\e[30m\e[41m\e[1m"
+            "\e[0;30;41;1m"
 
         # Dropping the face restores the default and removes the preference.
         TerminalPager.drop_face!(name)
@@ -149,11 +152,11 @@ end
         end
 
         # Dropping all preferences resets the faces.
-        TerminalPager.set_face!("badge_normal"; background = :green)
+        TerminalPager.set_face!("mode_search"; foreground = :green)
         TerminalPager.set_face!("ruler"; foreground = :red)
-        @test _SS.getface(:terminalpager_badge_normal).background == _SimpleColor(:green)
+        @test _SS.getface(:terminalpager_mode_search).foreground == _SimpleColor(:green)
         TerminalPager.drop_all_preferences!()
-        @test _SS.getface(:terminalpager_badge_normal).background == _SimpleColor(:blue)
+        @test _SS.getface(:terminalpager_mode_search).foreground == _SimpleColor(:yellow)
         @test _SS.getface(:terminalpager_ruler).foreground == _SimpleColor(:bright_black)
         @test isempty(TerminalPager._face_preferences())
     finally

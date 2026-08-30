@@ -89,12 +89,12 @@ the background, as `textview` expects.
 
 # Fields
 
-- `status_bar::String`: Status bar.
-- `badge_normal::String`: Mode badge in the normal mode.
-- `badge_search::String`: Mode badge in the search mode.
-- `badge_visual::String`: Mode badge in the visual mode.
-- `message_info::String`: Informative message on the status bar.
-- `message_error::String`: Error message on the status bar.
+- `status_bar::String`: Base of the status line.
+- `status_hint::String`: Key hints, feature tags, and hidden text hints of the status line.
+- `mode_search::String`: Name of the search mode on the status line.
+- `mode_visual::String`: Name of the visual mode on the status line.
+- `message_info::String`: Informative message on the status line.
+- `message_error::String`: Error message on the status line.
 - `search_match::String`: Inactive search match.
 - `search_active_match::String`: Active search match.
 - `visual_line::String`: Background of the lines marked in the visual mode.
@@ -111,9 +111,9 @@ the background, as `textview` expects.
 """
 struct DisplayConfig
     status_bar::String
-    badge_normal::String
-    badge_search::String
-    badge_visual::String
+    status_hint::String
+    mode_search::String
+    mode_visual::String
     message_info::String
     message_error::String
     search_match::String
