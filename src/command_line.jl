@@ -208,12 +208,8 @@ and the position survive longest.
 - `pagerd::Pager`: Pager state to redraw.
 """
 function _redraw_status_bar!(pagerd::Pager)
-    term = pagerd.term
     rows, cols = pagerd.display_size
-    num_lines = pagerd.num_lines
-    use_color = get(term.out_stream, :color, true)::Bool
-    display_config = pagerd.display_config
-    base = display_config.status_bar
+    use_color = get(pagerd.term.out_stream, :color, true)::Bool
 
     out = _screen_buffer!(pagerd)
 
@@ -222,12 +218,36 @@ function _redraw_status_bar!(pagerd::Pager)
     _move_cursor(out, rows, 1)
     _clear_to_eol(out)
 
-    if cols <= 0
-        _flush_screen!(pagerd)
-        return nothing
+    if cols > 0
+        use_color && write(out, pagerd.display_config.status_bar)
+        _write_status_line!(out, pagerd, cols, use_color)
+        use_color && write(out, _SGR_RESET)
+        _move_cursor(out, rows, 1)
     end
 
-    use_color && write(out, base)
+    _flush_screen!(pagerd)
+
+    return nothing
+end
+
+"""
+    _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color::Bool) -> Nothing
+
+Write the content of the status line of `pagerd` to `out`, which must already hold the
+cursor movement to the last row, the clear, and the base face. The content is `cols`
+columns wide, and the faces are written only if `use_color` is `true`.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer assembling everything sent to the terminal.
+- `pagerd::Pager`: Pager state to draw.
+- `cols::Int`: Number of columns of the display.
+- `use_color::Bool`: Whether the terminal supports color.
+"""
+function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color::Bool)
+    num_lines = pagerd.num_lines
+    display_config = pagerd.display_config
+    base = display_config.status_bar
 
     # == Position ==========================================================================
 
@@ -283,9 +303,6 @@ function _redraw_status_bar!(pagerd::Pager)
             _write_position(out, num_lines, at_top, at_bottom, percentage)
         end
 
-        use_color && write(out, _SGR_RESET)
-        _move_cursor(out, rows, 1)
-        _flush_screen!(pagerd)
         return nothing
     end
 
@@ -344,9 +361,6 @@ function _redraw_status_bar!(pagerd::Pager)
         # has at least one. Every mode name is ASCII, so the bytes are the columns.
         (use_color && show_mode) && write(out, mode_face)
         GC.@preserve mode_name unsafe_write(out, pointer(mode_name), UInt(cols))
-        use_color && write(out, _SGR_RESET)
-        _move_cursor(out, rows, 1)
-        _flush_screen!(pagerd)
         return nothing
     end
 
@@ -447,11 +461,6 @@ function _redraw_status_bar!(pagerd::Pager)
     end
 
     show_position && _write_position(out, num_lines, at_top, at_bottom, percentage)
-
-    use_color && write(out, _SGR_RESET)
-    _move_cursor(out, rows, 1)
-
-    _flush_screen!(pagerd)
 
     return nothing
 end
