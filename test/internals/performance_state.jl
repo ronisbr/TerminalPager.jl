@@ -42,7 +42,7 @@ module InlineHelpModule end
     new_config = TerminalPager._display_config(name -> Face(; foreground = :red))
     @test pagerd.display_config === old_config
     @test new_config !== old_config
-    @test new_config.status_bar == "\e[0m\e[31m"
+    @test new_config.status_bar == "\e[0;31m"
     @test new_config.visual_line == ""
 
     @test_throws UndefKeywordError TerminalPager.Pager(term = pagerd.term, buf = pagerd.buf)
@@ -66,7 +66,7 @@ module InlineHelpModule end
     end
     @test first_session.search_active_match != second_session.search_active_match
     @test first_session.visual_line != second_session.visual_line
-    @test occursin("\e[41m", second_session.search_active_match)
+    @test second_session.search_active_match == "\e[0;41m"
     @test second_session.visual_line == "42"
     @test TerminalPager._display_config() == first_session
 
@@ -78,7 +78,7 @@ module InlineHelpModule end
     @test pagerd.text_layout[1] == "match"
     TerminalPager._change_active_match!(pagerd)
     TerminalPager._view!(pagerd)
-    @test occursin("\e[0m\e[30m\e[43m", String(take!(pagerd.buf.io)))
+    @test occursin("\e[0;30;43m", String(take!(pagerd.buf.io)))
 
     view_source = read(joinpath(dirname(pathof(TerminalPager)), "view.jl"), String)
     @test !occursin("_get_preference", view_source)

@@ -118,7 +118,7 @@ end
     red_text, red_layout = TerminalPager._help_screen(true, red_config)
     @test red_text !== text
     @test red_layout !== layout
-    @test occursin("\e[31m", red_text)
+    @test occursin("\e[0;31m", red_text)
     @test TerminalPager._help_screen(true, red_config)[1] === red_text
     @test TerminalPager._help_screen(true, config)[1] !== red_text
 
