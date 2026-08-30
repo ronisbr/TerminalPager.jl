@@ -271,16 +271,14 @@ exception.
 - `Any`: Result returned by `f`.
 """
 function _with_raw_mode(f, term; raw_function = REPL.Terminals.raw!)
-    raw_enabled = false
     try
-        # The flag is deliberately set before the call. A call that throws can still have
-        # changed the terminal, and leaving it in raw mode would break the user's session.
-        # Restoring a terminal that was never changed is harmless.
-        raw_enabled = true
         raw_function(term, true)
         return f()
     finally
-        raw_enabled && raw_function(term, false)
+        # The terminal is restored even if enabling the raw mode threw, because a call that
+        # throws can still have changed it, and leaving it in raw mode would break the
+        # user's session. Restoring a terminal that was never changed is harmless.
+        raw_function(term, false)
     end
 end
 
@@ -525,29 +523,46 @@ function _restore_terminal(
     alternate_screen::Bool,
     cursor_key_mode::Bool,
 )
-    steps = (
-        (mouse, () -> _turn_off_mouse(io)),
-        (clear_status_row, () -> _clear_status_row(io)),
-        (show_cursor, () -> _show_cursor(io)),
-        (alternate_screen, () -> _turn_off_alternate_screen_buffer(io)),
-        (cursor_key_mode, () -> _turn_off_cursor_key_mode(io)),
-    )
-
     first_error = nothing
 
-    for (enabled, step) in steps
-        enabled || continue
-
-        try
-            step()
-        catch err
-            isnothing(first_error) && (first_error = err)
-        end
-    end
+    mouse && (first_error = _restore_step(_turn_off_mouse, io, first_error))
+    clear_status_row && (first_error = _restore_step(_clear_status_row, io, first_error))
+    show_cursor && (first_error = _restore_step(_show_cursor, io, first_error))
+    alternate_screen &&
+        (first_error = _restore_step(_turn_off_alternate_screen_buffer, io, first_error))
+    cursor_key_mode &&
+        (first_error = _restore_step(_turn_off_cursor_key_mode, io, first_error))
 
     isnothing(first_error) || throw(first_error)
 
     return nothing
+end
+
+"""
+    _restore_step(
+        f::F,
+        io::IO,
+        first_error::Union{Nothing, Exception}
+    ) -> Union{Nothing, Exception} where {F}
+
+Call `f(io)`, one step of the terminal restoration, and return the first error of the
+restoration so far: `first_error` if it is not `nothing`, otherwise the error thrown by
+`f`, if any.
+
+# Arguments
+
+- `f::F`: Step to perform.
+- `io::IO`: Terminal output stream to restore.
+- `first_error::Union{Nothing, Exception}`: First error of the previous steps.
+"""
+function _restore_step(f::F, @nospecialize(io::IO), first_error) where {F}
+    try
+        f(io)
+    catch err
+        isnothing(first_error) && return err
+    end
+
+    return first_error
 end
 
 """
