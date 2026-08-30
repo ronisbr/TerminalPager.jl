@@ -210,11 +210,10 @@ function _decode_mouse(prefix::Vector{UInt8})
         end
     end
 
-    bytes = prefix[1:final_index]
-    raw = _raw_bytes(bytes)
-
+    # The raw code is not kept for the mouse reports, because formatting it allocated at
+    # every event, and the wheel is the most frequent input of a session with the mouse.
     if field != 4
-        return :complete, Keystroke(; raw = raw, value = "<undefined>"), final_index
+        return :complete, Keystroke(; value = "<undefined>"), final_index
     end
 
     value = if (button & 0x40) != 0
@@ -230,7 +229,6 @@ function _decode_mouse(prefix::Vector{UInt8})
     end
 
     key = Keystroke(;
-        raw = raw,
         value = value,
         alt = (button & 0x08) != 0,
         ctrl = (button & 0x10) != 0,

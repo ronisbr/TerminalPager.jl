@@ -13,7 +13,8 @@ Represent one decoded keystroke.
 
 # Fields
 
-- `raw::String`: Raw keystroke code converted to string.
+- `raw::String`: Raw keystroke code converted to string, or an empty string for the mouse
+    reports.
 - `value::String`: String representing the keystroke.
 - `alt::Bool`: Whether the ALT key was pressed.
 - `ctrl::Bool`: Whether the CTRL key was pressed.
