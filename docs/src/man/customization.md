@@ -68,12 +68,12 @@ prefix `terminalpager_`. The available faces are:
 
 | Face                  | Description                                            | Default                            |
 |:----------------------|:-------------------------------------------------------|:-----------------------------------|
-| `status_bar`          | Status bar (see the note below).                       | Reverse video.                     |
-| `badge_normal`        | Mode badge in the normal mode.                         | Bold, bright white on blue.        |
-| `badge_search`        | Mode badge in the search mode.                         | Bold, black on yellow.             |
-| `badge_visual`        | Mode badge in the visual mode.                         | Bold, bright white on magenta.     |
-| `message_info`        | Informative message on the status bar.                 | Bold, bright white on green.       |
-| `message_error`       | Error message on the status bar.                       | Bold, bright white on red.         |
+| `status_bar`          | Base of the status line (see the note below).          | No attributes.                     |
+| `status_hint`         | Key hints, feature tags, and hidden text hints.        | Bright black.                      |
+| `mode_search`         | Name of the search mode on the status line.            | Bold yellow.                       |
+| `mode_visual`         | Name of the visual mode on the status line.            | Bold magenta.                      |
+| `message_info`        | Informative message on the status line.                | Green.                             |
+| `message_error`       | Error message on the status line.                      | Red.                               |
 | `search_match`        | Inactive search match.                                 | Black on white.                    |
 | `search_active_match` | Active search match.                                   | Black on yellow.                   |
 | `visual_line`         | Lines marked in the visual mode (background only).     | Bright black background.           |
@@ -103,10 +103,17 @@ The colors can be the names of the 16 terminal colors (`black`, `red`, `green`, 
 `"#rrggbb"`.
 
 !!! note
-    The status bar is drawn in reverse video by default, so that it matches light and dark
-    themes. Since the terminal swaps the colors of a face with `inverse = true`, custom
-    colors must come with `inverse = false`. Otherwise, the background is shown as the
-    foreground and vice versa:
+    The status line has no background by default. Every element of the row returns to the
+    face `status_bar`, and the row is padded to the full width, so that the face can draw it
+    as a bar. Reverse video matches light and dark themes:
+
+    ```julia
+    julia> TerminalPager.set_face!("status_bar"; inverse = true)
+    ```
+
+    Since the terminal swaps the colors of a face with `inverse = true`, custom colors must
+    come with `inverse = false`. Otherwise, the background is shown as the foreground and
+    vice versa:
 
     ```julia
     julia> TerminalPager.set_face!("status_bar"; foreground = :white, background = :blue, inverse = false)

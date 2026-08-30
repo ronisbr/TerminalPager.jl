@@ -21,12 +21,14 @@ inside the `pager`.
 
 ## Inside the Pager
 
-The last row is a status bar showing the current mode, the enabled features, whether the
-text continues beyond the left or the right edge (`‹` and `›`), the keys to open the help
-and to quit, and the position (`All`, `Top`, `Bot`, or a percentage). The
-movements follow `less` and Vi: the arrow keys, `j`, `k`, `h`, `l`, `Space`, `PgUp`, `PgDn`,
-`Home`, `End`, `g`, and `G`. Typing `:` followed by a line number moves the display to that
-line, `r` toggles a line number ruler, `s` toggles a scrollbar, and `q` quits.
+The last row is a status line with the prompt `❯` in the normal mode, the search or the
+visual mode and its state, the enabled features, the key hints of the current mode, whether
+the text continues beyond the left or the right edge (`‹` and `›`), and the position (`All`,
+`Top`, `Bot`, or a percentage). The row has no background by default; the face `status_bar`
+draws it as a bar (see the [customization](customization.md) page). The movements follow
+`less` and Vi: the arrow keys, `j`, `k`, `h`, `l`, `Space`, `PgUp`, `PgDn`, `Home`, `End`,
+`g`, and `G`. Typing `:` followed by a line number moves the display to that line, `r`
+toggles a line number ruler, `s` toggles a scrollbar, and `q` quits.
 
 The mouse wheel scrolls the text, and `SHIFT` and the wheel scroll it horizontally. Notice
 that, while the pager reports the mouse, selecting text with the terminal requires holding

@@ -19,11 +19,13 @@ Version 0.8.0
 - ![Deprecation][badge-deprecation] The preference
   `"always_use_alternate_screen_buffer_in_repl_mode"` is deprecated and ignored, because the
   alternate screen buffer is now used by default. Setting it warns.
-- ![Feature][badge-feature] The command line was replaced by a status bar with a mode badge,
-  the search and visual mode state, the enabled features, hints that the text continues
-  beyond the left or the right edge, key hints derived from the current key bindings, and
-  the position (`All`, `Top`, `Bot`, or a percentage). The bar adapts to narrow displays,
-  and the cursor is hidden while the pager is open.
+- ![Feature][badge-feature] The command line was replaced by a status line with the prompt
+  `❯` in the normal mode, the search and visual mode state, the enabled features, hints that
+  the text continues beyond the left or the right edge, the key hints of the current mode
+  derived from the key bindings, and the position (`All`, `Top`, `Bot`, or a percentage).
+  The row has no background by default, so that it does not draw attention, and the face
+  `status_bar` draws it as a bar. The row adapts to narrow displays, and the cursor is
+  hidden while the pager is open.
 - ![Feature][badge-feature] The command line editor supports CTRL-A, CTRL-E, CTRL-W, CTRL-U,
   and CTRL-H, and the up and down keys recall the search patterns of the session.
 - ![Feature][badge-feature] The search is incremental: the matches are previewed while the
@@ -38,7 +40,7 @@ Version 0.8.0
 - ![Feature][badge-feature] A scrollbar can be shown at the right edge of the view with the
   keyword `show_scrollbar`, the new preference `"show_scrollbar"`, or the key `s`.
 - ![Feature][badge-feature] Every color and text attribute of the pager is a StyledStrings.jl
-  face registered under the prefix `terminalpager_`: the status bar, the mode badges, the
+  face registered under the prefix `terminalpager_`: the status line, the mode names, the
   messages, the search matches, the visual lines, the ruler, the scrollbar, the command line
   status, and the help screen. The faces can be customized with the new functions
   `TerminalPager.set_face!` and `TerminalPager.drop_face!`, which persist the changes with
@@ -47,7 +49,7 @@ Version 0.8.0
   screen and repaints only the rows that entered the view. A one line scroll on a 60 by 220
   terminal writes about 250 bytes instead of 13 KB. The new preference
   `"use_scroll_regions"` disables the shift on terminals without support for it.
-- ![Enhancement][badge-enhancement] The messages are shown on the status bar with an icon
+- ![Enhancement][badge-enhancement] The messages are shown on the status line with an icon
   and a color telling their kind, until the next keystroke, which is processed normally.
   They used to be modal and consumed the next keystroke. The error messages include the
   rejected input, the freeze and title events confirm the new values, and the numeric
@@ -57,7 +59,7 @@ Version 0.8.0
 - ![Enhancement][badge-enhancement] The backward visual mode moves by five lines and by
   half a page scroll the view by the part of the step that crosses the top row, like the
   forward moves do at the bottom row.
-- ![Enhancement][badge-enhancement] The status bar row is cleared when a session without
+- ![Enhancement][badge-enhancement] The status line row is cleared when a session without
   the alternate screen buffer ends, so that the scrollback ends with the last page.
 - ![Enhancement][badge-enhancement] The faces are rendered by StringManipulation.jl 0.6,
   which also preserves the faint and the strikethrough attributes of the text when the view
