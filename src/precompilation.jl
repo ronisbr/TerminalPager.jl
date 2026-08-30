@@ -6,6 +6,62 @@
 
 using PrecompileTools: PrecompileTools
 
+# Markdown document with every kind of node found in docstrings, rendered by the workload.
+const _PRECOMPILE_MARKDOWN = """
+    # Title
+
+    ## Section
+
+    ### Subsection
+
+    Paragraph with **bold**, *italic*, `code`, a [link](https://julialang.org), and math
+    ``x^2``. A footnote[^1] and an image ![alt](image.png).
+
+    - Item one
+    - Item two
+        - Nested item
+        1. Ordered nested item
+
+    1. First
+    2. Second
+
+    | Left | Right |
+    |:-----|------:|
+    | a    |     1 |
+    | b    |     2 |
+
+    ```julia
+    x = 1
+    ```
+
+    ```
+    plain code
+    ```
+
+    > Quoted paragraph.
+
+    !!! note
+        Note body.
+
+    !!! warning "Custom title"
+        Warning body.
+
+    !!! compat "Julia 1.11"
+        Compat body.
+
+    ---
+
+    Term
+    : Definition
+
+    [^1]: Footnote text.
+    """
+
+# The workload evaluates the help expression returned by `REPL.helpmode`, which assigns a
+# global. Evaluating it into `Main`, or into any module created while precompiling, is not
+# allowed, whereas this submodule belongs to the package and is open.
+module HelpWorkload end
+
 PrecompileTools.@setup_workload begin
     # We will redirect the `stdout` and `stdin` so that we can execute the pager and input
     # some commands without any visible change for the user.
@@ -100,6 +156,23 @@ PrecompileTools.@setup_workload begin
             TerminalPager._get_help("read")
             f = "read read read"
             TerminalPager._get_help(@view f[1:4])
+
+            # The help and `pager(obj)` render Markdown documents. Rendering every kind of
+            # node here precompiles the Markdown methods for the buffered context, which
+            # otherwise cost hundreds of milliseconds at the first help of the session.
+            TerminalPager._render_object(Markdown.parse(_PRECOMPILE_MARKDOWN))
+
+            # `_get_help` does not evaluate the help expression while precompiling, and the
+            # redirected `stdout` has no color support, whereas the help preamble and the
+            # rendering use colors on a terminal. Hence, the help is evaluated here with a
+            # colored context, into a submodule because the expression assigns a global.
+            # This is the code path of the first help of a session, which used to take
+            # hundreds of milliseconds to compile.
+            colored = IOContext(
+                IOBuffer(), :color => true, :displaysize => (24, 80), :limit => false
+            )
+            response = TerminalPager._eval_helpmode(colored, "read", HelpWorkload)
+            show(colored, MIME("text/plain"), response)
             TerminalPager._extract_identifier("while true break end", 10)
             TerminalPager._decode_keystroke(collect(codeunits("\e[B")))
             TerminalPager._decode_keystroke(collect(codeunits("\e[<64;10;5M")))
