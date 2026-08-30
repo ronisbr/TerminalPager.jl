@@ -848,33 +848,31 @@ that is not in `features`.
 """
 function _action_event(action, features::Vector{Symbol})
     isnothing(action) && return nothing
-
-    if action in (
-        :quit,
-        :quit_eot,
-        :goto_line,
-        :search,
-        :next_match,
-        :previous_match,
-        :quit_search,
-        :toggle_ruler,
-        :toggle_scrollbar,
-    )
-        return action
-    end
-
-    action === :help && return :help ∈ features ? action : nothing
-
-    if action in (:change_freeze, :change_title_rows)
-        return :change_freeze ∈ features ? action : nothing
-    end
-
-    if action in (:toggle_visual_mode, :select_visual_mode_line, :mouse_select, :yank)
-        return :visual_mode ∈ features ? action : nothing
-    end
-
-    return nothing
+    feature = get(_EVENT_FEATURES, action, missing)
+    feature === missing && return nothing
+    return (isnothing(feature) || (feature in features)) ? action : nothing
 end
+
+# Feature required by every action that raises an event, or `nothing` if the action always
+# raises it. The movements are not here because they do not raise events.
+const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
+    :quit => nothing,
+    :quit_eot => nothing,
+    :goto_line => nothing,
+    :search => nothing,
+    :next_match => nothing,
+    :previous_match => nothing,
+    :quit_search => nothing,
+    :toggle_ruler => nothing,
+    :toggle_scrollbar => nothing,
+    :help => :help,
+    :change_freeze => :change_freeze,
+    :change_title_rows => :change_freeze,
+    :toggle_visual_mode => :visual_mode,
+    :select_visual_mode_line => :visual_mode,
+    :mouse_select => :visual_mode,
+    :yank => :visual_mode,
+)
 
 """
     _pager_action(k::Keystroke) -> Union{Nothing, Symbol}
