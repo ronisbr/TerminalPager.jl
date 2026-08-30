@@ -153,18 +153,8 @@ the action is unbound.
 - `action::Symbol`: Pager action.
 """
 function _primary_key(action::Symbol)
-    best = nothing
-
-    for (kb, bound_action) in _KEYBINDINGS
-        bound_action === action || continue
-        name = _pretty_key(kb)
-
-        if isnothing(best) || ((textwidth(name), name) < (textwidth(best), best))
-            best = name
-        end
-    end
-
-    return best
+    names = _action_keys(action)
+    return isempty(names) ? nothing : first(names)
 end
 
 """
