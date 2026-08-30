@@ -345,9 +345,6 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
 - `input::Union{Nothing, PagerInput}`: Input state associated with the terminal
     input stream, or `nothing` to create one.
     (**Default**: `nothing`)
-- `lines::Union{Nothing, AbstractVector{<:AbstractString}}`: Raw lines used when no layout is
-    supplied.
-    (**Default**: `nothing`)
 - `text_layout::Union{Nothing, TextViewLayout}`: Prepared layout used directly
     when supplied, or `nothing` to construct one.
     (**Default**: `nothing`)
@@ -379,22 +376,15 @@ function _pager!(
     show_scrollbar::Bool = _get_preference("show_scrollbar")::Bool,
     use_alternate_screen_buffer::Bool = true,
     input::Union{Nothing, PagerInput} = nothing,
-    lines::Union{Nothing, AbstractVector{<:AbstractString}} = nothing,
     text_layout::Union{Nothing, TextViewLayout} = nothing,
     _layout_factory = TextViewLayout,
     manage_cursor_key_mode::Bool = true,
     manage_cursor::Bool = true,
     manage_mouse::Bool = true,
 )
-    # Reuse a supplied layout or line vector; the raw text is split only when neither is
-    # available, and the result feeds both the auto-fit check and the layout construction.
-    source_lines = if !isnothing(text_layout)
-        text_layout
-    elseif !isnothing(lines)
-        lines
-    else
-        split(str, '\n')
-    end
+    # The raw text is split only when no layout is supplied, and the result feeds both the
+    # auto-fit check and the layout construction.
+    source_lines = isnothing(text_layout) ? split(str, '\n') : text_layout
 
     # Get the display size and make sure it is type stable.
     dsize = displaysize(term.out_stream)::Tuple{Int, Int}
