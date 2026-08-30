@@ -407,7 +407,7 @@ end
         key::TerminalPager.Keystroke,
     ) -> Union{Nothing, Symbol}
 
-Process one key and update the pager crop metrics.
+Process one key, which updates the pager crop metrics as part of the movement.
 
 # Arguments
 
@@ -415,11 +415,7 @@ Process one key and update the pager crop metrics.
 - `key::TerminalPager.Keystroke`: Provide the keystroke to process.
 """
 function process_with_crop!(pagerd, key)
-    old_row = pagerd.start_row
-    old_column = pagerd.start_column
-    action = TerminalPager._pager_key_process!(pagerd, key)
-    TerminalPager._update_crop_after_action!(pagerd, old_row, old_column, action)
-    return action
+    return TerminalPager._pager_key_process!(pagerd, key)
 end
 
 """
@@ -586,7 +582,7 @@ end
         TerminalPager._KEYBINDINGS[("z", false, false, false)] = :fastdown
         @test TerminalPager._pager_action(TerminalPager.Keystroke(; value = "z")) ==
             :fastdown
-        @test TerminalPager._navigation_axis(:fastdown) == :vertical
+        @test TerminalPager._navigation_group(:fastdown) === :vertical_forward
     finally
         if isnothing(old_binding)
             delete!(TerminalPager._KEYBINDINGS, ("z", false, false, false))

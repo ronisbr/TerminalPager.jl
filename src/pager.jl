@@ -476,10 +476,7 @@ function _pager!(
             # keystroke, which is then processed normally.
             k = _read_keystroke!(pagerd.input)
             _clear_message!(pagerd)
-            before_row = pagerd.start_row
-            before_column = pagerd.start_column
             action = _pager_key_process!(pagerd, k)
-            _update_crop_after_action!(pagerd, before_row, before_column, action)
             _coalesce_navigation!(pagerd, action)
             _pager_event_process!(pagerd) || break
         end
@@ -751,8 +748,10 @@ end
 Scroll the view of `pagerd` by `step` lines, positive downwards, and request a redraw if the
 viewport or the visual cursor changed.
 
-The view never scrolls past the last cropped line nor above the first non-frozen line. In
-visual mode, `policy` selects how the cursor moves, as described in [`_movement`](@ref).
+The view never scrolls past the last cropped line nor above the first non-frozen line, and
+the number of cropped lines follows the viewport, so that the next movement of a burst sees
+the boundary without a redraw. In visual mode, `policy` selects how the cursor moves, as
+described in [`_movement`](@ref).
 
 # Arguments
 
@@ -791,6 +790,7 @@ function _scroll_vertical!(pagerd::Pager, step::Int, policy::Symbol)
     end
 
     if (start_row != pagerd.start_row) || (visual_mode_line != pagerd.visual_mode_line)
+        pagerd.cropped_lines = max(0, cropped_lines - (start_row - pagerd.start_row))
         pagerd.start_row = start_row
         pagerd.visual_mode_line = visual_mode_line
         _request_redraw!(pagerd)
@@ -805,7 +805,9 @@ end
 Scroll the view of `pagerd` by `step` columns, positive rightwards, and request a redraw if
 the viewport changed.
 
-The view never scrolls past the last cropped column nor before the first non-frozen column.
+The view never scrolls past the last cropped column nor before the first non-frozen column,
+and the number of cropped columns follows the viewport, so that the next movement of a
+burst sees the boundary without a redraw.
 
 # Arguments
 
@@ -823,6 +825,8 @@ function _scroll_horizontal!(pagerd::Pager, step::Int)
     end
 
     if start_column != pagerd.start_column
+        pagerd.cropped_columns =
+            max(0, pagerd.cropped_columns - (start_column - pagerd.start_column))
         pagerd.start_column = start_column
         _request_redraw!(pagerd)
     end
@@ -886,73 +890,23 @@ function _pager_action(k::Keystroke)
     return get(_KEYBINDINGS, key, nothing)
 end
 
-const _VERTICAL_FORWARD_ACTIONS = (
-    :down, :fastdown, :pagedown, :halfpagedown, :end, :wheel_down
-)
-const _VERTICAL_BACKWARD_ACTIONS = (:up, :fastup, :pageup, :halfpageup, :home, :wheel_up)
-const _HORIZONTAL_FORWARD_ACTIONS = (:right, :fastright, :eol)
-const _HORIZONTAL_BACKWARD_ACTIONS = (:left, :fastleft, :bol)
-
-"""
-    _navigation_axis(action::Union{Nothing, Symbol}) -> Union{Nothing, Symbol}
-
-Return the navigation axis for a pure movement action.
-
-# Arguments
-
-- `action::Union{Nothing, Symbol}`: Resolved pager action.
-"""
-function _navigation_axis(action)
-    group = _navigation_group(action)
-    group in (:vertical_forward, :vertical_backward) && return :vertical
-    group in (:horizontal_forward, :horizontal_backward) && return :horizontal
-    return nothing
-end
-
 """
     _navigation_group(action::Union{Nothing, Symbol}) -> Union{Nothing, Symbol}
 
-Return the monotonic axis-and-direction group for a pure movement action.
+Return the axis and the direction of the movement `action`, which is `:vertical_forward`,
+`:vertical_backward`, `:horizontal_forward`, or `:horizontal_backward`, or `nothing` if
+`action` is not a movement. Consecutive movements of the same group are coalesced.
 
 # Arguments
 
 - `action::Union{Nothing, Symbol}`: Resolved pager action.
 """
 function _navigation_group(action)
-    action in _VERTICAL_FORWARD_ACTIONS && return :vertical_forward
-    action in _VERTICAL_BACKWARD_ACTIONS && return :vertical_backward
-    action in _HORIZONTAL_FORWARD_ACTIONS && return :horizontal_forward
-    action in _HORIZONTAL_BACKWARD_ACTIONS && return :horizontal_backward
-    return nothing
-end
-
-"""
-    _update_crop_after_action!(
-        pagerd::Pager,
-        old_row::Int,
-        old_column::Int,
-        action::Union{Nothing, Symbol}
-    ) -> Nothing
-
-Update crop metrics by the signed viewport delta after one navigation action.
-
-# Arguments
-
-- `pagerd::Pager`: Pager state to update.
-- `old_row::Int`: Viewport row before the action.
-- `old_column::Int`: Viewport column before the action.
-- `action::Union{Nothing, Symbol}`: Resolved pager action.
-"""
-function _update_crop_after_action!(pagerd::Pager, old_row::Int, old_column::Int, action)
-    axis = _navigation_axis(action)
-    if axis === :vertical
-        pagerd.cropped_lines = max(0, pagerd.cropped_lines - (pagerd.start_row - old_row))
-    elseif axis === :horizontal
-        pagerd.cropped_columns = max(
-            0, pagerd.cropped_columns - (pagerd.start_column - old_column)
-        )
-    end
-    return nothing
+    axis, step, _ = _movement(action, 1, 1)
+    axis === :none && return nothing
+    forward = step > 0
+    axis === :vertical && return forward ? :vertical_forward : :vertical_backward
+    return forward ? :horizontal_forward : :horizontal_backward
 end
 
 """
@@ -1014,10 +968,7 @@ function _coalesce_navigation!(
             break
         end
 
-        old_row = pagerd.start_row
-        old_column = pagerd.start_column
         _pager_key_process!(pagerd, key)
-        _update_crop_after_action!(pagerd, old_row, old_column, action)
         count += 1
     end
 
