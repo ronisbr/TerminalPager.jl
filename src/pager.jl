@@ -998,6 +998,9 @@ Process the pending pager event and return whether the application should contin
 function _pager_event_process!(pagerd::Pager)
     event = pagerd.event
 
+    # Most keystrokes are movements, which raise no event.
+    isnothing(event) && return true
+
     # For EOT (^D), we will implement two types of "quit" action. If we are in searching
     # mode, exit it. If not, quit the pager.
     if event == :quit_eot
@@ -1045,47 +1048,7 @@ function _pager_event_process!(pagerd::Pager)
         pagerd.mode = :view
 
     elseif event == :change_freeze
-        status, frozen_rows = _prompt_number!(pagerd, "Frozen rows", pagerd.frozen_rows)
-
-        # An invalid or cancelled number of rows also skips the prompt for the columns.
-        if status in (:value, :empty)
-            if status === :value
-                # The clamped field value must be used here, not the raw parsed one, and the
-                # first visible row must stay inside the text.
-                pagerd.frozen_rows = max(0, frozen_rows)
-                pagerd.start_row = clamp(
-                    pagerd.start_row,
-                    pagerd.frozen_rows + 1,
-                    max(pagerd.frozen_rows + 1, pagerd.num_lines),
-                )
-                pagerd.visual_mode_line = 1
-
-                # The crop counters describe the previous layout, so they must be recomputed by
-                # the next `_view!` instead of being reused by the movement handling.
-                pagerd.cropped_lines = 0
-                pagerd.cropped_columns = 0
-            end
-
-            status, frozen_columns = _prompt_number!(
-                pagerd, "Frozen columns", pagerd.frozen_columns
-            )
-
-            if status === :value
-                pagerd.frozen_columns = max(0, frozen_columns)
-                pagerd.start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
-                pagerd.cropped_lines = 0
-                pagerd.cropped_columns = 0
-            end
-
-            if status !== :invalid
-                _set_message!(
-                    pagerd,
-                    "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
-                )
-            end
-        end
-
-        _request_redraw!(pagerd)
+        _change_freeze!(pagerd)
 
     elseif event == :change_title_rows
         status, title_rows = _prompt_number!(pagerd, "Title rows", pagerd.title_rows)
@@ -1152,69 +1115,157 @@ function _pager_event_process!(pagerd::Pager)
 
             if 1 <= clicked_line <= last_line
                 if clicked_line == pagerd.visual_mode_line
-                    pagerd.event = :select_visual_mode_line
-                    return _pager_event_process!(pagerd)
+                    _toggle_visual_line!(pagerd)
+                else
+                    pagerd.visual_mode_line = clicked_line
+                    _request_redraw!(pagerd)
                 end
-
-                pagerd.visual_mode_line = clicked_line
-                _request_redraw!(pagerd)
             end
         end
 
     elseif event == :select_visual_mode_line
-        if pagerd.visual_mode
-            visual_str_id = pagerd.visual_mode_line + pagerd.start_row - 1
-
-            # If the line is already selected, we will deselect it. Notice that a line can only
-            # be in the list once, so `findfirst` is enough and does not allocate.
-            id = findfirst(==(visual_str_id), pagerd.visual_mode_selected_lines)
-
-            if isnothing(id)
-                push!(pagerd.visual_mode_selected_lines, visual_str_id)
-            else
-                deleteat!(pagerd.visual_mode_selected_lines, id)
-            end
-
-            # Without this, marking a line produced no feedback until the user happened to
-            # press another key.
-            _request_redraw!(pagerd)
-        end
+        _toggle_visual_line!(pagerd)
 
     elseif event == :yank
-        if pagerd.visual_mode
-            yanked_lines = vcat(
-                pagerd.visual_mode_line + pagerd.start_row - 1,
-                pagerd.visual_mode_selected_lines,
-            )
-
-            yanked_text, num_yanked_lines = _assemble_yank_text(
-                pagerd.text_layout, yanked_lines
-            )
-
-            # `clipboard` throws when no system clipboard provider is available, for
-            # example in a headless session. The error must not tear down the pager.
-            copied = try
-                clipboard(yanked_text)
-                true
-            catch
-                false
-            end
-
-            if copied
-                _set_message!(
-                    pagerd,
-                    num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" :
-                        "1 line copied",
-                )
-            else
-                _set_message!(
-                    pagerd, "Could not copy to the system clipboard"; kind = :error
-                )
-            end
-        end
+        _yank!(pagerd)
     end
 
     return true
+end
+
+"""
+    _change_freeze!(pagerd::Pager) -> Nothing
+
+Prompt for the numbers of frozen rows and columns of `pagerd`, apply them, and request a
+redraw. An invalid or cancelled number of rows also skips the prompt for the columns.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _change_freeze!(pagerd::Pager)
+    status, frozen_rows = _prompt_number!(pagerd, "Frozen rows", pagerd.frozen_rows)
+
+    # An invalid or cancelled number of rows also skips the prompt for the columns.
+    if status in (:value, :empty)
+        if status === :value
+            # The clamped field value must be used here, not the raw parsed one, and the
+            # first visible row must stay inside the text.
+            pagerd.frozen_rows = max(0, frozen_rows)
+            pagerd.start_row = clamp(
+                pagerd.start_row,
+                pagerd.frozen_rows + 1,
+                max(pagerd.frozen_rows + 1, pagerd.num_lines),
+            )
+            pagerd.visual_mode_line = 1
+
+            # The crop counters describe the previous layout, so they must be recomputed by
+            # the next `_view!` instead of being reused by the movement handling.
+            pagerd.cropped_lines = 0
+            pagerd.cropped_columns = 0
+        end
+
+        status, frozen_columns = _prompt_number!(
+            pagerd, "Frozen columns", pagerd.frozen_columns
+        )
+
+        if status === :value
+            pagerd.frozen_columns = max(0, frozen_columns)
+            pagerd.start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
+            pagerd.cropped_lines = 0
+            pagerd.cropped_columns = 0
+        end
+
+        if status !== :invalid
+            _set_message!(
+                pagerd,
+                "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
+            )
+        end
+    end
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _toggle_visual_line!(pagerd::Pager) -> Nothing
+
+Mark the visual line of `pagerd`, or unmark it if it is already marked, and request a
+redraw. Nothing happens outside the visual mode.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _toggle_visual_line!(pagerd::Pager)
+    if pagerd.visual_mode
+        visual_str_id = pagerd.visual_mode_line + pagerd.start_row - 1
+
+        # If the line is already selected, we will deselect it. Notice that a line can only
+        # be in the list once, so `findfirst` is enough and does not allocate.
+        id = findfirst(==(visual_str_id), pagerd.visual_mode_selected_lines)
+
+        if isnothing(id)
+            push!(pagerd.visual_mode_selected_lines, visual_str_id)
+        else
+            deleteat!(pagerd.visual_mode_selected_lines, id)
+        end
+
+        # Without this, marking a line produced no feedback until the user happened to
+        # press another key.
+        _request_redraw!(pagerd)
+    end
+
+    return nothing
+end
+
+"""
+    _yank!(pagerd::Pager) -> Nothing
+
+Copy the visual line and the marked lines of `pagerd` to the system clipboard, leaving a
+message telling how many lines were copied, or that the clipboard is not available.
+Nothing happens outside the visual mode.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _yank!(pagerd::Pager)
+    if pagerd.visual_mode
+        yanked_lines = vcat(
+            pagerd.visual_mode_line + pagerd.start_row - 1,
+            pagerd.visual_mode_selected_lines,
+        )
+
+        yanked_text, num_yanked_lines = _assemble_yank_text(
+            pagerd.text_layout, yanked_lines
+        )
+
+        # `clipboard` throws when no system clipboard provider is available, for
+        # example in a headless session. The error must not tear down the pager.
+        copied = try
+            clipboard(yanked_text)
+            true
+        catch
+            false
+        end
+
+        if copied
+            _set_message!(
+                pagerd,
+                num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" :
+                    "1 line copied",
+            )
+        else
+            _set_message!(
+                pagerd, "Could not copy to the system clipboard"; kind = :error
+            )
+        end
+    end
+
+    return nothing
 end
 
 """
