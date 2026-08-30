@@ -235,7 +235,7 @@ function _redraw_status_bar!(pagerd::Pager)
     # the text has its own token, and an empty text has nothing to scroll.
     frozen_rows = pagerd.frozen_rows
     cropped_lines = pagerd.cropped_lines
-    at_top = pagerd.start_row <= max(1, frozen_rows + 1)
+    at_top = pagerd.start_row <= _first_scrollable_row(pagerd)
     at_bottom = cropped_lines == 0
     percentage = if num_lines > 0
         clamp(round(Int, 100 * (1 - cropped_lines / num_lines)), 1, 99)

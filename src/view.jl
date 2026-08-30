@@ -190,7 +190,7 @@ follows the first visible line. It always has at least one row.
 """
 function _scrollbar_thumb(pagerd::Pager, rows::Int)
     frozen_rows = pagerd.frozen_rows
-    min_row = max(1, frozen_rows + 1)
+    min_row = _first_scrollable_row(pagerd)
     scrollable = max(pagerd.num_lines - frozen_rows, 1)
     visible = clamp(rows - frozen_rows, 1, scrollable)
 

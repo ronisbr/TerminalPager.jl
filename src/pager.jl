@@ -99,6 +99,30 @@ function _clear_message!(p::Pager)
 end
 
 """
+    _first_scrollable_row(p::Pager) -> Int
+
+Return the first row of the text of `p` that scrolls, which is the one after the frozen
+rows.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+_first_scrollable_row(p::Pager) = max(1, p.frozen_rows + 1)
+
+"""
+    _view_rows(p::Pager) -> Int
+
+Return the number of rows of the display of `p` that show scrolling text, that is, without
+the status line and the frozen rows.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+_view_rows(p::Pager) = p.display_size[1] - 1 - p.frozen_rows
+
+"""
     _update_display_size!(p::Pager) -> Nothing
 
 Update the recorded display size and request a redraw when the terminal size changes.
@@ -140,8 +164,8 @@ function _clamp_viewport!(p::Pager)
     rows, cols = _get_pager_display_size(p)
     ((rows <= 0) || (cols <= 0)) && return nothing
 
-    min_row = max(1, p.frozen_rows + 1)
-    view_rows = rows - p.frozen_rows
+    min_row = _first_scrollable_row(p)
+    view_rows = _view_rows(p)
     max_row = max(min_row, p.num_lines - view_rows + 1)
     p.start_row = clamp(p.start_row, min_row, max_row)
 
@@ -653,13 +677,13 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     end
 
     # Compute the minimum value for the start row.
-    min_row = max(1, frozen_rows + 1)
+    min_row = _first_scrollable_row(pagerd)
 
     # A page has the size of the view, which excludes the command line and the frozen rows.
     # Using the full display height here skipped `frozen_rows` lines at every page movement,
     # and those lines were never shown. Both values are clamped so that paging always moves
     # at least one line.
-    view_rows = display_size[1] - 1 - frozen_rows
+    view_rows = _view_rows(pagerd)
     page_rows = max(view_rows, 1)
     half_page_rows = max(div(view_rows, 2), 1)
 
@@ -760,9 +784,8 @@ described in [`_movement`](@ref).
 - `policy::Symbol`: Visual cursor policy, `:follow`, `:pin`, or `:keep`.
 """
 function _scroll_vertical!(pagerd::Pager, step::Int, policy::Symbol)
-    frozen_rows = pagerd.frozen_rows
-    min_row = max(1, frozen_rows + 1)
-    view_rows = pagerd.display_size[1] - 1 - frozen_rows
+    min_row = _first_scrollable_row(pagerd)
+    view_rows = _view_rows(pagerd)
     cropped_lines = pagerd.cropped_lines
     start_row = pagerd.start_row
     visual_mode_line = pagerd.visual_mode_line
@@ -1010,7 +1033,7 @@ function _pager_event_process!(pagerd::Pager)
         if status === :value
             # The requested line is shown at the top of the view, like `less` does, and the
             # view never moves into the frozen rows.
-            min_row = max(1, pagerd.frozen_rows + 1)
+            min_row = _first_scrollable_row(pagerd)
             pagerd.start_row = clamp(line, min_row, max(min_row, pagerd.num_lines))
         end
 
@@ -1133,7 +1156,7 @@ function _pager_event_process!(pagerd::Pager)
         # A click moves the visual line to the clicked row, and a click on the visual line
         # marks it. Clicks outside the scrollable rows are ignored.
         if pagerd.visual_mode
-            view_rows = pagerd.display_size[1] - 1 - pagerd.frozen_rows
+            view_rows = _view_rows(pagerd)
             clicked_line = pagerd.mouse_row - pagerd.frozen_rows
             last_line = min(view_rows, pagerd.num_lines - pagerd.start_row + 1)
 
