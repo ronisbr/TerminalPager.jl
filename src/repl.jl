@@ -90,19 +90,6 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
 
     # == Key Mappings ======================================================================
 
-    # We want to support all the default keymap prefixes.
-    _, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_mode)
-
-    # We also want to support reverse searching.
-    skeymap = @static if VERSION >= v"1.13-"
-        LineEdit.history_keymap
-    else
-        LineEdit.setup_search_keymap(hp)[2]
-    end
-
-    # Key mappings used in the pager mode:
-    mk = REPL.mode_keymap(main)
-
     # Assign `?` as the key map to switch to pager help mode.
     help_mode_transition_keymap = Dict{Any, Any}(
         '?' => function (s, args...)
@@ -119,17 +106,7 @@ function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
         end
     )
 
-    tp_mode_keymaps = Dict{Any, Any}[
-        mk,
-        prefix_keymap,
-        skeymap,
-        help_mode_transition_keymap,
-        LineEdit.history_keymap,
-        LineEdit.default_keymap,
-        LineEdit.escape_defaults,
-    ]
-
-    tp_mode.keymap_dict = LineEdit.keymap(tp_mode_keymaps)
+    _set_mode_keymap!(tp_mode, main, help_mode_transition_keymap)
 
     return tp_mode
 end
@@ -185,36 +162,71 @@ function _create_pager_help_repl_mode(
     hp = main.hist
     hp.mode_mapping[:pager_help] = tp_help_mode
     tp_help_mode.hist = hp
+    tp_help_mode.repl = repl
 
-    # We want to support all the default keymap prefixes. Notice that the prompt must be
-    # `tp_help_mode`, otherwise the prefix history keymap of the help mode transitions using the
-    # pager prompt.
-    _, prefix_keymap = LineEdit.setup_prefix_keymap(hp, tp_help_mode)
+    _set_mode_keymap!(tp_help_mode, main)
 
-    # We also want to support reverse searching.
+    return tp_help_mode
+end
+
+"""
+    _set_mode_keymap!(
+        mode::LineEdit.Prompt,
+        main::LineEdit.Prompt,
+        extra::Union{Nothing, Dict{Any, Any}} = nothing
+    ) -> Nothing
+
+Set the key map of the prompt `mode` to the one of the `main` Julia prompt, the prefix
+history search and the reverse search of the shared history, the `extra` key map if it is
+given, and the default key maps of **REPL.jl**.
+
+Notice that the prefix history search must be created for `mode` itself. Otherwise, the
+search transitions to the wrong prompt.
+
+# Arguments
+
+- `mode::LineEdit.Prompt`: Prompt whose key map is set.
+- `main::LineEdit.Prompt`: Main Julia prompt, whose history is shared.
+- `extra::Union{Nothing, Dict{Any, Any}}`: Key map inserted before the defaults.
+    (**Default**: `nothing`)
+"""
+function _set_mode_keymap!(mode::LineEdit.Prompt, main::LineEdit.Prompt, extra = nothing)
+    hp = main.hist
+    _, prefix_keymap = LineEdit.setup_prefix_keymap(hp, mode)
+
     skeymap = @static if VERSION >= v"1.13-"
         LineEdit.history_keymap
     else
         LineEdit.setup_search_keymap(hp)[2]
     end
 
-    # Key mappings used in the pager help mode:
-    mk = REPL.mode_keymap(main)
+    keymaps = Dict{Any, Any}[REPL.mode_keymap(main), prefix_keymap, skeymap]
+    isnothing(extra) || push!(keymaps, extra)
+    push!(keymaps, LineEdit.history_keymap, LineEdit.default_keymap, LineEdit.escape_defaults)
 
-    tp_help_mode.repl = repl
+    mode.keymap_dict = LineEdit.keymap(keymaps)
 
-    tp_help_mode_keymaps = Dict{Any, Any}[
-        mk,
-        prefix_keymap,
-        skeymap,
-        LineEdit.history_keymap,
-        LineEdit.default_keymap,
-        LineEdit.escape_defaults,
-    ]
+    return nothing
+end
 
-    tp_help_mode.keymap_dict = LineEdit.keymap(tp_help_mode_keymaps)
+"""
+    _init_pager_repl_mode_when_ready(repl::REPL.LineEditREPL) -> Task
 
-    return tp_help_mode
+Initialize the pager REPL mode in a task that waits for the interface of `repl` to be set
+up, which happens when the package is loaded from an `atreplinit` hook or before
+`run_frontend`.
+
+# Arguments
+
+- `repl::REPL.LineEditREPL`: Active REPL that owns the new mode.
+"""
+function _init_pager_repl_mode_when_ready(repl::REPL.LineEditREPL)
+    return @async begin
+        while !isdefined(repl, :interface)
+            sleep(0.1)
+        end
+        _init_pager_repl_mode(repl)
+    end
 end
 
 """

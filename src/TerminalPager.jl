@@ -299,17 +299,12 @@ function __init__()
         # keymap interface. Initializing the pager mode there broke package loading, and
         # the shortcut registration leaked a task that never terminates.
         if isinteractive() && repl isa REPL.LineEditREPL
+            # The package can be loaded from another `atreplinit` hook, in which case the
+            # REPL is active but its interface is not set up yet.
             if isdefined(repl, :interface)
                 _init_pager_repl_mode(repl)
             else
-                # The package can be loaded from another `atreplinit` hook, in which case
-                # the REPL is active but its interface is not set up yet.
-                @async begin
-                    while !isdefined(repl, :interface)
-                        sleep(0.1)
-                    end
-                    _init_pager_repl_mode(repl)
-                end
+                _init_pager_repl_mode_when_ready(repl)
             end
 
             _register_help_shortcuts(repl)
@@ -317,16 +312,11 @@ function __init__()
     else
         atreplinit() do repl
             if isinteractive() && repl isa REPL.LineEditREPL
-                # Do not call `REPL.setup_interface` here. It will be called
-                # later by `run_frontend`, which respects user options such as
-                # `auto_insert_closing_bracket`. Calling it early would bypass
-                # any options set by other `atreplinit` hooks.
-                @async begin
-                    while !isdefined(repl, :interface)
-                        sleep(0.1)
-                    end
-                    _init_pager_repl_mode(repl)
-                end
+                # Do not call `REPL.setup_interface` here. It will be called later by
+                # `run_frontend`, which respects user options such as
+                # `auto_insert_closing_bracket`. Calling it early would bypass any options
+                # set by other `atreplinit` hooks.
+                _init_pager_repl_mode_when_ready(repl)
 
                 _register_help_shortcuts(repl)
             end
