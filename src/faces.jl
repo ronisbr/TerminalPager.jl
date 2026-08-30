@@ -77,10 +77,11 @@ See also: [`drop_face!`](@ref).
 - `foreground` and `background`: Color, which can be the name of one of the 16 terminal
     colors (`:black`, `:red`, `:green`, `:yellow`, `:blue`, `:magenta`, `:cyan`, `:white`,
     and their `:bright_` variants, with `:grey` and `:gray` as aliases of
-    `:bright_black`), `:default` for the color of the terminal, a 24-bit color written as a
-    `"#rrggbb"` string or a `UInt32` like `0x005f87`, or the name of another face, whose
-    foreground is used. The 24-bit colors are approximated on terminals without true color
-    support.
+    `:bright_black`), the default color of the terminal (`:default` up to
+    **StyledStrings.jl** 1.12, and `:foreground` or `:background` since 1.13), a 24-bit
+    color written as a `"#rrggbb"` string or a `UInt32` like `0x005f87`, or the name of
+    another face, whose foreground is used. The 24-bit colors are approximated on terminals
+    without true color support.
 - `weight`: `:thin`, `:extralight`, `:light`, `:semilight`, `:normal`, `:medium`,
     `:semibold`, `:bold`, `:extrabold`, or `:black`. The weights above `:normal` are shown
     in bold, and the ones below it are shown faint.
