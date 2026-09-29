@@ -190,7 +190,9 @@ call.
 """
 function _text_width(p::Pager)
     if p.text_width < 0
-        # The layout measured every line while it was prepared.
+        # The layout measured every line while it was prepared. Notice that
+        # `_printable_widths` is a private field of **StringManipulation.jl**, which has no
+        # public accessor for it. The test "Private Layout Field" fails if it changes.
         p.text_width = maximum(p.text_layout._printable_widths; init = 0)
     end
 
@@ -655,8 +657,9 @@ end
 function _pager_content_fits(layout::TextViewLayout, display_size::Tuple{Int, Int})
     display_size[1] - 2 >= _content_fit_rows(layout) || return false
 
-    # The layout already measured every line while it was prepared, so there is no need to scan
-    # the text again. This is the path every `pager>` REPL command takes.
+    # The layout already measured every line while it was prepared, so there is no need to
+    # scan the text again. Notice that `_printable_widths` is a private field of
+    # **StringManipulation.jl**, as in `_text_width`.
     return all(width -> width <= display_size[2], layout._printable_widths)
 end
 
