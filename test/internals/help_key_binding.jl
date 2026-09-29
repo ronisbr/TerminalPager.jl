@@ -42,14 +42,17 @@ REPL.LineEdit.buffer(state::CursorState) = state.buf
 REPL.LineEdit.input_string(state::CursorState) = String(take!(copy(state.buf)))
 
 @testset "Help Shortcut Registration" begin
-    function create_mode()
+    function create_mode(prompt = "julia> ")
         escapes = Dict{Char, Any}('O' => Dict{Char, Any}())
-        return (; keymap_dict = Dict{Char, Any}('\e' => escapes))
+        return (; prompt = prompt, keymap_dict = Dict{Char, Any}('\e' => escapes))
     end
 
+    # The pager mode is found by its prompt instead of being assumed to be the last one.
+    # Another mode added after it must not receive the shortcuts.
     regular_mode = create_mode()
-    pager_mode = create_mode()
-    repl = (; interface = (; modes = [regular_mode, pager_mode]))
+    pager_mode = create_mode(TerminalPager._tp_mode_prompt)
+    other_mode = create_mode("shell> ")
+    repl = (; interface = (; modes = [regular_mode, pager_mode, other_mode]))
 
     fetch(TerminalPager._register_help_shortcuts(repl))
 
@@ -60,10 +63,56 @@ REPL.LineEdit.input_string(state::CursorState) = String(take!(copy(state.buf)))
         @test !haskey(escapes, 'H')
     end
 
+    @test !haskey(other_mode.keymap_dict['\e'], 'h')
+    @test isempty(other_mode.keymap_dict['\e']['O'])
+
+    # Registering the same shortcuts again does not record them twice.
+    num_registrars = length(TerminalPager._SHORTCUT_REGISTRARS)
+    fetch(TerminalPager._register_help_shortcuts(repl))
+    @test length(TerminalPager._SHORTCUT_REGISTRARS) == num_registrars
+
     # A REPL without a keymap interface, such as the basic REPL used on a dumb terminal,
     # must be skipped. The registration task used to poll for the interface forever.
     task = TerminalPager._register_shortcuts(escapes -> nothing, "not a REPL")
     @test timedwait(() -> istaskdone(task), 10.0) == :ok
+end
+
+"""
+    _test_shortcut(s::Any, key::Any, context::Any) -> Symbol
+
+Stand in for a REPL shortcut callback in the registration tests.
+"""
+_test_shortcut(s, key, context) = :ok
+
+"""
+    _register_test_escapes!(escapes::AbstractDict) -> Nothing
+
+Bind `<Alt> + z` in `escapes` to [`_test_shortcut`](@ref).
+"""
+_register_test_escapes!(escapes) = (escapes['z'] = _test_shortcut; nothing)
+
+@testset "Shortcuts Registered Before the Pager Mode" begin
+    # The REPL hooks run in the reverse order of their registration, so the About extension
+    # registered its shortcut before the pager mode existed. It was then added to the last
+    # mode of the REPL, which was not the pager mode.
+    term = REPL.Terminals.TTYTerminal("", IOBuffer(), IOBuffer(), IOBuffer())
+    repl = REPL.LineEditREPL(term, true)
+    repl.interface = REPL.setup_interface(repl)
+
+    try
+        fetch(TerminalPager._register_shortcuts(_register_test_escapes!, repl))
+        main_mode = first(repl.interface.modes)
+        @test main_mode.keymap_dict['\e']['z'] === _test_shortcut
+        @test !any(TerminalPager._is_pager_mode, repl.interface.modes)
+
+        # The pager mode applies the recorded shortcuts when it is created.
+        TerminalPager._init_pager_repl_mode(repl)
+        pager_modes = filter(TerminalPager._is_pager_mode, repl.interface.modes)
+        @test length(pager_modes) == 1
+        @test only(pager_modes).keymap_dict['\e']['z'] === _test_shortcut
+    finally
+        filter!(!=(_register_test_escapes!), TerminalPager._SHORTCUT_REGISTRARS)
+    end
 end
 
 """

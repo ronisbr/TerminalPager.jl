@@ -91,6 +91,9 @@ Version 0.8.0
 - ![Bugfix][badge-bugfix] The visual line stays inside the text after the events that move
   the view, such as going to a line near the end. The next frame used to show no visual line
   until a movement key was pressed.
+- ![Bugfix][badge-bugfix] The REPL shortcuts are registered in the `pager>` mode regardless
+  of the order in which the REPL hooks run. With **About.jl** loaded in `startup.jl`, the
+  shortcut `ALT-a` was registered in another prompt instead of the `pager>` mode.
 
 Version 0.7.2
 -------------

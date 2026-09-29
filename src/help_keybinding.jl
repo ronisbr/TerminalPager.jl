@@ -172,6 +172,10 @@ function _helpstring(x::SyntaxNode)
     return sourcetext(x)
 end
 
+# Functions that register the REPL shortcuts in an escape key map. They are applied to the
+# main prompt of a REPL and to every pager prompt, including the ones created afterwards.
+const _SHORTCUT_REGISTRARS = Any[]
+
 """
     _register_help_shortcuts(repl::Any) -> Task
 
@@ -182,17 +186,33 @@ identifier under the cursor.
 
 - `repl::Any`: REPL instance whose keymaps are updated asynchronously.
 """
-function _register_help_shortcuts(repl)
-    _register_shortcuts(repl) do escapes
-        escapes['O']['P'] = _show_pager_help  # <F1>
-        escapes['h'] = _show_pager_help  # <Alt> + h
-    end
+_register_help_shortcuts(repl) = _register_shortcuts(_register_help_escapes!, repl)
+
+"""
+    _register_help_escapes!(escapes::AbstractDict) -> Nothing
+
+Bind `<F1>` and `<Alt> + h` in the escape key map `escapes` to the extended help of the
+identifier under the cursor.
+
+# Arguments
+
+- `escapes::AbstractDict`: Escape key map of a REPL prompt.
+"""
+function _register_help_escapes!(escapes)
+    escapes['O']['P'] = _show_pager_help  # <F1>
+    escapes['h'] = _show_pager_help  # <Alt> + h
+    return nothing
 end
 
 """
     _register_shortcuts(f::Any, repl::Any) -> Task
 
-Register escape shortcuts in the REPL by calling `f(escapes)` to register them.
+Register escape shortcuts in the REPL by calling `f(escapes)`, where `escapes` is the escape
+key map of the main prompt or of a pager prompt.
+
+`f` is also recorded, so that the pager prompts created afterwards receive the shortcuts
+too. Otherwise, the order in which the REPL hooks run decides whether the pager prompt
+exists when the shortcuts are registered.
 
 # Arguments
 
@@ -200,12 +220,18 @@ Register escape shortcuts in the REPL by calling `f(escapes)` to register them.
 - `repl::Any`: REPL instance whose keymaps are updated asynchronously.
 """
 function _register_shortcuts(f, repl)
+    # Non-line-edit REPLs, such as the basic REPL used on a dumb terminal, have no keymap
+    # interface at all, so polling for one below would never terminate.
+    has_interface = hasfield(typeof(repl), :interface)
+
+    # The registrars are functions, hence registering one twice, for example when the package
+    # image already holds it, is skipped.
+    has_interface && (f ∈ _SHORTCUT_REGISTRARS || push!(_SHORTCUT_REGISTRARS, f))
+
     # When `atreplinit` is called, `repl.interface` is still undefined. Use `@async` to
     # finish initialization first.
-    @async begin
-        # Non-line-edit REPLs, such as the basic REPL used on a dumb terminal, have no
-        # keymap interface at all, so polling for one below would never terminate.
-        hasfield(typeof(repl), :interface) || return nothing
+    return @async begin
+        has_interface || return nothing
 
         # According to tests, this while loop is currently not needed. However, as long as
         # we don't know whether this is guaranteed, better be safe than sorry. If this is
@@ -215,16 +241,48 @@ function _register_shortcuts(f, repl)
             sleep(0.1)
         end
 
-        # Register the keybindings both in the regular REPL mode (always the first one)
-        # and in the pager mode (which is the last one, as we just added it).
+        # Register the keybindings in the regular REPL mode, which is always the first one,
+        # and in the pager modes that already exist. The pager modes created later apply
+        # the recorded registrars themselves.
         modes = repl.interface.modes
-        for m in (first(modes), last(modes))
-            f(m.keymap_dict['\e'])
+
+        for m in modes
+            ((m === first(modes)) || _is_pager_mode(m)) && f(m.keymap_dict['\e'])
         end
 
         return nothing
     end
 end
+
+"""
+    _apply_shortcut_registrars!(mode::Any) -> Nothing
+
+Register every recorded REPL shortcut in the escape key map of the prompt `mode`.
+
+# Arguments
+
+- `mode::Any`: REPL prompt that receives the shortcuts.
+"""
+function _apply_shortcut_registrars!(mode)
+    escapes = mode.keymap_dict['\e']
+
+    for f in _SHORTCUT_REGISTRARS
+        f(escapes)
+    end
+
+    return nothing
+end
+
+"""
+    _is_pager_mode(mode::Any) -> Bool
+
+Return whether the REPL prompt `mode` is a pager prompt created by this package.
+
+# Arguments
+
+- `mode::Any`: REPL prompt to inspect.
+"""
+_is_pager_mode(mode) = hasproperty(mode, :prompt) && (mode.prompt === _tp_mode_prompt)
 
 """
     _show_pager_help(s::Any, _key::Any, _context::Any) -> Symbol

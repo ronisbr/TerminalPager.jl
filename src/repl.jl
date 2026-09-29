@@ -248,6 +248,10 @@ function _init_pager_repl_mode(repl::AbstractREPL)
     # Add the new mode to the REPL interfaces.
     push!(repl.interface.modes, tp_mode)
 
+    # The shortcuts, such as the help ones, can be registered before this mode exists, for
+    # example by a REPL hook that runs first. Hence, the mode applies them itself.
+    _apply_shortcut_registrars!(tp_mode)
+
     # Assign `|` as the key map to switch to pager mode.
     keymap = Dict{Any, Any}(
         '|' => function (s, args...)

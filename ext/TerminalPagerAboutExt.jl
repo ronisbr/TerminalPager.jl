@@ -32,11 +32,21 @@ under the cursor.
 
 - `Task`: Asynchronous task that updates the keymaps.
 """
-function _register_about_shortcut(repl)
-    _register_shortcuts(repl) do escapes
-        # Bind <Alt> + a to the About callback.
-        escapes['a'] = _show_pager_about
-    end
+_register_about_shortcut(repl) = _register_shortcuts(_register_about_escapes!, repl)
+
+"""
+    _register_about_escapes!(escapes::AbstractDict) -> Nothing
+
+Bind `<Alt> + a` in the escape key map `escapes` to the About information of the identifier
+under the cursor.
+
+# Arguments
+
+- `escapes::AbstractDict`: Escape key map of a REPL prompt.
+"""
+function _register_about_escapes!(escapes)
+    escapes['a'] = _show_pager_about
+    return nothing
 end
 
 """
