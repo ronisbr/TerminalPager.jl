@@ -360,6 +360,12 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
     `"mouse"` is enabled, and disable it when the session ends. A nested session must not
     do this.
     (**Default**: `true`)
+- `_waiter_factory::Any`: Callable object that receives the terminal and returns the
+    [`InputWaiter`](@ref) of the session, which repaints the screen when the display size
+    changes, or `nothing` to read the input directly. It is called only when the input has
+    no waiter, and the session closes the waiter it created. A nested session shares the
+    waiter of its parent.
+    (**Default**: `_default_input_waiter`)
 """
 function _pager!(
     @nospecialize(term::REPL.Terminals.TTYTerminal),
@@ -381,6 +387,7 @@ function _pager!(
     manage_cursor_key_mode::Bool = true,
     manage_cursor::Bool = true,
     manage_mouse::Bool = true,
+    _waiter_factory = _default_input_waiter,
 )
     # The raw text is split only when no layout is supplied, and the result feeds both the
     # auto-fit check and the layout construction.
@@ -416,6 +423,7 @@ function _pager!(
     alternate_screen_enabled = false
     cursor_hidden = false
     mouse_enabled = false
+    owns_waiter = false
     try
         if manage_cursor_key_mode
             cursor_key_mode_enabled = true
@@ -480,6 +488,18 @@ function _pager!(
             title_rows = title_rows,
         )
 
+        # The waiter lets a change of the display size interrupt the wait for the input, so
+        # that the screen is repainted without a keystroke. A nested session, such as the
+        # help, shares the waiter of its parent through the input.
+        if isnothing(session_input.waiter)
+            waiter = _waiter_factory(term)
+
+            if !isnothing(waiter)
+                owns_waiter = true
+                session_input.waiter = waiter
+            end
+        end
+
         # == Application Main Loop =========================================================
 
         while true
@@ -493,8 +513,12 @@ function _pager!(
                 _redraw_status_bar!(pagerd)
             end
 
-            # Wait for user input. A message on the command line is shown until this
-            # keystroke, which is then processed normally.
+            # Wait for user input. A change of the display size interrupts the wait, and the
+            # screen is repainted at the top of the loop.
+            _wait_for_input!(pagerd) || continue
+
+            # A message on the command line is shown until this keystroke, which is then
+            # processed normally.
             k = _read_keystroke!(pagerd.input)
             _clear_message!(pagerd)
             action = _pager_key_process!(pagerd, k)
@@ -502,14 +526,20 @@ function _pager!(
             _pager_event_process!(pagerd) || break
         end
     finally
-        _restore_terminal(
-            term.out_stream;
-            mouse = mouse_enabled,
-            clear_status_row = cursor_hidden && !alternate_screen_enabled,
-            show_cursor = cursor_hidden,
-            alternate_screen = alternate_screen_enabled,
-            cursor_key_mode = cursor_key_mode_enabled,
-        )
+        try
+            _restore_terminal(
+                term.out_stream;
+                mouse = mouse_enabled,
+                clear_status_row = cursor_hidden && !alternate_screen_enabled,
+                show_cursor = cursor_hidden,
+                alternate_screen = alternate_screen_enabled,
+                cursor_key_mode = cursor_key_mode_enabled,
+            )
+        finally
+            # The waiter is closed even if the restoration throws, so that its timer and its
+            # reader task do not outlive the session.
+            owns_waiter && _close_input_waiter!(session_input)
+        end
     end
 
     return nothing

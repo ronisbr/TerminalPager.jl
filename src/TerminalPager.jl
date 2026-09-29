@@ -57,6 +57,7 @@ include("./view.jl")
 
 include("./input/keybindings.jl")
 include("./input/input.jl")
+include("./input/waiter.jl")
 
 include("./help_keybinding.jl")
 

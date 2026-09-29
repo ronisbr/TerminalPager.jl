@@ -635,6 +635,17 @@ function _read_cmd!(
                 redraw = false
             end
 
+            # A change of the display size repaints the view and the prompt without waiting
+            # for a keystroke.
+            if !_wait_for_input!(pagerd)
+                _update_display_size!(pagerd)
+                _view!(pagerd)
+                _redraw!(pagerd)
+                display_size = pagerd.display_size
+                redraw = true
+                continue
+            end
+
             k = _read_keystroke!(pagerd.input)
             value = k.value
 

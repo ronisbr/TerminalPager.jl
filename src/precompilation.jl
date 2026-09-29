@@ -254,3 +254,9 @@ PrecompileTools.@setup_workload begin
         end
     end
 end
+
+# The input waiter is created only for terminals, which the workload does not have. Hence, its
+# methods are compiled here without running them.
+precompile(_create_input_waiter, (Base.TTY, Base.TTY))
+precompile(_run_input_waiter_reader, (InputWaiter, Base.TTY))
+precompile(_close_input_waiter!, (PagerInput,))

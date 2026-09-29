@@ -45,6 +45,8 @@ Version 0.8.0
   status, and the help screen. The faces can be customized with the new functions
   `TerminalPager.set_face!` and `TerminalPager.drop_face!`, which persist the changes with
   Preferences.jl, or in the `faces.toml` file of the Julia depot.
+- ![Feature][badge-feature] The pager repaints the screen as soon as the terminal is resized,
+  including while a prompt is open. It used to wait for the next keystroke.
 - ![Enhancement][badge-enhancement] Scrolling asks the terminal to shift the rows already on
   screen and repaints only the rows that entered the view. A one line scroll on a 60 by 220
   terminal writes about 250 bytes instead of 13 KB. The new preference

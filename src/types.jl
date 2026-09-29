@@ -50,6 +50,40 @@ function Keystroke(raw::String, value::String, alt::Bool, ctrl::Bool, shift::Boo
 end
 
 """
+    mutable struct InputWaiter
+
+Wait for the input of a pager session or for a change of the terminal display size,
+whichever comes first.
+
+A reader task waits for the input without consuming it, and a timer polls the display size.
+Both notify `wake`. The reader waits for the input only after the pager task releases it,
+and it reports the input by setting `input_seen`, so the pager task always reads the bytes
+itself.
+
+# Fields
+
+- `wake::Base.Event`: Event notified when input arrives or the display size changes.
+- `release::Base.Event`: Event that releases the reader task to wait for the next input.
+- `input_seen::Bool`: Whether the reader task saw input after it was released. It is atomic.
+- `closed::Bool`: Whether the waiter was closed. It is atomic.
+- `armed::Bool`: Whether the reader task was released and did not report input yet. Only
+    the pager task accesses it.
+- `reader::Task`: Reader task.
+- `timer::Timer`: Timer that polls the display size.
+"""
+mutable struct InputWaiter
+    const wake::Base.Event
+    const release::Base.Event
+    @atomic input_seen::Bool
+    @atomic closed::Bool
+    armed::Bool
+    reader::Task
+    timer::Timer
+
+    InputWaiter() = new(Base.Event(true), Base.Event(true), false, false, false)
+end
+
+"""
     PagerInput
 
 Track shared pager input with a bounded incomplete prefix and one pending keystroke.
@@ -60,24 +94,28 @@ Track shared pager input with a bounded incomplete prefix and one pending keystr
 - `prefix::Vector{UInt8}`: Bytes retained while decoding an incomplete keystroke.
 - `pending::Union{Nothing, Keystroke}`: Keystroke retained at an input boundary.
 - `can_lookahead::Bool`: Whether nonblocking lookahead is supported by `stream`.
+- `waiter::Union{Nothing, InputWaiter}`: Waiter for the input and for the changes of the
+    display size, or `nothing` if the input is read directly. It is shared by the sessions
+    that share the input.
 """
 mutable struct PagerInput
     stream::IO
     prefix::Vector{UInt8}
     pending::Union{Nothing, Keystroke}
     can_lookahead::Bool
+    waiter::Union{Nothing, InputWaiter}
 end
 
 """
     PagerInput(stream::IO) -> PagerInput
 
-Create input state for `stream` with an empty prefix and no pending keystroke.
+Create input state for `stream` with an empty prefix, no pending keystroke, and no waiter.
 
 # Arguments
 
 - `stream::IO`: Input stream that supplies keystroke bytes.
 """
-PagerInput(stream::IO) = PagerInput(stream, UInt8[], nothing, true)
+PagerInput(stream::IO) = PagerInput(stream, UInt8[], nothing, true, nothing)
 
 """
     DisplayConfig
