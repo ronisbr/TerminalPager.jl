@@ -94,6 +94,9 @@ Version 0.8.0
 - ![Bugfix][badge-bugfix] The REPL shortcuts are registered in the `pager>` mode regardless
   of the order in which the REPL hooks run. With **About.jl** loaded in `startup.jl`, the
   shortcut `ALT-a` was registered in another prompt instead of the `pager>` mode.
+- ![Bugfix][badge-bugfix] `TerminalPager.debug_keycode` enables the application cursor key
+  mode and the mouse reporting like the pager does. It used to show the sequences of the
+  normal cursor key mode, which the pager never receives, and no mouse event.
 
 Version 0.7.2
 -------------
