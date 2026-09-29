@@ -73,7 +73,9 @@ macro stdout_to_pager(ex_in, args...)
     kwargs = map(x -> Expr(:kw, x.args[1], esc(x.args[2])), args)
 
     ex_out = quote
-        hascolor = get(stdout, :color, true)
+        # A terminal always reports its color support. A stream without the property, such
+        # as a redirected output, must not receive escape sequences.
+        hascolor = get(stdout, :color, false)
         bypass_pager = get(stdout, :bypass_pager, false)
         old_stdout = stdout
         buf = IOBuffer()

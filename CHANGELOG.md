@@ -85,6 +85,9 @@ Version 0.8.0
   instead of the global `stdout`.
 - ![Bugfix][badge-bugfix] Every session starts with an empty search history. The pattern
   searched by the precompilation workload was recalled by the up key at the search prompt.
+- ![Bugfix][badge-bugfix] `pager(obj)` and `@stdout_to_pager` render without color when the
+  output does not report color support, for example when it is redirected to a file. The
+  printed text used to carry raw ANSI escape sequences.
 
 Version 0.7.2
 -------------

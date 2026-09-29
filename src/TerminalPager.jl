@@ -267,7 +267,10 @@ function _render_object(obj)
     # color support, and rendering without the display size wrapped Markdown, and any other
     # object that consults it, at the default 80 columns regardless of the terminal width.
     # The limit is disabled explicitly because the pager exists to show the whole object.
-    hascolor = get(stdout, :color, true)::Bool
+    #
+    # A terminal always reports its color support. A stream without the property, such as a
+    # redirected output, must not receive escape sequences, like `show` does.
+    hascolor = get(stdout, :color, false)::Bool
     context = (:color => hascolor, :displaysize => displaysize(stdout), :limit => false)
     return sprint(show, MIME"text/plain"(), obj; context = context)
 end

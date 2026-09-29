@@ -30,6 +30,37 @@ end
     end
 end
 
+struct _ColorProbe end
+
+function Base.show(io::IO, ::MIME"text/plain", ::_ColorProbe)
+    return print(io, "color=", get(io, :color, nothing))
+end
+
+@testset "Object Rendering Color" begin
+    # A stream without the color property, such as a redirected output, used to be rendered
+    # with color, so the printed text carried raw escape sequences. The property must still
+    # be honored when the stream sets it.
+    old_stdout = stdout
+    output = IOBuffer()
+
+    try
+        for (properties, expected) in (
+            ((:bypass_pager => true,), "color=false"),
+            ((:bypass_pager => true, :color => true), "color=true"),
+        )
+            Base.eval(:(stdout = $(IOContext(output, properties...))))
+
+            pager(_ColorProbe())
+            @test String(take!(output)) == expected
+
+            @stdout_to_pager show(stdout, MIME"text/plain"(), _ColorProbe())
+            @test String(take!(output)) == expected
+        end
+    finally
+        Base.eval(:(stdout = $old_stdout))
+    end
+end
+
 @testset "Print Without a Terminal" begin
     # Without a terminal, the pager used to paint escape sequences into the redirected output
     # and then throw when the input reached its end. Like `less`, it must print the text.
