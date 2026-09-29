@@ -210,6 +210,13 @@ PrecompileTools.@setup_workload begin
             burst_pager.mode = :searching
             TerminalPager._redraw_status_bar!(burst_pager)
 
+            # The search pattern of the session above arrives at once, like a pasted text,
+            # so the incremental search does not preview it. The preview, which runs at every
+            # typed character, is exercised here instead.
+            TerminalPager._preview_search!(
+                burst_pager, "line", TerminalPager._search_state(burst_pager)
+            )
+
             for prepared_lines in (
                 ["plain text", "second line"],
                 ["Unicode α界", "combining e\u0301"],

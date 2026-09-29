@@ -556,9 +556,9 @@ CTRL-U to clear the command, and the up and down keys to recall the commands in 
 - `history::Union{Nothing, Vector{String}}`: Previous commands, from the oldest to the
     newest, or `nothing` to disable the recall.
     (**Default**: `nothing`)
-- `on_change::Any`: Callable object invoked with the command whenever its text changes, or
-    `nothing`. It must return a `String`, which is shown at the right of the prompt row
-    when it fits, for example a live match count.
+- `on_change::Any`: Callable object invoked with the command whenever its text changes and
+    no other keystroke is buffered, or `nothing`. It must return a `String`, which is shown
+    at the right of the prompt row when it fits, for example a live match count.
     (**Default**: `nothing`)
 """
 function _read_cmd!(
@@ -741,7 +741,10 @@ function _read_cmd!(
             # Every other keystroke is ignored. Otherwise, names such as `<F1>` would be
             # inserted verbatim into the command.
 
-            if changed
+            # A changed command is processed only when no other keystroke is buffered.
+            # Otherwise, a pasted pattern ran the callback, which can search the whole text,
+            # once per character, although only the last result was shown.
+            if changed && !_has_buffered_input(pagerd.input)
                 changed = false
                 redraw = true
                 isnothing(on_change) || (status = on_change(String(chars))::String)

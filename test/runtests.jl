@@ -32,6 +32,91 @@ function _create_pagerd(str::AbstractString)
     return pagerd
 end
 
+"""
+    TypedInput
+
+Represent an input stream whose keystrokes arrive one at a time, as typed keys do: only the
+bytes of the keystroke being read are available without blocking.
+
+# Fields
+
+- `chunks::Vector{Vector{UInt8}}`: Bytes of each arrival, in order.
+- `chunk::Int`: Index of the arrival being read.
+- `position::Int`: Index of the next byte of the arrival being read.
+"""
+mutable struct TypedInput <: IO
+    chunks::Vector{Vector{UInt8}}
+    chunk::Int
+    position::Int
+end
+
+"""
+    TypedInput(chunks::AbstractVector{<:AbstractString}) -> TypedInput
+    TypedInput(text::AbstractString) -> TypedInput
+
+Create an input stream that delivers each entry of `chunks` at once, like a pasted text, or
+each keystroke of `text` on its own, like typed keys.
+
+# Arguments
+
+- `chunks::AbstractVector{<:AbstractString}`: Text of each arrival.
+- `text::AbstractString`: Keystrokes to split with the decoder of the pager.
+"""
+function TypedInput(chunks::AbstractVector{<:AbstractString})
+    return TypedInput([collect(codeunits(chunk)) for chunk in chunks], 1, 1)
+end
+
+function TypedInput(text::AbstractString)
+    bytes = collect(codeunits(text))
+    chunks = String[]
+
+    while !isempty(bytes)
+        status, _, consumed = TerminalPager._decode_keystroke(bytes)
+        num_bytes = status === :complete ? consumed : length(bytes)
+        push!(chunks, String(bytes[1:num_bytes]))
+        bytes = bytes[(num_bytes + 1):end]
+    end
+
+    return TypedInput(chunks)
+end
+
+"""
+    Base.bytesavailable(io::TypedInput) -> Int
+
+Return the number of unread bytes of the arrival being read.
+
+# Arguments
+
+- `io::TypedInput`: Input stream to inspect.
+"""
+function Base.bytesavailable(io::TypedInput)
+    io.chunk > length(io.chunks) && return 0
+    return length(io.chunks[io.chunk]) - io.position + 1
+end
+
+"""
+    Base.read(io::TypedInput, ::Type{UInt8}) -> UInt8
+
+Read the next byte of `io`, waiting for the next arrival when the current one was read.
+
+# Arguments
+
+- `io::TypedInput`: Input stream to read.
+"""
+function Base.read(io::TypedInput, ::Type{UInt8})
+    while (io.chunk <= length(io.chunks)) && (io.position > length(io.chunks[io.chunk]))
+        io.chunk += 1
+        io.position = 1
+    end
+
+    io.chunk > length(io.chunks) && throw(EOFError())
+
+    byte = io.chunks[io.chunk][io.position]
+    io.position += 1
+
+    return byte
+end
+
 include("./internals/screen.jl")
 include("./internals/redraw.jl")
 include("./internals/key_bindings.jl")

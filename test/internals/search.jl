@@ -8,7 +8,8 @@
     _create_modal_pagerd(lines::Vector{String}, input_text::AbstractString) ->
         TerminalPager.Pager
 
-Create a pager whose terminal and shared input are backed by in-memory buffers.
+Create a pager whose terminal is backed by an in-memory buffer and whose shared input
+delivers the keystrokes of `input_text` one at a time, as typed keys.
 
 # Arguments
 
@@ -16,7 +17,8 @@ Create a pager whose terminal and shared input are backed by in-memory buffers.
 - `input_text::AbstractString`: Keystrokes the pager reads.
 """
 function _create_modal_pagerd(lines::Vector{String}, input_text::AbstractString)
-    input = IOBuffer(input_text)
+    # Each keystroke arrives on its own, as when the user types it.
+    input = TypedInput(input_text)
     output = IOBuffer()
     term = REPL.Terminals.TTYTerminal("", input, output, output)
     text_layout = TerminalPager.TextViewLayout(lines)
@@ -275,6 +277,23 @@ end
     @test pagerd.mode == :searching
     @test pagerd.start_row == 25 - 9 + 1
     @test !occursin("match 1/1", String(take!(pagerd.term.out_stream)))
+    empty!(TerminalPager._SEARCH_HISTORY)
+end
+
+@testset "Pasted Search Pattern" begin
+    # A pasted pattern arrives at once. Previewing it used to search the whole text once per
+    # character, although only the last result was shown. The search now runs once, when
+    # the pattern is confirmed.
+    lines = ["line $i" for i in 1:30]
+    pagerd = _create_modal_pagerd(lines, "")
+    pagerd.input = TerminalPager.PagerInput(TypedInput(["25\n"]))
+    pagerd.event = :search
+
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :searching
+    @test length(pagerd.ordered_search_matches) == 1
+    @test pagerd.start_row == 25 - 9 + 1
+    @test !occursin("match", String(take!(pagerd.term.out_stream)))
     empty!(TerminalPager._SEARCH_HISTORY)
 end
 

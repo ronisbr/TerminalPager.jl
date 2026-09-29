@@ -329,6 +329,25 @@ end
     @test !occursin("too long", String(take!(pagerd.term.out_stream)))
 end
 
+@testset "Command Line Change Callback With Pasted Input" begin
+    # A pasted text arrives at once, and the callback, which can search the whole text, used
+    # to run once per character, although only the last result was shown. It now runs when
+    # no other keystroke is buffered.
+    calls = String[]
+    on_change = text -> (push!(calls, text); "")
+    pagerd = _create_modal_pagerd(["x"], "")
+    pagerd.input = TerminalPager.PagerInput(TypedInput(["abc", "d", "\n"]))
+    @test TerminalPager._read_cmd!(pagerd; on_change = on_change) == "abcd"
+    @test calls == ["abc", "abcd"]
+
+    # When the confirmation arrives with the text, the callback does not run, and the caller
+    # processes the confirmed command.
+    empty!(calls)
+    pagerd.input = TerminalPager.PagerInput(TypedInput(["abc\n"]))
+    @test TerminalPager._read_cmd!(pagerd; on_change = on_change) == "abc"
+    @test isempty(calls)
+end
+
 @testset "Go To Line" begin
     lines = ["line $i" for i in 1:30]
     k = TerminalPager.Keystroke(; value = ":")

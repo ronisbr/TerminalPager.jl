@@ -397,6 +397,30 @@ function _try_append_available!(input::PagerInput)
 end
 
 """
+    _has_buffered_input(input::PagerInput) -> Bool
+
+Return whether `input` holds a keystroke that can be read without waiting for the user: a
+pending keystroke, the bytes of a partially decoded one, or bytes available in its stream.
+
+# Arguments
+
+- `input::PagerInput`: Input state to inspect.
+"""
+function _has_buffered_input(input::PagerInput)
+    isnothing(input.pending) || return true
+    isempty(input.prefix) || return true
+    input.can_lookahead || return false
+
+    # As in `_try_append_available!`, a stream without lookahead support disables it.
+    return try
+        bytesavailable(input.stream) > 0
+    catch
+        input.can_lookahead = false
+        false
+    end
+end
+
+"""
     _take_decoded!(input::PagerInput, key::Keystroke, consumed::Int) -> Keystroke
 
 Clear the consumed prefix and return `key`.

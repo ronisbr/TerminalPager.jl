@@ -64,6 +64,9 @@ Version 0.8.0
 - ![Enhancement][badge-enhancement] The faces are rendered by StringManipulation.jl 0.6,
   which also preserves the faint and the strikethrough attributes of the text when the view
   is cropped.
+- ![Enhancement][badge-enhancement] The incremental search previews the pattern only when no
+  other keystroke is buffered. A pasted pattern used to search the whole text once per
+  character, although only the last result was shown.
 - ![Bugfix][badge-bugfix] The Home and End keys work on xterm-compatible terminals, which
   send `\eOH` and `\eOF` in the application cursor key mode the pager enables, and on the
   Linux console, tmux, and rxvt.
