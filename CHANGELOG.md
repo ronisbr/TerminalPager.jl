@@ -97,6 +97,9 @@ Version 0.8.0
 - ![Bugfix][badge-bugfix] `TerminalPager.debug_keycode` enables the application cursor key
   mode and the mouse reporting like the pager does. It used to show the sequences of the
   normal cursor key mode, which the pager never receives, and no mouse event.
+- ![Bugfix][badge-bugfix] Negative values of the keywords `frozen_rows`, `frozen_columns`,
+  and `title_rows` are treated as zero, like in the prompts that change them. A negative
+  number of frozen rows made the page movements skip lines.
 
 Version 0.7.2
 -------------

@@ -394,6 +394,13 @@ function _pager!(
         return nothing
     end
 
+    # Like the prompts that change them, the numbers of frozen and title rows and columns
+    # cannot be negative. Otherwise, the view has more rows than the display, and a page
+    # movement skips lines.
+    frozen_rows = max(frozen_rows, 0)
+    frozen_columns = max(frozen_columns, 0)
+    title_rows = max(title_rows, 0)
+
     session_layout = isnothing(text_layout) ? _layout_factory(source_lines) : text_layout
     num_tokens = length(session_layout)
     session_config = isnothing(display_config) ? _display_config() : display_config

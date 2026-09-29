@@ -203,3 +203,28 @@ end
     @test !pagerd.show_scrollbar
     @test pagerd.start_column == 6
 end
+
+@testset "Negative Frozen Rows and Columns" begin
+    # The prompts that change the frozen and title rows and columns clamp them at zero, but
+    # the keywords were used as is. A negative number of frozen rows made the view taller than
+    # the display, so the page movements skipped lines.
+    text = join(("line $i" for i in 1:40), '\n')
+
+    function session(; kwargs...)
+        input = IOBuffer(" q")
+        output = IOContext(IOBuffer(), :displaysize => (10, 30), :color => false)
+        term = REPL.Terminals.TTYTerminal("", input, output, output)
+
+        TerminalPager._pager!(
+            term,
+            text;
+            input = TerminalPager.PagerInput(input),
+            use_alternate_screen_buffer = false,
+            kwargs...,
+        )
+
+        return String(take!(output.io))
+    end
+
+    @test session(; frozen_rows = -3, frozen_columns = -2, title_rows = -1) == session()
+end
