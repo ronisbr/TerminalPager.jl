@@ -148,3 +148,28 @@ end
         "TerminalPager.jl $(pkgversion(TerminalPager))", TerminalPager._help_string(false)
     )
 end
+
+@testset "Help Keyword" begin
+    # The keyword that enables the help is named like `has_visual_mode`. It used to be
+    # `hashelp`.
+    function session(; kwargs...)
+        input = IOBuffer("?qq")
+        output = IOContext(IOBuffer(), :displaysize => (10, 40), :color => false)
+        term = REPL.Terminals.TTYTerminal("", input, output, output)
+
+        TerminalPager._pager!(
+            term,
+            "text";
+            input = TerminalPager.PagerInput(input),
+            use_alternate_screen_buffer = false,
+            kwargs...,
+        )
+
+        return String(take!(output.io))
+    end
+
+    @test occursin("TerminalPager.jl", session())
+    @test occursin("TerminalPager.jl", session(; has_help = true))
+    @test !occursin("TerminalPager.jl", session(; has_help = false))
+    @test_throws MethodError session(; hashelp = false)
+end

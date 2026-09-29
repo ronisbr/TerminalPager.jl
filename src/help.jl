@@ -47,7 +47,7 @@ function _help!(pagerd::Pager)
         pagerd.term,
         help_str;
         display_config = pagerd.display_config,
-        hashelp = false,
+        has_help = false,
         has_visual_mode = false,
         input = pagerd.input,
         text_layout = help_layout,

@@ -88,7 +88,7 @@ Call the pager to show the output of the object `obj`.
     (**Default**: `0`)
 - `title_rows::Int`: Number of frozen rows treated as horizontally fixed titles.
     (**Default**: `0`)
-- `hashelp::Bool`: Allow the user to open pager help.
+- `has_help::Bool`: Allow the user to open pager help.
     (**Default**: `true`)
 - `has_visual_mode::Bool`: Allow the user to use visual mode.
     (**Default**: `true`)

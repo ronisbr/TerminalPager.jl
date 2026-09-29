@@ -331,7 +331,7 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
     (**Default**: `0`)
 - `title_rows::Int`: Number of leading title rows.
     (**Default**: `0`)
-- `hashelp::Bool`: Enable pager help.
+- `has_help::Bool`: Enable pager help.
     (**Default**: `true`)
 - `has_visual_mode::Bool`: Enable visual selection mode.
     (**Default**: `true`)
@@ -376,7 +376,7 @@ function _pager!(
     frozen_columns::Int = 0,
     frozen_rows::Int = 0,
     title_rows::Int = 0,
-    hashelp::Bool = true,
+    has_help::Bool = true,
     has_visual_mode::Bool = true,
     show_ruler::Bool = false,
     show_scrollbar::Bool = _get_preference("show_scrollbar")::Bool,
@@ -465,7 +465,7 @@ function _pager!(
 
         features = Symbol[]
         change_freeze && push!(features, :change_freeze)
-        hashelp && push!(features, :help)
+        has_help && push!(features, :help)
         has_visual_mode && push!(features, :visual_mode)
 
         # Initialize the pager structure.

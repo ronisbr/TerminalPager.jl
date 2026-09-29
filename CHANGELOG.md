@@ -16,6 +16,8 @@ Version 0.8.0
   `"visual_mode_line_background"`, and `"visual_mode_active_line_background"` were replaced
   by the faces `search_active_match`, `search_match`, `visual_line`, and
   `visual_active_line`. Setting or dropping one of them throws an error naming the face.
+- ![BREAKING][badge-breaking] Breaking Change: The keyword `hashelp` of `pager` was renamed
+  to `has_help`, like `has_visual_mode`.
 - ![Deprecation][badge-deprecation] The preference
   `"always_use_alternate_screen_buffer_in_repl_mode"` is deprecated and ignored, because the
   alternate screen buffer is now used by default. Setting it warns.
