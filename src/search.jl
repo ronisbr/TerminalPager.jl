@@ -400,9 +400,27 @@ function _move_view_to_match!(pagerd::Pager)
 end
 
 """
+    _move_to_match!(pagerd::Pager, forward::Bool) -> Nothing
+
+Activate the next search match of `pagerd` if `forward` is `true`, or the previous one
+otherwise, move the view to it, and request a redraw.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `forward::Bool`: Whether to activate the next match instead of the previous one.
+"""
+function _move_to_match!(pagerd::Pager, forward::Bool)
+    _change_active_match!(pagerd, forward)
+    _move_view_to_match!(pagerd)
+    _request_redraw!(pagerd)
+    return nothing
+end
+
+"""
     _quit_search!(pagerd::Pager) -> Nothing
 
-Clear all search state in `pagerd`.
+Clear all search state in `pagerd`, leave the searching mode, and request a redraw.
 
 # Arguments
 
@@ -412,5 +430,7 @@ function _quit_search!(pagerd::Pager)
     empty!(pagerd.search_matches)
     empty!(pagerd.ordered_search_matches)
     pagerd.active_search_match_id = 0
+    pagerd.mode = :view
+    _request_redraw!(pagerd)
     return nothing
 end

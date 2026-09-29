@@ -1062,123 +1062,32 @@ function _pager_event_process!(pagerd::Pager)
 
     if event == :quit
         return false
-
     elseif event == :help
         _help!(pagerd)
-
-        # The nested pager repainted the whole screen.
-        _invalidate_frame!(pagerd)
-        _request_redraw!(pagerd)
-
     elseif event == :search
         _search!(pagerd)
-
     elseif event == :goto_line
-        status, line = _prompt_number!(pagerd, ":")
-
-        if status === :value
-            # The requested line is shown at the top of the view, like `less` does, and the
-            # view never moves into the frozen rows.
-            min_row = _first_scrollable_row(pagerd)
-            pagerd.start_row = clamp(line, min_row, max(min_row, pagerd.num_lines))
-        end
-
-        _request_redraw!(pagerd)
-
+        _goto_line!(pagerd)
     elseif event == :next_match
-        _change_active_match!(pagerd, true)
-        _move_view_to_match!(pagerd)
-        _request_redraw!(pagerd)
-
+        _move_to_match!(pagerd, true)
     elseif event == :previous_match
-        _change_active_match!(pagerd, false)
-        _move_view_to_match!(pagerd)
-        _request_redraw!(pagerd)
-
+        _move_to_match!(pagerd, false)
     elseif event == :quit_search
         _quit_search!(pagerd)
-        _request_redraw!(pagerd)
-        pagerd.mode = :view
-
     elseif event == :change_freeze
         _change_freeze!(pagerd)
-
     elseif event == :change_title_rows
-        status, title_rows = _prompt_number!(pagerd, "Title rows", pagerd.title_rows)
-
-        if status === :value
-            pagerd.title_rows = max(0, title_rows)
-            _set_message!(pagerd, "$(pagerd.title_rows) title rows")
-        end
-
-        _request_redraw!(pagerd)
-
+        _change_title_rows!(pagerd)
     elseif event == :toggle_ruler
-        pagerd.show_ruler = !pagerd.show_ruler
-
-        # If the ruler is hidden, we must verify if the screen is near the right edge to fix
-        # the `start_column`.
-        if !pagerd.show_ruler
-            ruler_spacing = _ruler_width(pagerd.num_lines)
-
-            if pagerd.cropped_columns ≤ ruler_spacing
-                # Hiding the ruler reclaims `ruler_spacing` columns, of which
-                # `cropped_columns` are filled by the text that was cropped at the right
-                # edge. Scrolling left by the difference fills the rest. Scrolling by the
-                # full ruler width cropped that text again. Notice that the reclaimed
-                # columns must not push the view into the frozen region.
-                pagerd.start_column = max(
-                    pagerd.start_column - (ruler_spacing - pagerd.cropped_columns),
-                    pagerd.frozen_columns + 1,
-                    1,
-                )
-            end
-        end
-
-        _request_redraw!(pagerd)
-
+        _toggle_ruler!(pagerd)
     elseif event == :toggle_scrollbar
-        pagerd.show_scrollbar = !pagerd.show_scrollbar
-
-        # Hiding the scrollbar reclaims one column that the cropped text can use. Like the
-        # ruler, the reclaimed column must not push the view into the frozen region.
-        if !pagerd.show_scrollbar && (pagerd.cropped_columns == 0)
-            pagerd.start_column = max(pagerd.start_column - 1, pagerd.frozen_columns + 1, 1)
-        end
-
-        _request_redraw!(pagerd)
-
+        _toggle_scrollbar!(pagerd)
     elseif event == :toggle_visual_mode
-        pagerd.visual_mode = !pagerd.visual_mode
-
-        if !pagerd.visual_mode
-            pagerd.visual_mode_line = 1
-            empty!(pagerd.visual_mode_selected_lines)
-        end
-
-        _request_redraw!(pagerd)
-
+        _toggle_visual_mode!(pagerd)
     elseif event == :mouse_select
-        # A click moves the visual line to the clicked row, and a click on the visual line
-        # marks it. Clicks outside the scrollable rows are ignored.
-        if pagerd.visual_mode
-            view_rows = _view_rows(pagerd)
-            clicked_line = pagerd.mouse_row - pagerd.frozen_rows
-            last_line = min(view_rows, pagerd.num_lines - pagerd.start_row + 1)
-
-            if 1 <= clicked_line <= last_line
-                if clicked_line == pagerd.visual_mode_line
-                    _toggle_visual_line!(pagerd)
-                else
-                    pagerd.visual_mode_line = clicked_line
-                    _request_redraw!(pagerd)
-                end
-            end
-        end
-
+        _mouse_select!(pagerd)
     elseif event == :select_visual_mode_line
         _toggle_visual_line!(pagerd)
-
     elseif event == :yank
         _yank!(pagerd)
     end
@@ -1243,6 +1152,167 @@ function _change_freeze!(pagerd::Pager)
     end
 
     _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _goto_line!(pagerd::Pager) -> Nothing
+
+Prompt for a line number and show that line at the top of the view of `pagerd`, like `less`
+does, and request a redraw. The view never moves into the frozen rows, and an invalid or
+cancelled number keeps it.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _goto_line!(pagerd::Pager)
+    status, line = _prompt_number!(pagerd, ":")
+
+    if status === :value
+        min_row = _first_scrollable_row(pagerd)
+        pagerd.start_row = clamp(line, min_row, max(min_row, pagerd.num_lines))
+    end
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _change_title_rows!(pagerd::Pager) -> Nothing
+
+Prompt for the number of title rows of `pagerd`, apply it, and request a redraw. An invalid
+or cancelled number keeps the current one.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _change_title_rows!(pagerd::Pager)
+    status, title_rows = _prompt_number!(pagerd, "Title rows", pagerd.title_rows)
+
+    if status === :value
+        pagerd.title_rows = max(0, title_rows)
+        _set_message!(pagerd, "$(pagerd.title_rows) title rows")
+    end
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _toggle_ruler!(pagerd::Pager) -> Nothing
+
+Show or hide the line number ruler of `pagerd` and request a redraw. Hiding it scrolls the
+view left if the text cropped at the right edge does not fill the reclaimed columns.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _toggle_ruler!(pagerd::Pager)
+    pagerd.show_ruler = !pagerd.show_ruler
+
+    # If the ruler is hidden, we must verify if the screen is near the right edge to fix the
+    # `start_column`.
+    if !pagerd.show_ruler
+        ruler_spacing = _ruler_width(pagerd.num_lines)
+
+        if pagerd.cropped_columns ≤ ruler_spacing
+            # Hiding the ruler reclaims `ruler_spacing` columns, of which `cropped_columns`
+            # are filled by the text that was cropped at the right edge. Scrolling left by
+            # the difference fills the rest. Scrolling by the full ruler width cropped that
+            # text again. Notice that the reclaimed columns must not push the view into the
+            # frozen region.
+            pagerd.start_column = max(
+                pagerd.start_column - (ruler_spacing - pagerd.cropped_columns),
+                pagerd.frozen_columns + 1,
+                1,
+            )
+        end
+    end
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _toggle_scrollbar!(pagerd::Pager) -> Nothing
+
+Show or hide the scrollbar of `pagerd` and request a redraw. Hiding it scrolls the view left
+by one column if the text is scrolled to its right end.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _toggle_scrollbar!(pagerd::Pager)
+    pagerd.show_scrollbar = !pagerd.show_scrollbar
+
+    # Hiding the scrollbar reclaims one column that the cropped text can use. Like the
+    # ruler, the reclaimed column must not push the view into the frozen region.
+    if !pagerd.show_scrollbar && (pagerd.cropped_columns == 0)
+        pagerd.start_column = max(pagerd.start_column - 1, pagerd.frozen_columns + 1, 1)
+    end
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _toggle_visual_mode!(pagerd::Pager) -> Nothing
+
+Enter or leave the visual mode of `pagerd` and request a redraw. Leaving it clears the marks
+and moves the visual line back to the top of the view.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _toggle_visual_mode!(pagerd::Pager)
+    pagerd.visual_mode = !pagerd.visual_mode
+
+    if !pagerd.visual_mode
+        pagerd.visual_mode_line = 1
+        empty!(pagerd.visual_mode_selected_lines)
+    end
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _mouse_select!(pagerd::Pager) -> Nothing
+
+Move the visual line of `pagerd` to the row of the last mouse click, or mark it if the click
+was on the visual line, and request a redraw. Clicks outside the scrollable rows of the text
+and outside the visual mode are ignored.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _mouse_select!(pagerd::Pager)
+    pagerd.visual_mode || return nothing
+
+    view_rows = _view_rows(pagerd)
+    clicked_line = pagerd.mouse_row - pagerd.frozen_rows
+    last_line = min(view_rows, pagerd.num_lines - pagerd.start_row + 1)
+
+    (1 <= clicked_line <= last_line) || return nothing
+
+    if clicked_line == pagerd.visual_mode_line
+        _toggle_visual_line!(pagerd)
+    else
+        pagerd.visual_mode_line = clicked_line
+        _request_redraw!(pagerd)
+    end
 
     return nothing
 end

@@ -25,7 +25,7 @@ const _HELP_DESCRIPTION_WIDTH = 40
 """
     _help!(pagerd::Pager) -> Nothing
 
-Open a new pager with the help.
+Open a new pager with the help and request a full repaint of `pagerd` after it is closed.
 
 # Arguments
 
@@ -56,6 +56,10 @@ function _help!(pagerd::Pager)
         manage_cursor = false,
         manage_mouse = false,
     )
+
+    # The nested pager repainted the whole screen.
+    _invalidate_frame!(pagerd)
+    _request_redraw!(pagerd)
 
     return nothing
 end
