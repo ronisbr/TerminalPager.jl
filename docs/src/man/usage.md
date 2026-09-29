@@ -40,7 +40,8 @@ case-insensitive unless the pattern has an uppercase letter. The up and down key
 prompt recall the previous patterns of the session.
 
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
-move. `m` marks the visual line, and `y` copies the marked lines to the clipboard.
+move. `m` marks the visual line, and `y` copies the visual line and the marked lines to the
+clipboard.
 
 Rows and columns can be frozen with `f`, so that they stay visible while scrolling, and `t`
 selects how many frozen rows are titles, which do not scroll horizontally either.

@@ -211,14 +211,14 @@ const _HELP_SECTIONS = HelpSection[
     ),
     HelpSection(
         "Visual Mode",
-        "The visual line is highlighted, and the marked lines can be copied to the " *
-            "clipboard. Marks are cleared when the mode is left.",
+        "The visual line is highlighted, and it can be copied to the clipboard together " *
+            "with the marked lines. Marks are cleared when the mode is left.",
         :visual_mode,
         ActionHelp[
             ActionHelp(:toggle_visual_mode, "Toggle the visual mode."),
             ActionHelp(:select_visual_mode_line, "Mark or unmark the visual line."),
             ActionHelp(:mouse_select, "Move or mark the clicked line."),
-            ActionHelp(:yank, "Copy the marked lines to the clipboard."),
+            ActionHelp(:yank, "Copy the visual and the marked lines."),
         ],
     ),
 ]
