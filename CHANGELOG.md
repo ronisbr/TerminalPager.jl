@@ -88,6 +88,9 @@ Version 0.8.0
 - ![Bugfix][badge-bugfix] `pager(obj)` and `@stdout_to_pager` render without color when the
   output does not report color support, for example when it is redirected to a file. The
   printed text used to carry raw ANSI escape sequences.
+- ![Bugfix][badge-bugfix] The visual line stays inside the text after the events that move
+  the view, such as going to a line near the end. The next frame used to show no visual line
+  until a movement key was pressed.
 
 Version 0.7.2
 -------------

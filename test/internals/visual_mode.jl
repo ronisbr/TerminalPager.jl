@@ -243,3 +243,27 @@ end
     @test TerminalPager._pager_key_process!(pagerd, click) === :mouse_select
     @test isnothing(pagerd.event)
 end
+
+@testset "Visual Line After Events" begin
+    # Going to a line moves the view without a movement key, and the visual line used to be
+    # clamped only by the movements. The next frame then showed no visual line, because it
+    # pointed past the end of the text.
+    lines = ["line $i" for i in 1:30]
+    pagerd = _create_modal_pagerd(lines, "29\n")
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+    pagerd.visual_mode_line = 6
+    pagerd.event = :goto_line
+
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.start_row == 29
+    @test pagerd.visual_mode_line == 2
+
+    # Outside the visual mode, the line is not touched.
+    pagerd = _create_modal_pagerd(lines, "29\n")
+    pagerd.visual_mode_line = 6
+    pagerd.event = :goto_line
+
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.visual_mode_line == 6
+end

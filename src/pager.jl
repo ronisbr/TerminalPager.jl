@@ -704,12 +704,28 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     # and with the number of rows the view has. Clamping it inside each movement left the
     # cursor past the last line whenever the state was changed elsewhere, for example by
     # `:change_freeze`, and the yank then indexed the layout out of bounds.
-    if pagerd.visual_mode
-        max_visual_line = min(view_rows, num_lines - pagerd.start_row + 1)
-        pagerd.visual_mode_line = clamp(pagerd.visual_mode_line, 1, max(1, max_visual_line))
-    end
+    _clamp_visual_line!(pagerd)
 
     return action
+end
+
+"""
+    _clamp_visual_line!(pagerd::Pager) -> Nothing
+
+Keep the visual line of `pagerd` inside the view and inside the text. Nothing happens
+outside the visual mode.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _clamp_visual_line!(pagerd::Pager)
+    pagerd.visual_mode || return nothing
+
+    max_visual_line = min(_view_rows(pagerd), pagerd.num_lines - pagerd.start_row + 1)
+    pagerd.visual_mode_line = clamp(pagerd.visual_mode_line, 1, max(1, max_visual_line))
+
+    return nothing
 end
 
 # Number of lines scrolled by one movement of the mouse wheel.
@@ -1129,6 +1145,11 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :yank
         _yank!(pagerd)
     end
+
+    # Some events move the view, such as going to a line or to a search match. The visual
+    # line is relative to the view, so it must be kept inside the text again. Otherwise, the
+    # next frame shows no visual line, because it points past the end of the text.
+    _clamp_visual_line!(pagerd)
 
     return true
 end
