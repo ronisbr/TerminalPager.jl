@@ -118,8 +118,9 @@ The user can define custom preferences using the function
     globally blocked, regardless of the keyword options. This modification is helpful when
     the terminal is not compatible with XTerm.
     (**Default**: `false`)
-- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, the output shown in the pager in REPL
-    mode is also copied to the system clipboard, without any decoration.
+- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, the output of every command of the
+    `pager>` REPL mode that does not throw is also copied to the system clipboard, without
+    any decoration, even when it fits the display and no pager is opened.
     (**Default**: `false`)
 - `"mouse"`: If `true`, the pager reports the mouse events: the wheel scrolls the text, SHIFT
     and the wheel scroll it horizontally, and clicking a line in the visual mode moves the

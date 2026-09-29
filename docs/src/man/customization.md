@@ -30,9 +30,10 @@ The available preferences are:
 - `"block_alternate_screen_buffer"`: If `true`, the alternate screen buffer support will be
     globally blocked, regardless of the keyword options. This modification is helpful when
     the terminal is not compatible with XTerm. (**Default** = `false`)
-- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, when the pager is exited in REPL
-    mode, the output will be copied to the clipboard. Notice that the decorations (ANSI
-    sequences) will be removed. (**Default** = `false`)
+- `"copy_stdout_to_clipboard_in_repl_mode"`: If `true`, the output of every command of the
+    `pager>` REPL mode that does not throw is copied to the clipboard, even when it fits the
+    display and no pager is opened. Notice that the decorations (ANSI sequences) are
+    removed. (**Default** = `false`)
 - `"mouse"`: If `true`, the pager reports the mouse events: the wheel scrolls the text,
     SHIFT and the wheel scroll it horizontally, and clicking a line in the visual mode moves
     the visual line to it or marks it. Notice that, while the mouse is reported, selecting
