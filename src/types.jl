@@ -11,10 +11,10 @@ const SearchMatches = Dict{Int, Vector{Tuple{Int, Int}}}
 
 Represent one decoded keystroke.
 
+The bytes the keystroke was decoded from are not kept. [`debug_keycode`](@ref) shows them.
+
 # Fields
 
-- `raw::String`: Raw keystroke code converted to string, or an empty string for the mouse
-    reports.
 - `value::String`: String representing the keystroke.
 - `alt::Bool`: Whether the ALT key was pressed.
 - `ctrl::Bool`: Whether the CTRL key was pressed.
@@ -23,30 +23,12 @@ Represent one decoded keystroke.
 - `y::Int`: One-based row of a mouse event, or `0` for a keyboard key.
 """
 Base.@kwdef struct Keystroke
-    raw::String = ""
     value::String = ""
     alt::Bool = false
     ctrl::Bool = false
     shift::Bool = false
     x::Int = 0
     y::Int = 0
-end
-
-"""
-    Keystroke(raw::String, value::String, alt::Bool, ctrl::Bool, shift::Bool) -> Keystroke
-
-Create a keyboard keystroke, that is, one without a mouse position.
-
-# Arguments
-
-- `raw::String`: Raw keystroke code converted to string.
-- `value::String`: String representing the keystroke.
-- `alt::Bool`: Whether the ALT key was pressed.
-- `ctrl::Bool`: Whether the CTRL key was pressed.
-- `shift::Bool`: Whether the SHIFT key was pressed.
-"""
-function Keystroke(raw::String, value::String, alt::Bool, ctrl::Bool, shift::Bool)
-    return Keystroke(raw, value, alt, ctrl, shift, 0, 0)
 end
 
 """
@@ -97,6 +79,8 @@ Track shared pager input with a bounded incomplete prefix and one pending keystr
 - `waiter::Union{Nothing, InputWaiter}`: Waiter for the input and for the changes of the
     display size, or `nothing` if the input is read directly. It is shared by the sessions
     that share the input.
+- `record::Union{Nothing, Vector{UInt8}}`: Buffer to which the bytes of every decoded
+    keystroke are appended, or `nothing` to not record them.
 """
 mutable struct PagerInput
     stream::IO
@@ -104,18 +88,20 @@ mutable struct PagerInput
     pending::Union{Nothing, Keystroke}
     can_lookahead::Bool
     waiter::Union{Nothing, InputWaiter}
+    record::Union{Nothing, Vector{UInt8}}
 end
 
 """
     PagerInput(stream::IO) -> PagerInput
 
-Create input state for `stream` with an empty prefix, no pending keystroke, and no waiter.
+Create input state for `stream` with an empty prefix, no pending keystroke, no waiter, and
+no record.
 
 # Arguments
 
 - `stream::IO`: Input stream that supplies keystroke bytes.
 """
-PagerInput(stream::IO) = PagerInput(stream, UInt8[], nothing, true, nothing)
+PagerInput(stream::IO) = PagerInput(stream, UInt8[], nothing, true, nothing, nothing)
 
 """
     DisplayConfig

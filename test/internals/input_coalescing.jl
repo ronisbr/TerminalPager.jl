@@ -184,6 +184,140 @@ function Base.unsafe_write(io::RecordingOutput, pointer::Ptr{UInt8}, count::UInt
     return count
 end
 
+# Sequences of the special keys and the value, ALT, CTRL, and SHIFT fields they decode to.
+# The decoder used to look them up in this table, and it must still decode every one of them
+# in the same way.
+const _XTERM_KEYCODES = Dict{String, Tuple{String, Bool, Bool, Bool}}(
+    "\eOA" => ("<up>", false, false, false),
+    "\e[1;2A" => ("<up>", false, false, true),
+    "\e[1;3A" => ("<up>", true, false, false),
+    "\e[1;5A" => ("<up>", false, true, false),
+    "\e[1;6A" => ("<up>", false, true, true),
+    "\e[1;9A" => ("<up>", true, false, false),
+    "\e[1;10A" => ("<up>", true, false, true),
+    "\eOB" => ("<down>", false, false, false),
+    "\e[1;2B" => ("<down>", false, false, true),
+    "\e[1;3B" => ("<down>", true, false, false),
+    "\e[1;5B" => ("<down>", false, true, false),
+    "\e[1;6B" => ("<down>", false, true, true),
+    "\e[1;9B" => ("<down>", true, false, false),
+    "\e[1;10B" => ("<down>", true, false, true),
+    "\eOC" => ("<right>", false, false, false),
+    "\e[1;2C" => ("<right>", false, false, true),
+    "\e[1;3C" => ("<right>", true, false, false),
+    "\e[1;5C" => ("<right>", false, true, false),
+    "\e[1;6C" => ("<right>", false, true, true),
+    "\e[1;9C" => ("<right>", true, false, false),
+    "\e[1;10C" => ("<right>", true, false, true),
+    "\eOD" => ("<left>", false, false, false),
+    "\e[1;2D" => ("<left>", false, false, true),
+    "\e[1;3D" => ("<left>", true, false, false),
+    "\e[1;5D" => ("<left>", false, true, false),
+    "\e[1;6D" => ("<left>", false, true, true),
+    "\e[1;9D" => ("<left>", true, false, false),
+    "\e[1;10D" => ("<left>", true, false, true),
+    "\e[A" => ("<up>", false, false, false),
+    "\e\e[A" => ("<up>", true, false, false),
+    "\e[B" => ("<down>", false, false, false),
+    "\e\e[B" => ("<down>", true, false, false),
+    "\e[C" => ("<right>", false, false, false),
+    "\e\e[C" => ("<right>", true, false, false),
+    "\e[D" => ("<left>", false, false, false),
+    "\e\e[D" => ("<left>", true, false, false),
+    # The pager enables the application cursor key mode, in which xterm-compatible terminals
+    # send SS3 sequences for Home and End. The Linux console, tmux, and rxvt use their own
+    # CSI sequences.
+    "\eOH" => ("<home>", false, false, false),
+    "\eOF" => ("<end>", false, false, false),
+    "\e[1~" => ("<home>", false, false, false),
+    "\e[4~" => ("<end>", false, false, false),
+    "\e[7~" => ("<home>", false, false, false),
+    "\e[8~" => ("<end>", false, false, false),
+    "\e[H" => ("<home>", false, false, false),
+    "\e[1;2H" => ("<home>", false, false, true),
+    "\e[1;5H" => ("<home>", false, true, false),
+    "\e[1;9H" => ("<home>", true, false, false),
+    "\e[1;10H" => ("<home>", true, false, true),
+    "\e[1;13H" => ("<home>", true, true, false),
+    "\e[F" => ("<end>", false, false, false),
+    "\e[1;2F" => ("<end>", false, false, true),
+    "\e[1;5F" => ("<end>", false, true, false),
+    "\e[1;9F" => ("<end>", true, false, false),
+    "\e[1;10F" => ("<end>", true, false, true),
+    "\e[1;13F" => ("<end>", true, true, false),
+    "\eOP" => ("<F1>", false, false, false),
+    "\eOQ" => ("<F2>", false, false, false),
+    "\eOR" => ("<F3>", false, false, false),
+    "\eOS" => ("<F4>", false, false, false),
+    "\e[15~" => ("<F5>", false, false, false),
+    "\e[17~" => ("<F6>", false, false, false),
+    "\e[18~" => ("<F7>", false, false, false),
+    "\e[19~" => ("<F8>", false, false, false),
+    "\e[20~" => ("<F9>", false, false, false),
+    "\e[21~" => ("<F10>", false, false, false),
+    "\e[23~" => ("<F11>", false, false, false),
+    "\e[24~" => ("<F12>", false, false, false),
+    "\e[1;2P" => ("<F1>", false, false, true),
+    "\e[1;2Q" => ("<F2>", false, false, true),
+    "\e[1;2R" => ("<F3>", false, false, true),
+    "\e[1;2S" => ("<F4>", false, false, true),
+    "\e[15;2~" => ("<F5>", false, false, true),
+    "\e[17;2~" => ("<F6>", false, false, true),
+    "\e[18;2~" => ("<F7>", false, false, true),
+    "\e[19;2~" => ("<F8>", false, false, true),
+    "\e[20;2~" => ("<F9>", false, false, true),
+    "\e[21;2~" => ("<F10>", false, false, true),
+    "\e[23;2~" => ("<F11>", false, false, true),
+    "\e[24;2~" => ("<F12>", false, false, true),
+    "\e[1;3P" => ("<F1>", true, false, false),
+    "\e[1;3Q" => ("<F2>", true, false, false),
+    "\e[1;3R" => ("<F3>", true, false, false),
+    "\e[1;3S" => ("<F4>", true, false, false),
+    "\e[15;3~" => ("<F5>", true, false, false),
+    "\e[17;3~" => ("<F6>", true, false, false),
+    "\e[18;3~" => ("<F7>", true, false, false),
+    "\e[19;3~" => ("<F8>", true, false, false),
+    "\e[20;3~" => ("<F9>", true, false, false),
+    "\e[21;3~" => ("<F10>", true, false, false),
+    "\e[23;3~" => ("<F11>", true, false, false),
+    "\e[24;3~" => ("<F12>", true, false, false),
+    "\e[1;5P" => ("<F1>", false, true, false),
+    "\e[1;5Q" => ("<F2>", false, true, false),
+    "\e[1;5R" => ("<F3>", false, true, false),
+    "\e[1;5S" => ("<F4>", false, true, false),
+    "\e[15;5~" => ("<F5>", false, true, false),
+    "\e[17;5~" => ("<F6>", false, true, false),
+    "\e[18;5~" => ("<F7>", false, true, false),
+    "\e[19;5~" => ("<F8>", false, true, false),
+    "\e[20;5~" => ("<F9>", false, true, false),
+    "\e[21;5~" => ("<F10>", false, true, false),
+    "\e[23;5~" => ("<F11>", false, true, false),
+    "\e[24;5~" => ("<F12>", false, true, false),
+    "\eOn" => ("<keypad_dot>", false, false, false),
+    "\eOM" => ("<keypad_enter>", false, false, false),
+    "\eOj" => ("<keypad_asterisk>", false, false, false),
+    "\eOk" => ("<keypad_plus>", false, false, false),
+    "\eOm" => ("<keypad_minus>", false, false, false),
+    "\eOo" => ("<keypad_slash>", false, false, false),
+    "\eOX" => ("<keypad_equal>", false, false, false),
+    "\eOp" => ("<keypad_0>", false, false, false),
+    "\eOq" => ("<keypad_1>", false, false, false),
+    "\eOr" => ("<keypad_2>", false, false, false),
+    "\eOs" => ("<keypad_3>", false, false, false),
+    "\eOt" => ("<keypad_4>", false, false, false),
+    "\eOu" => ("<keypad_5>", false, false, false),
+    "\eOv" => ("<keypad_6>", false, false, false),
+    "\eOw" => ("<keypad_7>", false, false, false),
+    "\eOx" => ("<keypad_8>", false, false, false),
+    "\eOy" => ("<keypad_9>", false, false, false),
+    "\e[3~" => ("<delete>", false, false, false),
+    "\e[5~" => ("<pageup>", false, false, false),
+    "\e\e[5~" => ("<pageup>", true, false, false),
+    "\e[6~" => ("<pagedown>", false, false, false),
+    "\e\e[6~" => ("<pagedown>", true, false, false),
+    "\e[Z" => ("<tab>", false, false, true),
+)
+
 """
     key_fields(key::TerminalPager.Keystroke) -> Tuple{String, Bool, Bool, Bool}
 
@@ -196,16 +330,17 @@ Return the decoded value and modifier fields of a keystroke.
 key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
 
 @testset "Pure Keystroke Decoder" begin
-    for (code, expected) in TerminalPager.keycodes
+    for (code, expected) in _XTERM_KEYCODES
         bytes = collect(codeunits(code))
-        status, key, _ = TerminalPager._decode_keystroke(bytes)
+        status, key, consumed = TerminalPager._decode_keystroke(bytes)
         @test status == :complete
-        @test key_fields(key) == key_fields(expected)
+        @test key_fields(key) == expected
+        @test consumed == length(bytes)
 
         for prefix_length in 1:(length(bytes) - 1)
             prefix = bytes[1:prefix_length]
             status, key, _ = TerminalPager._decode_keystroke(prefix)
-            if haskey(TerminalPager.keycodes, String(prefix))
+            if haskey(_XTERM_KEYCODES, String(prefix))
                 @test status == :complete
                 @test key !== TerminalPager._INCOMPLETE_KEYSTROKE
             else

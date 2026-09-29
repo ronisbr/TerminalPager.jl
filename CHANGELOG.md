@@ -71,6 +71,13 @@ Version 0.8.0
 - ![Enhancement][badge-enhancement] The incremental search previews the pattern only when no
   other keystroke is buffered. A pasted pattern used to search the whole text once per
   character, although only the last result was shown.
+- ![Enhancement][badge-enhancement] The escape sequences of the special keys are parsed
+  following the xterm conventions instead of being looked up in a table, so every
+  combination of SHIFT, ALT, and CTRL with the arrows, Home, End, Page Up, Page Down, Delete,
+  and the function keys is decoded. Many of them, like ALT-Home, used to be undefined.
+- ![Enhancement][badge-enhancement] `TerminalPager.debug_keycode` prints the value and the
+  modifiers of each key as the arguments of `set_keybinding`, and the bytes it was decoded
+  from.
 - ![Bugfix][badge-bugfix] The Home and End keys work on xterm-compatible terminals, which
   send `\eOH` and `\eOF` in the application cursor key mode the pager enables, and on the
   Linux console, tmux, and rxvt.

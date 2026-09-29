@@ -22,7 +22,6 @@ _loop_decode_arrow(bytes, n) = (
         expected = TerminalPager._build_ascii_keystroke(byte)
         actual = TerminalPager._ascii_keystroke(byte)
         @test actual.value == expected.value
-        @test actual.raw == expected.raw
         @test actual.alt == expected.alt
         @test actual.ctrl == expected.ctrl
         @test actual.shift == expected.shift
@@ -36,56 +35,83 @@ _loop_decode_arrow(bytes, n) = (
     @test (@allocated _loop_ascii_keystroke(5000)) == 0
 end
 
-@testset "Packed Keycode Lookup" begin
-    codes = collect(keys(TerminalPager.keycodes))
-
-    @test TerminalPager._MAX_KEYCODE_BYTES <= 7
-    @test TerminalPager._MIN_KEYCODE_BYTES >= 1
-
-    # The packing must be injective over every sequence and every proper prefix of them,
-    # otherwise two different keys would decode to the same one.
-    packed = Dict{UInt64, Vector{UInt8}}()
-
-    for code in codes
-        bytes = collect(codeunits(code))
-
-        for len in 1:length(bytes)
-            key = TerminalPager._pack_keycode(bytes, len)
-            entry = bytes[1:len]
-
-            if haskey(packed, key)
-                @test packed[key] == entry
-            else
-                packed[key] = entry
-            end
-        end
+@testset "Escape Sequence Parser" begin
+    # The special keys were looked up in a table, which missed many combinations of the
+    # modifiers. They are now parsed following the xterm conventions.
+    for (sequence, fields) in (
+        "\e[1;3H" => ("<home>", true, false, false),
+        "\e[1;4A" => ("<up>", true, false, true),
+        "\e[1;7D" => ("<left>", true, true, false),
+        "\e[1;8C" => ("<right>", true, true, true),
+        "\e[5;5~" => ("<pageup>", false, true, false),
+        "\e[6;3~" => ("<pagedown>", true, false, false),
+        "\e[3;2~" => ("<delete>", false, false, true),
+        "\e[1;16A" => ("<up>", true, true, true),
+        "\eO2P" => ("<F1>", false, false, true),
+        "\eO5A" => ("<up>", false, true, false),
+        "\e\eOA" => ("<up>", true, false, false),
+        "\e\e[1;5A" => ("<up>", true, true, false),
+        "\e[1;5Z" => ("<tab>", false, true, true),
+    )
+        bytes = collect(codeunits(sequence))
+        status, key, consumed = TerminalPager._decode_keystroke(bytes)
+        @test status === :complete
+        @test (key.value, key.alt, key.ctrl, key.shift) == fields
+        @test consumed == length(bytes)
     end
 
-    @test length(TerminalPager._KEYCODE_EXACT) == length(TerminalPager.keycodes)
-
-    # Every sequence must be found, and every proper prefix must be recognized as incomplete.
-    for code in codes
-        bytes = collect(codeunits(code))
-        key = TerminalPager._pack_keycode(bytes, length(bytes))
-        @test haskey(TerminalPager._KEYCODE_EXACT, key)
-        @test TerminalPager._KEYCODE_EXACT[key].value == TerminalPager.keycodes[code].value
-
-        for len in 1:(length(bytes) - 1)
-            @test TerminalPager._pack_keycode(bytes, len) ∈ TerminalPager._KEYCODE_PREFIXES
-        end
+    # Sequences that are not keys are undefined and consume the whole sequence: a cursor
+    # position report, private sequences, sub-parameters, intermediate bytes, too many
+    # parameters, an invalid modifier, an unknown number, the bracketed paste, and numbers
+    # large enough to overflow.
+    for sequence in (
+        "\e[24;80R",
+        "\e[2A",
+        "\e[?1;2c",
+        "\e[>0;95;0c",
+        "\e[1:2A",
+        "\e[1 A",
+        "\e[1;2;3A",
+        "\e[1;17A",
+        "\e[1;0A",
+        "\e[2~",
+        "\e[200~",
+        "\e[99X",
+        "\e[1;18446744073709551621A",
+        "\eO18446744073709551621A",
+        "\eOz",
+    )
+        bytes = collect(codeunits(sequence))
+        status, key, consumed = TerminalPager._decode_keystroke(bytes)
+        @test status === :complete
+        @test key.value == "<undefined>"
+        @test consumed == length(bytes)
     end
 
-    # No sequence may be a strict prefix of another one, otherwise the length at which the
-    # decoder stops searching would depend on the iteration order.
-    for a in codes, b in codes
-        a == b && continue
-        @test !startswith(b, a)
+    # A control byte breaks the sequence, which ends before it, so that the byte starts the
+    # next keystroke.
+    input = TerminalPager.PagerInput(IOBuffer("\eO\e[Aq"))
+    @test TerminalPager._read_keystroke!(input).value == "<undefined>"
+    @test TerminalPager._read_keystroke!(input).value == "<up>"
+    @test TerminalPager._read_keystroke!(input).value == "q"
+
+    input = TerminalPager.PagerInput(IOBuffer("\e[1\nq"))
+    @test TerminalPager._read_keystroke!(input).value == "<undefined>"
+    @test TerminalPager._read_keystroke!(input).value == "<enter>"
+    @test TerminalPager._read_keystroke!(input).value == "q"
+
+    # A sequence is incomplete until its final byte arrives.
+    for sequence in ("\eO", "\eO2", "\e[", "\e[1;", "\e[1;5", "\e[200", "\e\eO", "\e\e[1")
+        @test first(TerminalPager._decode_keystroke(collect(codeunits(sequence)))) ===
+            :incomplete
     end
 
-    # Decoding an arrow key is the most common escape sequence in the pager.
-    arrow = collect(codeunits("\e[B"))
-    _loop_decode_arrow(arrow, 1000)
-    @test (@allocated _loop_decode_arrow(arrow, 5000)) / 5000 < 64
+    # Decoding a key sequence does not allocate, and the arrows are the most common ones.
+    for sequence in ("\e[B", "\eOB", "\e[1;5B", "\e[6~", "\e\e[A")
+        bytes = collect(codeunits(sequence))
+        _loop_decode_arrow(bytes, 1000)
+        @test (@allocated _loop_decode_arrow(bytes, 5000)) == 0
+    end
 end
 
 @testset "Control Key Combinations" begin
@@ -140,7 +166,8 @@ end
 end
 
 @testset "Raw Keystroke Bytes" begin
-    # `raw` is only used for diagnostics, but its format must not change.
+    # The bytes of the keystrokes are shown by `debug_keycode`, and their format must not
+    # change.
     @test TerminalPager._raw_bytes(UInt8[]) == ""
     @test TerminalPager._raw_bytes(UInt8[27]) == "27"
     @test TerminalPager._raw_bytes(UInt8[27, 91, 66]) == "27, 91, 66"
@@ -223,7 +250,7 @@ end
     @test TerminalPager._read_keystroke!(input).value == "<wheel_up>"
     @test TerminalPager._read_keystroke!(input).value == "q"
 
-    # Keyboard keystrokes have no position, and the table constructor still works.
-    @test TerminalPager.Keystroke("q", "q", false, false, false).x == 0
+    # Keyboard keystrokes have no position.
+    @test TerminalPager.Keystroke(; value = "q").x == 0
     @test TerminalPager._ascii_keystroke(UInt8('j')).y == 0
 end

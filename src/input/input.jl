@@ -4,8 +4,6 @@
 #
 ############################################################################################
 
-include("keycodes.jl")
-
 const _MAX_KEYSTROKE_BYTES = 32
 
 """
@@ -23,48 +21,13 @@ const _INCOMPLETE_KEYSTROKE = Keystroke()
 # site of the decoder.
 const _DECODE_INCOMPLETE = (:incomplete, _INCOMPLETE_KEYSTROKE, 0)
 
-# The escape sequences are matched by packing their bytes into an integer, so that a keypress
-# costs a handful of dictionary lookups instead of a linear scan over the whole table. Scanning
-# it took roughly 700 array comparisons per arrow key, because the decoder runs again after
-# every byte that arrives.
-#
-# The packing uses one byte per sequence byte plus the length in the highest byte, which makes
-# it unambiguous. It only works because every sequence in `keycodes` is short.
-const _MIN_KEYCODE_BYTES = minimum(ncodeunits, keys(keycodes))
-const _MAX_KEYCODE_BYTES = maximum(ncodeunits, keys(keycodes))
+# Keystroke synthesized for a lone ESC, which is not followed by the rest of a sequence.
+const _ESC_KEYSTROKE = Keystroke(; value = "<esc>")
 
-@assert _MAX_KEYCODE_BYTES <= 7 "A keycode does not fit in the packed representation."
-
-"""
-    _pack_keycode(bytes, len::Int) -> UInt64
-
-Pack the first `len` bytes of `bytes` and `len` itself into a single integer.
-
-# Arguments
-
-- `bytes`: Byte storage holding an escape sequence.
-- `len::Int`: Number of leading bytes to pack, at most `_MAX_KEYCODE_BYTES`.
-"""
-@inline function _pack_keycode(bytes, len::Int)
-    packed = UInt64(len) << 56
-
-    @inbounds for i in 1:len
-        packed |= UInt64(bytes[i]) << (8 * (i - 1))
-    end
-
-    return packed
-end
-
-const _KEYCODE_EXACT = Dict{UInt64, Keystroke}(
-    _pack_keycode(codeunits(code), ncodeunits(code)) => key for (code, key) in keycodes
-)
-
-# Every proper prefix of every sequence, so that an incomplete sequence is recognized without
-# scanning the table either.
-const _KEYCODE_PREFIXES = Set{UInt64}(
-    _pack_keycode(codeunits(code), len) for code in keys(keycodes) for
-    len in 1:(ncodeunits(code) - 1)
-)
+# Largest parameter of an escape sequence kept by the parser. Every parameter of a key is
+# far smaller. Saturating the larger ones keeps a malformed sequence from overflowing into
+# the parameters of a valid key.
+const _MAX_SEQUENCE_PARAMETER = 1_000
 
 """
     _decode_keystroke(prefix::Vector{UInt8}) -> Tuple{Symbol, Keystroke, Int}
@@ -80,13 +43,7 @@ bytes.
 """
 function _decode_keystroke(prefix::Vector{UInt8})
     isempty(prefix) && return _DECODE_INCOMPLETE
-    if length(prefix) >= _MAX_KEYSTROKE_BYTES
-        return (
-            :complete,
-            Keystroke(; raw = _raw_bytes(prefix), value = "<undefined>"),
-            _MAX_KEYSTROKE_BYTES,
-        )
-    end
+    length(prefix) >= _MAX_KEYSTROKE_BYTES && return _undefined_key(_MAX_KEYSTROKE_BYTES)
 
     first_byte = prefix[1]
     first_byte == 0x1b && return _decode_escape(prefix)
@@ -98,55 +55,35 @@ end
 
 Decode an escape-sequence prefix without performing IO.
 
+The sequences of the special keys are parsed following the xterm conventions instead of
+being looked up in a table, so that every combination of modifiers is decoded. An ESC
+followed by a character is that character with ALT.
+
 # Arguments
 
 - `prefix::Vector{UInt8}`: Buffered bytes beginning with an escape byte.
 """
 function _decode_escape(prefix::Vector{UInt8})
     num_bytes = length(prefix)
-
-    # No sequence in the table is a prefix of another one, hence at most one length can
-    # match. The packed representation is extended one byte at a time instead of being
-    # rebuilt from scratch for every candidate length.
-    packed_bytes = UInt64(0)
-
-    @inbounds for len in 1:min(num_bytes, _MAX_KEYCODE_BYTES)
-        packed_bytes |= UInt64(prefix[len]) << (8 * (len - 1))
-        len < _MIN_KEYCODE_BYTES && continue
-
-        key = get(_KEYCODE_EXACT, packed_bytes | (UInt64(len) << 56), nothing)
-        isnothing(key) || return :complete, key, len
-    end
-
-    if num_bytes < _MAX_KEYCODE_BYTES
-        _pack_keycode(prefix, num_bytes) ∈ _KEYCODE_PREFIXES && return _DECODE_INCOMPLETE
-    end
-
     num_bytes == 1 && return _DECODE_INCOMPLETE
 
-    # SGR mouse reports begin with `\e[<`, which is not a prefix of any key sequence.
-    if (num_bytes >= 3) && (prefix[2] == UInt8('[')) && (prefix[3] == UInt8('<'))
-        return _decode_mouse(prefix)
-    end
+    second_byte = prefix[2]
+    second_byte == UInt8('[') && return _decode_csi(prefix, 1, false)
+    second_byte == UInt8('O') && return _decode_ss3(prefix, 1, false)
 
-    offset = length(prefix) >= 2 && prefix[2] == 0x1b ? 2 : 1
-    if length(prefix) >= offset + 2 && prefix[offset + 1] in (0x5b, 0x4f)
-        final_index = findfirst(
-            byte -> 0x40 <= byte <= 0x7e, @view(prefix[(offset + 2):end])
-        )
-        isnothing(final_index) && return _DECODE_INCOMPLETE
-        consumed = offset + 1 + final_index
-        bytes = prefix[1:consumed]
-        return (
-            :complete, Keystroke(; raw = _raw_bytes(bytes), value = "<undefined>"), consumed
-        )
+    # Some terminals send the ALT-modified special keys as an ESC followed by the sequence
+    # of the key.
+    if second_byte == 0x1b
+        num_bytes == 2 && return _DECODE_INCOMPLETE
+        third_byte = prefix[3]
+        third_byte == UInt8('[') && return _decode_csi(prefix, 2, true)
+        third_byte == UInt8('O') && return _decode_ss3(prefix, 2, true)
     end
 
     status, scalar, consumed = _decode_scalar(prefix, 2)
     status === :incomplete && return _DECODE_INCOMPLETE
     scalar.value == "<undefined>" && return status, scalar, consumed + 1
     key = Keystroke(;
-        raw = "\e" * scalar.raw,
         value = scalar.value,
         alt = true,
         ctrl = scalar.ctrl,
@@ -156,11 +93,141 @@ function _decode_escape(prefix::Vector{UInt8})
 end
 
 """
-    _decode_mouse(prefix::Vector{UInt8}) -> Tuple{Symbol, Keystroke, Int}
+    _decode_csi(prefix::Vector{UInt8}, start::Int, alt::Bool) -> Tuple{Symbol, Keystroke, Int}
 
-Decode an SGR mouse report without performing IO. A report is `\\e[<b;x;yM` for a press or
-a wheel movement and `\\e[<b;x;ym` for a release, where `b` encodes the button and the
-modifiers and `x` and `y` are the one-based column and row.
+Decode the CSI sequence `\\e[` that begins at the index `start` of `prefix`, adding ALT to
+its modifiers if `alt` is `true`. The consumed bytes are counted from the beginning of
+`prefix`.
+
+A key is `\\e[<number>;<modifier><letter>` or `\\e[<number>;<modifier>~`, where both
+numbers are optional, and the modifier is one plus the sum of 1 for SHIFT, 2 for ALT, 4 for
+CTRL, and 8 for META, which is reported as ALT. The SGR mouse reports begin with `\\e[<`.
+Any other sequence, such as a private one or a cursor position report, is an undefined key,
+which consumes the sequence up to its final byte.
+
+# Arguments
+
+- `prefix::Vector{UInt8}`: Buffered bytes containing the sequence.
+- `start::Int`: Index of the escape byte that begins the sequence.
+- `alt::Bool`: Whether the sequence was preceded by an ESC that adds ALT.
+"""
+function _decode_csi(prefix::Vector{UInt8}, start::Int, alt::Bool)
+    num_bytes = length(prefix)
+    first_index = start + 2
+    num_bytes < first_index && return _DECODE_INCOMPLETE
+    prefix[first_index] == UInt8('<') && return _decode_mouse(prefix, start)
+
+    # Parse the parameters, which are decimal numbers separated by semicolons, up to the
+    # final byte. A missing parameter is `-1`.
+    num_parameters = 1
+    first_parameter = -1
+    second_parameter = -1
+    parameter = -1
+    is_key = true
+    final_index = 0
+
+    @inbounds for i in first_index:num_bytes
+        byte = prefix[i]
+
+        if UInt8('0') <= byte <= UInt8('9')
+            digit = Int(byte - UInt8('0'))
+            parameter = min(10max(parameter, 0) + digit, _MAX_SEQUENCE_PARAMETER)
+        elseif byte == UInt8(';')
+            (num_parameters == 1) && (first_parameter = parameter)
+            (num_parameters == 2) && (second_parameter = parameter)
+            num_parameters += 1
+            parameter = -1
+        elseif 0x40 <= byte <= 0x7e
+            final_index = i
+            break
+        elseif 0x20 <= byte <= 0x3f
+            # The private markers `<=>?`, the `:` of the sub-parameters, and the
+            # intermediate bytes belong to sequences that are not keys.
+            is_key = false
+        else
+            # A control byte cannot be part of the sequence, so the sequence is broken. It
+            # ends before the byte, which is decoded as the next keystroke.
+            return _undefined_key(i - 1)
+        end
+    end
+
+    final_index == 0 && return _DECODE_INCOMPLETE
+
+    (num_parameters == 1) && (first_parameter = parameter)
+    (num_parameters == 2) && (second_parameter = parameter)
+    (is_key && (num_parameters <= 2)) || return _undefined_key(final_index)
+
+    final_byte = prefix[final_index]
+
+    value, shift = if final_byte == UInt8('~')
+        _csi_tilde_key(first_parameter), false
+    elseif first_parameter <= 1
+        # The letter keys have no number, or `1` when the modifier follows it. Any other
+        # number belongs to another sequence, like the cursor position report `\e[24;80R`.
+        _csi_letter_key(final_byte), final_byte == UInt8('Z')
+    else
+        "", false
+    end
+
+    isempty(value) && return _undefined_key(final_index)
+
+    modifier = second_parameter < 0 ? 1 : second_parameter
+    (1 <= modifier <= 16) || return _undefined_key(final_index)
+
+    return :complete, _modified_key(value, modifier, alt, shift), final_index
+end
+
+"""
+    _decode_ss3(prefix::Vector{UInt8}, start::Int, alt::Bool) -> Tuple{Symbol, Keystroke, Int}
+
+Decode the SS3 sequence `\\eO` that begins at the index `start` of `prefix`, adding ALT to
+its modifiers if `alt` is `true`. The consumed bytes are counted from the beginning of
+`prefix`.
+
+A key is `\\eO<modifier><letter>`, where the modifier is optional and encoded as in
+[`_decode_csi`](@ref). A byte that is neither a digit nor a final byte ends the sequence as
+an undefined key, and it is decoded as the next keystroke.
+
+# Arguments
+
+- `prefix::Vector{UInt8}`: Buffered bytes containing the sequence.
+- `start::Int`: Index of the escape byte that begins the sequence.
+- `alt::Bool`: Whether the sequence was preceded by an ESC that adds ALT.
+"""
+function _decode_ss3(prefix::Vector{UInt8}, start::Int, alt::Bool)
+    num_bytes = length(prefix)
+    modifier = -1
+
+    @inbounds for i in (start + 2):num_bytes
+        byte = prefix[i]
+
+        if UInt8('0') <= byte <= UInt8('9')
+            digit = Int(byte - UInt8('0'))
+            modifier = min(10max(modifier, 0) + digit, _MAX_SEQUENCE_PARAMETER)
+            continue
+        end
+
+        (0x40 <= byte <= 0x7e) || return _undefined_key(i - 1)
+
+        value = _ss3_key(byte)
+        isempty(value) && return _undefined_key(i)
+
+        modifier = modifier < 0 ? 1 : modifier
+        (1 <= modifier <= 16) || return _undefined_key(i)
+
+        return :complete, _modified_key(value, modifier, alt, false), i
+    end
+
+    return _DECODE_INCOMPLETE
+end
+
+"""
+    _decode_mouse(prefix::Vector{UInt8}, start::Int = 1) -> Tuple{Symbol, Keystroke, Int}
+
+Decode the SGR mouse report that begins at the index `start` of `prefix` without performing
+IO. A report is `\\e[<b;x;yM` for a press or a wheel movement and `\\e[<b;x;ym` for a
+release, where `b` encodes the button and the modifiers and `x` and `y` are the one-based
+column and row. The consumed bytes are counted from the beginning of `prefix`.
 
 The keystroke value is `<wheel_up>`, `<wheel_down>`, `<wheel_left>`, `<wheel_right>`,
 `<mouse_press>`, `<mouse_press_middle>`, `<mouse_press_right>`, `<mouse_release>`, or
@@ -168,22 +235,23 @@ The keystroke value is `<wheel_up>`, `<wheel_down>`, `<wheel_left>`, `<wheel_rig
 
 # Arguments
 
-- `prefix::Vector{UInt8}`: Buffered bytes beginning with `\\e[<`.
+- `prefix::Vector{UInt8}`: Buffered bytes containing the report after `\\e[<`.
+- `start::Int`: Index of the escape byte that begins the report.
+    (**Default**: `1`)
 """
-function _decode_mouse(prefix::Vector{UInt8})
+function _decode_mouse(prefix::Vector{UInt8}, start::Int = 1)
     num_bytes = length(prefix)
+    first_index = start + 3
     final_index = 0
 
-    @inbounds for i in 4:num_bytes
+    @inbounds for i in first_index:num_bytes
         byte = prefix[i]
 
         if (byte == UInt8('M')) || (byte == UInt8('m'))
             final_index = i
             break
         elseif !((byte == UInt8(';')) || (UInt8('0') <= byte <= UInt8('9')))
-            bytes = prefix[1:i]
-            key = Keystroke(; raw = _raw_bytes(bytes), value = "<undefined>")
-            return :complete, key, i
+            return _undefined_key(i)
         end
     end
 
@@ -196,7 +264,7 @@ function _decode_mouse(prefix::Vector{UInt8})
     field = 1
     number = 0
 
-    @inbounds for i in 4:final_index
+    @inbounds for i in first_index:final_index
         byte = prefix[i]
 
         if (byte == UInt8(';')) || (i == final_index)
@@ -206,15 +274,11 @@ function _decode_mouse(prefix::Vector{UInt8})
             field += 1
             number = 0
         else
-            number = 10 * number + Int(byte - UInt8('0'))
+            number = min(10number + Int(byte - UInt8('0')), _MAX_SEQUENCE_PARAMETER)
         end
     end
 
-    # The raw code is not kept for the mouse reports, because formatting it allocated at
-    # every event, and the wheel is the most frequent input of a session with the mouse.
-    if field != 4
-        return :complete, Keystroke(; value = "<undefined>"), final_index
-    end
+    field != 4 && return _undefined_key(final_index)
 
     value = if (button & 0x40) != 0
         ("<wheel_up>", "<wheel_down>", "<wheel_left>", "<wheel_right>")[(button & 0x03) + 1]
@@ -262,18 +326,14 @@ function _decode_scalar(prefix::Vector{UInt8}, offset::Int)
     elseif 0xf0 <= first_byte <= 0xf4
         4
     else
-        key = Keystroke(; raw = string(first_byte), value = "<undefined>")
-        return :complete, key, 1
+        return _undefined_key(1)
     end
 
     length(prefix) - offset + 1 < num_bytes && return _DECODE_INCOMPLETE
-    bytes = prefix[offset:(offset + num_bytes - 1)]
-    if !_valid_utf8(bytes)
-        key = Keystroke(; raw = _raw_bytes(bytes), value = "<undefined>")
-        return :complete, key, 1
-    end
-    key = Keystroke(; raw = _raw_bytes(bytes), value = String(copy(bytes)))
-    return :complete, key, num_bytes
+    _valid_utf8(prefix, offset, num_bytes) || return _undefined_key(1)
+
+    last_index = offset + num_bytes - 1
+    return :complete, Keystroke(; value = String(prefix[offset:last_index])), num_bytes
 end
 
 """
@@ -302,24 +362,21 @@ function _build_ascii_keystroke(byte::UInt8)
     # These control bytes have their own names for historical reasons, and the `vi` key bindings
     # refer to them. Notice that `<shiftin>` is a misnomer: `0x15` is NAK, which is what CTRL-U
     # sends, whereas SHIFT-IN is `0x0f`.
-    byte == 0x04 && return Keystroke(; raw = string(UInt32(byte)), value = "<eot>")
-    byte == 0x09 && return Keystroke(; raw = string(UInt32(byte)), value = "<tab>")
-    byte == 0x15 && return Keystroke(; raw = string(UInt32(byte)), value = "<shiftin>")
-    byte == 0x7f && return Keystroke(; raw = string(UInt32(byte)), value = "<backspace>")
-
-    if byte in (0x0a, 0x0d)
-        return Keystroke(; raw = string(UInt32(byte)), value = "<enter>")
-    end
+    byte == 0x04 && return Keystroke(; value = "<eot>")
+    byte == 0x09 && return Keystroke(; value = "<tab>")
+    byte == 0x15 && return Keystroke(; value = "<shiftin>")
+    byte == 0x7f && return Keystroke(; value = "<backspace>")
+    byte in (0x0a, 0x0d) && return Keystroke(; value = "<enter>")
 
     # Every other control byte in this range is a CTRL combination with a letter. Reporting it
     # with `ctrl = false` and the raw control character as the value made the documented `ctrl`
     # keyword of `set_keybinding` impossible to match.
     if 0x01 <= byte <= 0x1a
         letter = Char(byte - 0x01 + UInt8('a'))
-        return Keystroke(; raw = string(UInt32(byte)), value = string(letter), ctrl = true)
+        return Keystroke(; value = string(letter), ctrl = true)
     end
 
-    return Keystroke(; raw = string(UInt32(byte)), value = string(Char(byte)))
+    return Keystroke(; value = string(Char(byte)))
 end
 
 # Every ASCII keystroke is precomputed, so that a keypress is a table lookup. Building them on
@@ -327,22 +384,25 @@ end
 const _ASCII_KEYSTROKES = Keystroke[_build_ascii_keystroke(UInt8(i)) for i in 0x00:0x7f]
 
 """
-    _valid_utf8(bytes::Vector{UInt8}) -> Bool
+    _valid_utf8(bytes::Vector{UInt8}, offset::Int, num_bytes::Int) -> Bool
 
-Return whether `bytes` is one valid two- to four-byte UTF-8 scalar.
+Return whether the `num_bytes` bytes of `bytes` beginning at `offset` are one valid two- to
+four-byte UTF-8 scalar.
 
 # Arguments
 
-- `bytes::Vector{UInt8}`: Candidate encoded scalar.
+- `bytes::Vector{UInt8}`: Buffer containing the candidate encoded scalar.
+- `offset::Int`: Index of the first byte of the scalar.
+- `num_bytes::Int`: Number of bytes of the scalar, which `bytes` must hold.
 """
-function _valid_utf8(bytes::Vector{UInt8})
+function _valid_utf8(bytes::Vector{UInt8}, offset::Int, num_bytes::Int)
     # An indexed loop avoids building a closure over a view on every non-ASCII keypress.
-    @inbounds for i in 2:length(bytes)
+    @inbounds for i in (offset + 1):(offset + num_bytes - 1)
         0x80 <= bytes[i] <= 0xbf || return false
     end
 
-    first_byte = bytes[1]
-    second_byte = bytes[2]
+    first_byte = bytes[offset]
+    second_byte = bytes[offset + 1]
     first_byte == 0xe0 && second_byte < 0xa0 && return false
     first_byte == 0xed && second_byte > 0x9f && return false
     first_byte == 0xf0 && second_byte < 0x90 && return false
@@ -350,27 +410,148 @@ function _valid_utf8(bytes::Vector{UInt8})
     return true
 end
 
-"""
-    _raw_bytes(bytes::Vector{UInt8}) -> String
+############################################################################################
+#                                  Escape Sequence Tables                                  #
+############################################################################################
 
-Format bytes using the legacy raw-keystroke representation.
+"""
+    _csi_letter_key(final_byte::UInt8) -> String
+
+Return the value of the key whose CSI sequence ends with the letter `final_byte`, or an
+empty string if there is none.
 
 # Arguments
 
-- `bytes::Vector{UInt8}`: Bytes to format.
+- `final_byte::UInt8`: Final byte of the sequence.
 """
-function _raw_bytes(bytes::Vector{UInt8})
-    isempty(bytes) && return ""
+function _csi_letter_key(final_byte::UInt8)
+    final_byte == UInt8('A') && return "<up>"
+    final_byte == UInt8('B') && return "<down>"
+    final_byte == UInt8('C') && return "<right>"
+    final_byte == UInt8('D') && return "<left>"
+    final_byte == UInt8('H') && return "<home>"
+    final_byte == UInt8('F') && return "<end>"
+    final_byte == UInt8('P') && return "<F1>"
+    final_byte == UInt8('Q') && return "<F2>"
+    final_byte == UInt8('R') && return "<F3>"
+    final_byte == UInt8('S') && return "<F4>"
 
-    io = IOBuffer()
+    # The terminals send SHIFT-TAB as `\e[Z`.
+    final_byte == UInt8('Z') && return "<tab>"
 
-    @inbounds for i in eachindex(bytes)
-        i > 1 && write(io, ", ")
-        _write_decimal(io, Int(bytes[i]))
+    return ""
+end
+
+"""
+    _csi_tilde_key(number::Int) -> String
+
+Return the value of the key whose CSI sequence is `\\e[<number>~`, or an empty string if
+there is none.
+
+# Arguments
+
+- `number::Int`: First parameter of the sequence, or `-1` if it is missing.
+"""
+function _csi_tilde_key(number::Int)
+    # The Linux console, tmux, and rxvt send their own sequences for Home and End.
+    number in (1, 7) && return "<home>"
+    number in (4, 8) && return "<end>"
+    number == 3 && return "<delete>"
+    number == 5 && return "<pageup>"
+    number == 6 && return "<pagedown>"
+    number == 15 && return "<F5>"
+    number == 17 && return "<F6>"
+    number == 18 && return "<F7>"
+    number == 19 && return "<F8>"
+    number == 20 && return "<F9>"
+    number == 21 && return "<F10>"
+    number == 23 && return "<F11>"
+    number == 24 && return "<F12>"
+    return ""
+end
+
+"""
+    _ss3_key(final_byte::UInt8) -> String
+
+Return the value of the key whose SS3 sequence ends with `final_byte`, or an empty string if
+there is none.
+
+# Arguments
+
+- `final_byte::UInt8`: Final byte of the sequence.
+"""
+function _ss3_key(final_byte::UInt8)
+    # The pager enables the application cursor key mode, in which xterm-compatible terminals
+    # send SS3 sequences for the arrows, Home, and End.
+    final_byte == UInt8('A') && return "<up>"
+    final_byte == UInt8('B') && return "<down>"
+    final_byte == UInt8('C') && return "<right>"
+    final_byte == UInt8('D') && return "<left>"
+    final_byte == UInt8('H') && return "<home>"
+    final_byte == UInt8('F') && return "<end>"
+    final_byte == UInt8('P') && return "<F1>"
+    final_byte == UInt8('Q') && return "<F2>"
+    final_byte == UInt8('R') && return "<F3>"
+    final_byte == UInt8('S') && return "<F4>"
+
+    # Keys of the keypad in the application keypad mode.
+    final_byte == UInt8('M') && return "<keypad_enter>"
+    final_byte == UInt8('X') && return "<keypad_equal>"
+    final_byte == UInt8('j') && return "<keypad_asterisk>"
+    final_byte == UInt8('k') && return "<keypad_plus>"
+    final_byte == UInt8('m') && return "<keypad_minus>"
+    final_byte == UInt8('n') && return "<keypad_dot>"
+    final_byte == UInt8('o') && return "<keypad_slash>"
+
+    if UInt8('p') <= final_byte <= UInt8('y')
+        return ("<keypad_0>", "<keypad_1>", "<keypad_2>", "<keypad_3>", "<keypad_4>",
+            "<keypad_5>", "<keypad_6>", "<keypad_7>", "<keypad_8>", "<keypad_9>")[
+            final_byte - UInt8('p') + 1
+        ]
     end
 
-    return String(take!(io))
+    return ""
 end
+
+"""
+    _modified_key(value::String, modifier::Int, alt::Bool, shift::Bool) -> Keystroke
+
+Return the keystroke `value` with the modifiers encoded in the xterm `modifier`, adding ALT
+if `alt` is `true` and SHIFT if `shift` is `true`.
+
+# Arguments
+
+- `value::String`: Value of the keystroke.
+- `modifier::Int`: xterm modifier, which is one plus the sum of 1 for SHIFT, 2 for ALT, 4
+    for CTRL, and 8 for META, reported as ALT.
+- `alt::Bool`: Whether to add ALT.
+- `shift::Bool`: Whether to add SHIFT.
+"""
+function _modified_key(value::String, modifier::Int, alt::Bool, shift::Bool)
+    bits = modifier - 1
+
+    return Keystroke(;
+        value = value,
+        alt = alt || ((bits & 0x02) != 0) || ((bits & 0x08) != 0),
+        ctrl = (bits & 0x04) != 0,
+        shift = shift || ((bits & 0x01) != 0),
+    )
+end
+
+"""
+    _undefined_key(consumed::Int) -> Tuple{Symbol, Keystroke, Int}
+
+Return the decoding result of an undefined key that consumes `consumed` bytes.
+
+# Arguments
+
+- `consumed::Int`: Number of bytes consumed by the key.
+"""
+_undefined_key(consumed::Int) = (:complete, Keystroke(; value = "<undefined>"), consumed)
+
+############################################################################################
+#                                     Input Handling                                       #
+############################################################################################
 
 """
     _try_append_available!(input::PagerInput) -> Bool
@@ -423,7 +604,8 @@ end
 """
     _take_decoded!(input::PagerInput, key::Keystroke, consumed::Int) -> Keystroke
 
-Clear the consumed prefix and return `key`.
+Clear the consumed prefix and return `key`. If `input` records the consumed bytes, they are
+appended to its record.
 
 # Arguments
 
@@ -432,6 +614,11 @@ Clear the consumed prefix and return `key`.
 - `consumed::Int`: Number of leading prefix bytes to remove.
 """
 function _take_decoded!(input::PagerInput, key::Keystroke, consumed::Int)
+    # The field is loaded once, so that its type is known below. Otherwise, the compiler
+    # cannot refine the type of a mutable field across two loads.
+    record = input.record
+    isnothing(record) || append!(record, @view(input.prefix[1:consumed]))
+
     deleteat!(input.prefix, 1:consumed)
     return key
 end
@@ -471,7 +658,7 @@ function _read_keystroke!(input::PagerInput)
 
         if (1 <= prefix_length <= 2) && all(==(0x1b), input.prefix)
             _try_append_available!(input) ||
-                return _take_decoded!(input, Keystroke(; raw = "\e", value = "<esc>"), 1)
+                return _take_decoded!(input, _ESC_KEYSTROKE, 1)
         else
             push!(input.prefix, read(input.stream, UInt8))
         end
