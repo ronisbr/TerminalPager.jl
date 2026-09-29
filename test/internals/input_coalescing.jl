@@ -507,9 +507,6 @@ end
     @test TerminalPager._read_keystroke!(input).value == "pending"
     @test stream.reads == 1
 
-    @test TerminalPager._jlgetch(IOBuffer("\e[B")).value == "<down>"
-    @test TerminalPager._jlgetch(IOBuffer("\e")).value == "<esc>"
-
     # The main loop dispatches on the returned keystroke at every iteration, so the return
     # types of the decoder and of the blocking reader must stay concrete.
     @test (@inferred TerminalPager._decode_keystroke(UInt8[UInt8('j')]))[1] == :complete

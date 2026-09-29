@@ -689,14 +689,3 @@ function _try_read_keystroke!(input::PagerInput)
         _try_append_available!(input) || return nothing
     end
 end
-
-"""
-    _jlgetch(stream::IO) -> Keystroke
-
-Compatibility wrapper that waits for one keystroke from `stream`.
-
-# Arguments
-
-- `stream::IO`: Input stream from which to read the keystroke.
-"""
-_jlgetch(@nospecialize(stream::IO)) = _read_keystroke!(PagerInput(stream))
