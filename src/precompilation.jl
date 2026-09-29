@@ -211,8 +211,8 @@ PrecompileTools.@setup_workload begin
             TerminalPager._redraw_status_bar!(burst_pager)
 
             # The search pattern of the session above arrives at once, like a pasted text,
-            # so the incremental search does not preview it. The preview, which runs at every
-            # typed character, is exercised here instead.
+            # so the incremental search does not preview it. The preview, which runs at
+            # every typed character, is exercised here instead.
             TerminalPager._preview_search!(
                 burst_pager, "line", TerminalPager._search_state(burst_pager)
             )
@@ -255,8 +255,8 @@ PrecompileTools.@setup_workload begin
     end
 end
 
-# The input waiter is created only for terminals, which the workload does not have. Hence, its
-# methods are compiled here without running them.
+# The input waiter is created only for terminals, which the workload does not have. Hence,
+# its methods are compiled here without running them.
 precompile(_create_input_waiter, (Base.TTY, Base.TTY))
 precompile(_run_input_waiter_reader, (InputWaiter, Base.TTY))
 precompile(_close_input_waiter!, (PagerInput,))

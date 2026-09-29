@@ -164,7 +164,8 @@ end
         @test _fetch_within(task, 5) === false
         @test waiter.armed
 
-        # A keystroke that arrives while the screen is repainted is reported by the next wait.
+        # A keystroke that arrives while the screen is repainted is reported by the next
+        # wait.
         TerminalPager._update_display_size!(pagerd)
         @test pagerd.display_size == (20, 50)
         write(pipe.in, "k")
@@ -239,28 +240,30 @@ end
         _waiter_factory = factory,
     )
 
+    # Return a function telling whether the pager wrote `text`.
+    wrote(text) = () -> occursin(text, _output_text(output))
+
     try
-        @test timedwait(() -> occursin("line 9", _output_text(output)), 5.0) == :ok
-        @test !occursin("line 19", _output_text(output))
+        @test timedwait(wrote("line 9"), 5.0) == :ok
+        @test !wrote("line 19")()
 
         output.size = (20, 30)
-        @test timedwait(() -> occursin("line 19", _output_text(output)), 5.0) == :ok
+        @test timedwait(wrote("line 19"), 5.0) == :ok
 
         # The prompt is moved to the new last row as well.
         write(pipe.in, "/")
-        @test timedwait(() -> occursin("\e[20;1H\e[0K\e[?25h/", _output_text(output)), 5.0) ==
-            :ok
+        @test timedwait(wrote("\e[20;1H\e[0K\e[?25h/"), 5.0) == :ok
         output.size = (25, 30)
-        @test timedwait(() -> occursin("\e[25;1H\e[0K\e[?25h/", _output_text(output)), 5.0) ==
-            :ok
-        @test occursin("line 24", _output_text(output))
+        @test timedwait(wrote("\e[25;1H\e[0K\e[?25h/"), 5.0) == :ok
+        @test wrote("line 24")()
+
         # A lone ESC is read as the key only when no other byte follows it at once.
         write(pipe.in, "\e")
         sleep(0.2)
 
         # The help session shares the waiter of its parent.
         write(pipe.in, "?")
-        @test timedwait(() -> occursin("TerminalPager.jl", _output_text(output)), 5.0) == :ok
+        @test timedwait(wrote("TerminalPager.jl"), 5.0) == :ok
         write(pipe.in, "q")
         write(pipe.in, "q")
         @test isnothing(_fetch_within(session, 5))

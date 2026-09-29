@@ -224,8 +224,8 @@ function _register_shortcuts(f, repl)
     # interface at all, so polling for one below would never terminate.
     has_interface = hasfield(typeof(repl), :interface)
 
-    # The registrars are functions, hence registering one twice, for example when the package
-    # image already holds it, is skipped.
+    # The registrars are functions, hence registering one twice, for example when the
+    # package image already holds it, is skipped.
     has_interface && (f ∈ _SHORTCUT_REGISTRARS || push!(_SHORTCUT_REGISTRARS, f))
 
     # When `atreplinit` is called, `repl.interface` is still undefined. Use `@async` to

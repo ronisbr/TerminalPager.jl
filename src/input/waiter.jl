@@ -65,8 +65,9 @@ function _default_input_waiter(@nospecialize(term::REPL.Terminals.TTYTerminal))
     in_stream = term.in_stream
     out_stream = term.out_stream
 
-    # Only a terminal can be resized. Other streams, such as the ones of the tests and of the
-    # precompile workload, are read directly, so that no task or timer is started for them.
+    # Only a terminal can be resized. Other streams, such as the ones of the tests and of
+    # the precompile workload, are read directly, so that no task or timer is started for
+    # them.
     (in_stream isa Base.TTY) && (out_stream isa Base.TTY) || return nothing
 
     # On Windows, the display size of a pseudo terminal, such as the one of mintty, is

@@ -14,9 +14,14 @@
         f, t; raw_function = (_, enabled) -> push!(raw_transitions, enabled)
     )
 
-    @test isnothing(
-        TerminalPager.debug_keycode(; _terminal_factory = () -> term, _raw_runner = raw_runner)
-    )
+    function debug_keycode(term)
+        return TerminalPager.debug_keycode(;
+            _terminal_factory = () -> term,
+            _raw_runner = raw_runner,
+        )
+    end
+
+    @test isnothing(debug_keycode(term))
     @test raw_transitions == [true, false]
 
     text = String(take!(output))
@@ -24,11 +29,9 @@
 
     # Each line tells the arguments of `set_keybinding` and the bytes of the keystroke,
     # which the keystroke itself does not keep.
-    @test occursin(
-        "value = \"<up>\", alt = false, ctrl = false, shift = false, bytes = [27, 79, 65]\r\n",
-        text,
-    )
-    @test occursin("value = \"q\", alt = false, ctrl = false, shift = false, bytes = [113]", text)
+    no_modifiers = "alt = false, ctrl = false, shift = false"
+    @test occursin("value = \"<up>\", $no_modifiers, bytes = [27, 79, 65]\r\n", text)
+    @test occursin("value = \"q\", $no_modifiers, bytes = [113]", text)
     @test occursin(TerminalPager._CURSOR_KEYS_ON, text)
     @test endswith(text, TerminalPager._CURSOR_KEYS_OFF)
     @test occursin(TerminalPager._MOUSE_ON, text) == mouse
@@ -40,9 +43,9 @@
     # The mouse events show their position.
     output = IOBuffer()
     term = REPL.Terminals.TTYTerminal("", IOBuffer("\e[<0;3;4Mq"), output, output)
-    TerminalPager.debug_keycode(; _terminal_factory = () -> term, _raw_runner = raw_runner)
+    debug_keycode(term)
     @test occursin(
-        "value = \"<mouse_press>\", alt = false, ctrl = false, shift = false, x = 3, y = 4, " *
+        "value = \"<mouse_press>\", $no_modifiers, x = 3, y = 4, " *
             "bytes = [27, 91, 60, 48, 59, 51, 59, 52, 77]",
         String(take!(output)),
     )

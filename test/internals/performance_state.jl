@@ -326,8 +326,9 @@ end
 
 @testset "Private Layout Field" begin
     # `_text_width` and `_pager_content_fits` read the widths the layout measured from its
-    # private field `_printable_widths`, because StringManipulation.jl has no public accessor
-    # for them. This test fails if a new version of that package changes the field.
+    # private field `_printable_widths`, because StringManipulation.jl has no public
+    # accessor for them. This test fails if a new version of that package changes the
+    # field.
     @test hasfield(TerminalPager.TextViewLayout, :_printable_widths)
 
     layout = TerminalPager.TextViewLayout(["ab", "α界", "\e[31mred\e[0m"])

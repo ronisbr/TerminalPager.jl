@@ -206,8 +206,8 @@ end
 
 @testset "Negative Frozen Rows and Columns" begin
     # The prompts that change the frozen and title rows and columns clamp them at zero, but
-    # the keywords were used as is. A negative number of frozen rows made the view taller than
-    # the display, so the page movements skipped lines.
+    # the keywords were used as is. A negative number of frozen rows made the view taller
+    # than the display, so the page movements skipped lines.
     text = join(("line $i" for i in 1:40), '\n')
 
     function session(; kwargs...)
