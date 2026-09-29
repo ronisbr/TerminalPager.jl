@@ -300,6 +300,16 @@ end
     empty!(TerminalPager._SEARCH_HISTORY)
 end
 
+@testset "Search History Starts Empty" begin
+    # The precompile workload confirms a search, and the history it left was serialized into
+    # the package image, so every session started with its pattern. Only a fresh process
+    # loads the image as a user session does.
+    code = "using TerminalPager; print(length(TerminalPager._SEARCH_HISTORY))"
+    project = Base.active_project()
+    cmd = `$(Base.julia_cmd()) --startup-file=no --project=$project -e $code`
+    @test read(cmd, String) == "0"
+end
+
 @testset "Command Line Change Callback" begin
     # The callback runs whenever the text changes, not when only the cursor moves, and its
     # result is shown at the right of the prompt row.

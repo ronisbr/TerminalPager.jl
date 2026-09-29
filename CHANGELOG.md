@@ -83,6 +83,8 @@ Version 0.8.0
   the view back so that the screen stays full instead of showing blank rows.
 - ![Bugfix][badge-bugfix] The view buffer takes its color flag from the session terminal
   instead of the global `stdout`.
+- ![Bugfix][badge-bugfix] Every session starts with an empty search history. The pattern
+  searched by the precompilation workload was recalled by the up key at the search prompt.
 
 Version 0.7.2
 -------------

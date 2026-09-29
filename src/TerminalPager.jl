@@ -283,6 +283,11 @@ function __init__()
     # starts with values captured at precompile time.
     _invalidate_preference_cache!()
 
+    # The precompile workload confirms a search, and the history it leaves is serialized into
+    # the compiled image as well. Hence, the history is emptied so that every session starts
+    # without the patterns of another one.
+    empty!(_SEARCH_HISTORY)
+
     # The faces live in the registry of StyledStrings.jl, which is not serialized with this
     # package. Hence, they must be registered at every session start, and only then can the
     # customized ones be applied.
