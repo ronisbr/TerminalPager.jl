@@ -162,3 +162,17 @@ more information, see the functions: [`TerminalPager.set_keybinding`](@ref),
 Notice that those modifications **do not** persist between Julia sessions. Hence, if the
 user wants a permanent configuration, they should add those commands to the `startup.jl`
 script.
+
+The name and the modifiers of a key can be found with [`TerminalPager.debug_keycode`](@ref),
+which prints every key pressed as the pager decodes it until `q` is pressed:
+
+```julia
+julia> TerminalPager.debug_keycode()
+```
+
+For example, `ALT` and the left arrow are decoded as the value `"<left>"` with the modifier
+`alt`, so they are bound with:
+
+```julia
+julia> TerminalPager.set_keybinding("<left>", :bol; alt = true)
+```
