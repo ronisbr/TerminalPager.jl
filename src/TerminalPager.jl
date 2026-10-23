@@ -320,17 +320,31 @@ function __init__()
             _register_help_shortcuts(repl)
         end
     else
-        atreplinit() do repl
-            if isinteractive() && repl isa REPL.LineEditREPL
-                # Do not call `REPL.setup_interface` here. It will be called later by
-                # `run_frontend`, which respects user options such as
-                # `auto_insert_closing_bracket`. Calling it early would bypass any options
-                # set by other `atreplinit` hooks.
-                _init_pager_repl_mode_when_ready(repl)
+        atreplinit(_init_repl_integrations)
+    end
 
-                _register_help_shortcuts(repl)
-            end
-        end
+    return nothing
+end
+
+"""
+    _init_repl_integrations(repl::Any) -> Nothing
+
+Initialize the pager REPL mode and the help shortcuts in `repl` once its interface is set
+up, if the session is interactive and `repl` is a line-edit REPL.
+
+# Arguments
+
+- `repl::Any`: REPL passed to the `atreplinit` hooks.
+"""
+function _init_repl_integrations(repl)
+    if isinteractive() && repl isa REPL.LineEditREPL
+        # Do not call `REPL.setup_interface` here. It will be called later by
+        # `run_frontend`, which respects user options such as
+        # `auto_insert_closing_bracket`. Calling it early would bypass any options set by
+        # other `atreplinit` hooks.
+        _init_pager_repl_mode_when_ready(repl)
+
+        _register_help_shortcuts(repl)
     end
 
     return nothing
