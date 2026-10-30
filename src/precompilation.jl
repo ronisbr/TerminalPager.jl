@@ -260,3 +260,7 @@ end
 precompile(_create_input_waiter, (Base.TTY, Base.TTY))
 precompile(_run_input_waiter_reader, (InputWaiter, Base.TTY))
 precompile(_close_input_waiter!, (PagerInput,))
+
+# The workload only registers the REPL hook. Running the hook would not help, because it
+# skips its body in the non-interactive precompilation process.
+precompile(_init_repl_integrations, (REPL.LineEditREPL,))

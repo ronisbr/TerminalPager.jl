@@ -29,6 +29,28 @@
     end
 end
 
+@testset "REPL Hook Initialization" begin
+    term = REPL.Terminals.TTYTerminal("", IOBuffer(), IOBuffer(), IOBuffer())
+    repl = REPL.LineEditREPL(term, true)
+    repl.interface = REPL.setup_interface(repl)
+    has_pager_mode() = any(TerminalPager._is_pager_mode, repl.interface.modes)
+    old_interactive = isinteractive()
+
+    try
+        # The precompilation process is not interactive, so the hook must not touch the REPL.
+        Base.is_interactive = false
+        TerminalPager._init_repl_integrations(repl)
+        yield()
+        @test !has_pager_mode()
+
+        Base.is_interactive = true
+        TerminalPager._init_repl_integrations(repl)
+        @test timedwait(has_pager_mode, 10.0) == :ok
+    finally
+        Base.is_interactive = old_interactive
+    end
+end
+
 @testset "REPL Command Assembly" begin
     # The commands were assembled by growing a string, which copied the whole accumulated
     # command once per line and was quadratic for large pasted blocks.

@@ -1,6 +1,8 @@
 module TerminalPagerAboutExt
 
 using About: about
+using PrecompileTools: PrecompileTools
+using REPL
 using TerminalPager: _register_shortcuts, _show_help, _show_pager_cursor, @stdout_to_pager
 
 """
@@ -98,6 +100,20 @@ function _show_about(identifier, mod, evaluate, show_about, show_help)
     end
 
     return nothing
+end
+
+############################################################################################
+#                                      Precompilation                                      #
+############################################################################################
+
+# The shortcut is registered by an `atreplinit` hook, which never runs while precompiling.
+# Hence, the workload registers it in a mock REPL instead.
+PrecompileTools.@compile_workload begin
+    mock_repl = REPL.LineEditREPL(
+        REPL.Terminals.TTYTerminal("", stdin, stdout, stderr), true
+    )
+    mock_repl.interface = REPL.setup_interface(mock_repl)
+    wait(_register_about_shortcut(mock_repl))
 end
 
 end
