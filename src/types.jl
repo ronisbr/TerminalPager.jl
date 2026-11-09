@@ -118,12 +118,14 @@ the background, as `textview` expects.
 - `status_hint::String`: Key hints, feature tags, and hidden text hints of the status line.
 - `mode_search::String`: Name of the search mode on the status line.
 - `mode_visual::String`: Name of the visual mode on the status line.
+- `mode_freeze::String`: Name of the freeze selection mode on the status line.
 - `message_info::String`: Informative message on the status line.
 - `message_error::String`: Error message on the status line.
 - `search_match::String`: Inactive search match.
 - `search_active_match::String`: Active search match.
 - `visual_line::String`: Background of the lines marked in the visual mode.
 - `visual_active_line::String`: Background of the visual line.
+- `freeze_block::String`: Rows and columns selected in the freeze selection mode.
 - `ruler::String`: Line number ruler.
 - `scrollbar_track::String`: Track of the scrollbar.
 - `scrollbar_thumb::String`: Thumb of the scrollbar.
@@ -139,12 +141,14 @@ struct DisplayConfig
     status_hint::String
     mode_search::String
     mode_visual::String
+    mode_freeze::String
     message_info::String
     message_error::String
     search_match::String
     search_active_match::String
     visual_line::String
     visual_active_line::String
+    freeze_block::String
     ruler::String
     scrollbar_track::String
     scrollbar_thumb::String
@@ -239,11 +243,15 @@ Store the mutable state for one pager session.
 - `message::String`: Message shown on the command line until the next keystroke, or an
     empty string.
 - `message_kind::Symbol`: Kind of `message`, `:info` or `:error`.
-- `mode::Symbol`: Current pager mode.
+- `mode::Symbol`: Current pager mode, `:view`, `:searching`, or `:freeze_selection`.
 - `event::Union{Nothing, Symbol}`: Pending pager event.
 - `features::Vector{Symbol}`: Features enabled for the session.
 - `frozen_columns::Int`: Number of frozen leading columns.
 - `frozen_rows::Int`: Number of frozen leading rows.
+- `freeze_selection_rows::Int`: Number of rows selected in the freeze selection mode.
+- `freeze_selection_columns::Int`: Number of columns selected in the freeze selection mode.
+- `freeze_buf::IOBuffer`: Reused buffer holding the view with the freeze selection painted
+    before the scrollbar is added to it.
 - `title_rows::Int`: Number of title rows.
 - `show_ruler::Bool`: Whether to show the line-number ruler.
 - `show_scrollbar::Bool`: Whether to show the scrollbar at the right edge of the view.
@@ -285,6 +293,9 @@ Base.@kwdef mutable struct Pager
     features::Vector{Symbol} = Symbol[]
     frozen_columns::Int = 0
     frozen_rows::Int = 0
+    freeze_selection_rows::Int = 0
+    freeze_selection_columns::Int = 0
+    freeze_buf::IOBuffer = IOBuffer()
     title_rows::Int = 0
     show_ruler::Bool = false
     show_scrollbar::Bool = false

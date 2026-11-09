@@ -51,6 +51,7 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     # operation instead of quitting the pager.
     ("c", false, true, false) => :quit_search,
     ("f", false, false, false) => :change_freeze,
+    ("F", false, false, false) => :select_freeze,
     ("<eot>", false, false, false) => :quit_eot,
     ("r", false, false, false) => :toggle_ruler,
     ("s", false, false, false) => :toggle_scrollbar,
@@ -264,7 +265,7 @@ be selected with the keyword `ctrl` instead, for example
     :quit, :quit_eot, :help, :up, :down, :left, :right, :fastup, :fastdown,
     :fastleft, :fastright, :bol, :eol, :pageup, :pagedown, :halfpageup,
     :halfpagedown, :home, :end, :wheel_up, :wheel_down, :goto_line, :search,
-    :next_match, :previous_match, :quit_search, :change_freeze,
+    :next_match, :previous_match, :quit_search, :change_freeze, :select_freeze,
     :change_title_rows, :toggle_ruler, :toggle_scrollbar, :toggle_visual_mode,
     :select_visual_mode_line, :mouse_select, :yank
 

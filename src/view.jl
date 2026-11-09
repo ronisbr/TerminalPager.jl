@@ -63,10 +63,12 @@ function _view!(pagerd::Pager)
         (active_match.line, active_match.index_in_line)
     end
 
-    # With the scrollbar, the view is rendered into a scratch buffer, and the frame is
-    # assembled from it with the scrollbar appended to every row.
+    # With the scrollbar or the freeze selection, the view is rendered into a scratch
+    # buffer, and the frame is assembled from it with the selection painted and the
+    # scrollbar appended to every row.
     show_scrollbar = pagerd.show_scrollbar
-    target = if show_scrollbar
+    selecting = pagerd.mode == :freeze_selection
+    target = if show_scrollbar || selecting
         view_buf = pagerd.view_buf
         truncate(view_buf, 0)
         seekstart(view_buf)
@@ -77,8 +79,9 @@ function _view!(pagerd::Pager)
 
     # The render call is issued once per branch so that the visual arguments are concrete
     # at each call site. Selecting them into union-typed locals first cost roughly 300
-    # bytes per frame in boxing.
-    cropped_lines, cropped_columns = if pagerd.visual_mode
+    # bytes per frame in boxing. The visual backgrounds are not drawn while the freeze
+    # selection is active, because the selection is painted over the view.
+    cropped_lines, cropped_columns = if pagerd.visual_mode && !selecting
         # These buffers are reused across frames. Otherwise, every frame allocates one vector
         # per selected line.
         visual_lines = pagerd.visual_lines
@@ -100,11 +103,26 @@ function _view!(pagerd::Pager)
         _render_view(pagerd, target, rows, cols, active_match_location, nothing, "")
     end
 
+    frame = pagerd.view_buf
+
+    if selecting
+        # The painted frame feeds the scrollbar, or it is the frame itself.
+        painted = show_scrollbar ? pagerd.freeze_buf : buf.io
+
+        if show_scrollbar
+            truncate(painted, 0)
+            seekstart(painted)
+        end
+
+        _paint_freeze_selection!(painted, frame, rows, cols, pagerd)
+        frame = painted
+    end
+
     if show_scrollbar
         thumb_first, thumb_last = _scrollbar_thumb(pagerd, rows)
         _append_scrollbar!(
             buf.io,
-            pagerd.view_buf,
+            frame,
             rows,
             pagerd.display_size[2],
             thumb_first,
@@ -200,6 +218,153 @@ function _scrollbar_thumb(pagerd::Pager, rows::Int)
     thumb_first = 1 + round(Int, progress * (rows - thumb))
 
     return thumb_first, thumb_first + thumb - 1
+end
+
+"""
+    _paint_freeze_selection!(out::IOBuffer, frame::IOBuffer, rows::Int, cols::Int,
+        pagerd::Pager) -> Nothing
+
+Copy the view in `frame` to `out`, painting the rows and the columns selected in the freeze
+selection mode of `pagerd` with the face `freeze_block`.
+
+The selected rows are painted across the `cols` columns of the view, and the selected
+columns are painted on every one of the `rows` rows below them, after the ruler. The
+decorations of the text inside the painted region are removed, so that the region is
+uniform, and the decoration state of the text at the right of the painted columns is
+restored. Rows missing from `frame`, when the text is shorter than the view, are emitted
+blank so that the painted columns span the whole view. Notice that the face is written even
+if the terminal has no color support, because `frame` already carries the escape sequences
+of the text.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer receiving the frame.
+- `frame::IOBuffer`: Rendered view, one row per line.
+- `rows::Int`: Number of rows of the view.
+- `cols::Int`: Number of columns of the view.
+- `pagerd::Pager`: Pager state with the selection and the display configuration.
+"""
+function _paint_freeze_selection!(
+    out::IOBuffer, frame::IOBuffer, rows::Int, cols::Int, pagerd::Pager
+)
+    face = pagerd.display_config.freeze_block
+    selected_rows = pagerd.freeze_selection_rows
+    selected_columns = pagerd.freeze_selection_columns
+    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+
+    data, num_bytes = _frame_bytes(frame)
+    row = 1
+    row_first = 1
+
+    @inbounds for i in 1:(num_bytes + 1)
+        # The last row is not terminated by a newline.
+        (i <= num_bytes) && (data[i] != UInt8('\n')) && continue
+        (i > num_bytes) && (row_first > num_bytes) && (row > 1) && break
+        row > rows && break
+
+        row_size = i - row_first
+        line = if row_size > 0
+            GC.@preserve data unsafe_string(pointer(data, row_first), row_size)
+        else
+            ""
+        end
+
+        _paint_freeze_row!(
+            out, line, row, selected_rows, selected_columns, ruler_width, cols, face
+        )
+        row < rows && write(out, UInt8('\n'))
+
+        row += 1
+        row_first = i + 1
+    end
+
+    # The rows after the end of the text only carry the selection.
+    while row <= rows
+        _paint_freeze_row!(
+            out, "", row, selected_rows, selected_columns, ruler_width, cols, face
+        )
+        row < rows && write(out, UInt8('\n'))
+        row += 1
+    end
+
+    return nothing
+end
+
+"""
+    _paint_freeze_row!(out::IOBuffer, line::String, row::Int, selected_rows::Int,
+        selected_columns::Int, ruler_width::Int, cols::Int, face::String) -> Nothing
+
+Write the view row `line`, which is the row `row` of the view, to `out`, painting it with
+`face` if it is one of the `selected_rows` first rows, or painting its `selected_columns`
+first columns after the `ruler_width` columns of the ruler otherwise.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer receiving the row.
+- `line::String`: Rendered row, without the trailing newline.
+- `row::Int`: One-based row of the view.
+- `selected_rows::Int`: Number of selected rows.
+- `selected_columns::Int`: Number of selected columns.
+- `ruler_width::Int`: Number of columns of the ruler, or `0` if it is hidden.
+- `cols::Int`: Number of columns of the view.
+- `face::String`: Escape sequence of the face of the selection.
+"""
+function _paint_freeze_row!(
+    out::IOBuffer,
+    line::String,
+    row::Int,
+    selected_rows::Int,
+    selected_columns::Int,
+    ruler_width::Int,
+    cols::Int,
+    face::String,
+)
+    # A selected row is painted edge to edge, ruler included.
+    if row <= selected_rows
+        plain = remove_decorations(line)
+        write(out, face)
+        write(out, plain)
+        _write_blanks(out, cols - printable_textwidth(plain))
+        write(out, _SGR_RESET)
+        return nothing
+    end
+
+    if selected_columns <= 0
+        write(out, line)
+        return nothing
+    end
+
+    # The ruler is kept as it is. Its last cell is followed by a reset, and the face starts
+    # with one, so neither leaks into the other.
+    text = line
+
+    if ruler_width > 0
+        ruler, text = split_string(line, ruler_width)
+        write(out, ruler)
+    end
+
+    plain = remove_decorations(text)
+    width = printable_textwidth(plain)
+
+    if width <= selected_columns
+        write(out, face)
+        write(out, plain)
+        _write_blanks(out, selected_columns - width)
+        write(out, _SGR_RESET)
+    else
+        # Both functions replace a wide character at the split point by blanks, so that the
+        # widths are kept. The escape sequences of the painted part are written after it,
+        # restoring the decoration state of the rest of the row.
+        head, _ = split_string(text, selected_columns)
+        ansi, rest = left_crop(text, selected_columns)
+        write(out, face)
+        write(out, remove_decorations(head))
+        write(out, _SGR_RESET)
+        write(out, ansi)
+        write(out, rest)
+    end
+
+    return nothing
 end
 
 # Glyphs of the scrollbar, both with a display width of one.

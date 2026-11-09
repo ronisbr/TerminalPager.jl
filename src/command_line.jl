@@ -16,6 +16,7 @@ const _PROMPT = "❯"
 const _PROMPT_WIDTH = 1
 const _MODE_SEARCH = "SEARCH"
 const _MODE_VISUAL = "VISUAL"
+const _MODE_FREEZE = "FREEZE"
 const _MODE_WIDTH = 6
 
 const _NO_MATCH = "no match"
@@ -48,8 +49,9 @@ const _GROUP_GAP = 3
 
 # Key hints of the status line, rebuilt when the key bindings change. The entries are the
 # generation they were built for, and the hints of the normal mode with and without the
-# help action, of the search mode, and of the visual mode.
-const _STATUS_HINTS = Ref{Tuple{Int, String, String, String, String}}((-1, "", "", "", ""))
+# help action, of the search mode, of the visual mode, and of the freeze selection mode.
+const _STATUS_HINTS =
+    Ref{Tuple{Int, String, String, String, String, String}}((-1, "", "", "", "", ""))
 
 # Padding is written directly from the bytes of this string, so that right-aligning the
 # hint does not allocate a full-width string at every frame.
@@ -124,8 +126,8 @@ end
 """
     _status_hint(mode::Symbol, with_help::Bool) -> String
 
-Return the key hints of the status line for `mode`, which is `:normal`, `:search`, or
-`:visual`, like `?:help  q:quit` or `n:next  N:prev  Esc:clear`.
+Return the key hints of the status line for `mode`, which is `:normal`, `:search`,
+`:visual`, or `:freeze`, like `?:help  q:quit` or `n:next  N:prev  Esc:clear`.
 
 The hints are rebuilt only when the key bindings change, so that the status line does not
 allocate at every frame.
@@ -140,6 +142,16 @@ function _status_hint(mode::Symbol, with_help::Bool)
     cached = _STATUS_HINTS[]
 
     if cached[1] != generation
+        # Enter is not an action in the freeze selection mode, so its hint is assembled by
+        # hand.
+        freeze_apply = _KEY_NAMES["<enter>"] * ":apply"
+        freeze_cancel = _join_hints((:quit_search, "cancel"))
+        freeze_hint = if isempty(freeze_cancel)
+            freeze_apply
+        else
+            freeze_apply * " "^_ITEM_GAP * freeze_cancel
+        end
+
         cached = (
             generation,
             _join_hints((:help, "help"), (:quit, "quit")),
@@ -154,12 +166,14 @@ function _status_hint(mode::Symbol, with_help::Bool)
                 (:yank, "yank"),
                 (:toggle_visual_mode, "leave"),
             ),
+            freeze_hint,
         )
         _STATUS_HINTS[] = cached
     end
 
     mode === :search && return cached[4]
     mode === :visual && return cached[5]
+    mode === :freeze && return cached[6]
     return with_help ? cached[2] : cached[3]
 end
 
@@ -192,8 +206,9 @@ end
 Redraw the status line of `pagerd` on the last row of the display.
 
 The row is quiet: nothing is drawn with a background. It begins with the prompt `❯` in the
-normal mode, or with the colored name of the search or the visual mode, followed by the
-active match or the number of selected lines. The right side
+normal mode, or with the colored name of the search, the visual, or the freeze selection
+mode, followed by the active match, the number of selected lines, or the selected rows and
+columns. The right side
 holds, from the left, the tags of the enabled features, the key hints of the current mode,
 the hints that the text continues beyond the left or the right edge of the view, which
 keep a slot of two columns so that the key hints do not move while the view scrolls
@@ -311,18 +326,38 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     # Everything but the numbers is constant, so the widths are computed from the number of
     # digits. Assembling strings here allocated at every keystroke.
     # The prompt is written in the base face, whereas the mode names have their own faces.
-    in_visual = pagerd.visual_mode
+    # The freeze selection takes over the row while it is active.
+    in_freeze = pagerd.mode == :freeze_selection
+    in_visual = pagerd.visual_mode && !in_freeze
     in_search = pagerd.mode == :searching
-    show_mode = in_visual || in_search
+    show_mode = in_freeze || in_visual || in_search
     w_mode = show_mode ? _MODE_WIDTH : _PROMPT_WIDTH
-    mode_name = in_visual ? _MODE_VISUAL : (in_search ? _MODE_SEARCH : _PROMPT)
-    mode_face = in_visual ? display_config.mode_visual : display_config.mode_search
+    mode_name = if in_freeze
+        _MODE_FREEZE
+    elseif in_visual
+        _MODE_VISUAL
+    elseif in_search
+        _MODE_SEARCH
+    else
+        _PROMPT
+    end
+    mode_face = if in_freeze
+        display_config.mode_freeze
+    elseif in_visual
+        display_config.mode_visual
+    else
+        display_config.mode_search
+    end
 
-    # Details of the mode: "n selected", "match i/n", or "no match".
+    # Details of the mode: "r×c", "n selected", "match i/n", or "no match".
+    selection_rows = pagerd.freeze_selection_rows
+    selection_columns = pagerd.freeze_selection_columns
     num_selected = length(pagerd.visual_mode_selected_lines)
     num_matches = length(pagerd.ordered_search_matches)
     match_id = pagerd.active_search_match_id
-    w_detail = if in_visual
+    w_detail = if in_freeze
+        ndigits(selection_rows) + 1 + ndigits(selection_columns)
+    elseif in_visual
         ndigits(num_selected) + 9
     elseif in_search
         num_matches > 0 ? 7 + ndigits(match_id) + ndigits(num_matches) : _NO_MATCH_WIDTH
@@ -330,9 +365,10 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         0
     end
 
-    # Feature tags: "frozen r×c", "titles t", and "ruler".
+    # Feature tags: "frozen r×c", "titles t", and "ruler". The frozen tag is hidden while
+    # the freeze selection is active, because the detail shows the selection instead.
     frozen_columns = pagerd.frozen_columns
-    show_frozen = (frozen_rows > 0) || (frozen_columns > 0)
+    show_frozen = !in_freeze && ((frozen_rows > 0) || (frozen_columns > 0))
     w_frozen = show_frozen ? 8 + ndigits(frozen_rows) + ndigits(frozen_columns) : 0
     title_rows = pagerd.title_rows
     w_titles = title_rows > 0 ? 7 + ndigits(title_rows) : 0
@@ -341,7 +377,15 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     w_tags = w_frozen + w_titles + w_ruler + max(num_tags - 1, 0) * _ITEM_GAP
 
     # Key hints of the current mode.
-    hint_mode = in_visual ? :visual : (in_search ? :search : :normal)
+    hint_mode = if in_freeze
+        :freeze
+    elseif in_visual
+        :visual
+    elseif in_search
+        :search
+    else
+        :normal
+    end
     hint = _status_hint(hint_mode, :help ∈ pagerd.features)
     w_hint = textwidth(hint)
 
@@ -400,7 +444,11 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     if show_detail
         _write_blanks(out, _ITEM_GAP)
 
-        if in_visual
+        if in_freeze
+            _write_decimal(out, selection_rows)
+            write(out, "×")
+            _write_decimal(out, selection_columns)
+        elseif in_visual
             _write_decimal(out, num_selected)
             write(out, " selected")
         elseif num_matches > 0

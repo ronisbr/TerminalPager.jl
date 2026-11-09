@@ -1,6 +1,16 @@
 TerminalPager.jl
 ================
 
+Version 0.9.0
+-------------
+
+- ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
+  `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
+  frozen, the rows and the columns that would be frozen are highlighted with the new face
+  `freeze_block`, the movement keys or the mouse move the selection, `Enter` applies it, and
+  `Esc`, `q`, or `Ctrl-C` cancel it. The status line shows the mode name `FREEZE`, styled
+  with the new face `mode_freeze`, and the selected rows and columns.
+
 Version 0.8.0
 -------------
 

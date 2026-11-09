@@ -936,6 +936,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :toggle_scrollbar => nothing,
     :help => :help,
     :change_freeze => :change_freeze,
+    :select_freeze => :change_freeze,
     :change_title_rows => :change_freeze,
     :toggle_visual_mode => :visual_mode,
     :select_visual_mode_line => :visual_mode,
@@ -1079,6 +1080,8 @@ function _pager_event_process!(pagerd::Pager)
         _quit_search!(pagerd)
     elseif event == :change_freeze
         _change_freeze!(pagerd)
+    elseif event == :select_freeze
+        _select_freeze!(pagerd)
     elseif event == :change_title_rows
         _change_title_rows!(pagerd)
     elseif event == :toggle_ruler
@@ -1155,6 +1158,237 @@ function _change_freeze!(pagerd::Pager)
     end
 
     _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _select_freeze!(pagerd::Pager) -> Nothing
+
+Select the frozen rows and columns of `pagerd` on the screen and request a redraw.
+
+The view moves to the top-left corner of the text with only the title rows frozen, and the
+rows and the columns that would be frozen are painted with the face `freeze_block`. The
+movement keys and the mouse move the selection, Enter applies it, and the keys bound to
+`:quit`, `:quit_search`, and `:quit_eot` cancel it. In both cases, the viewport is restored
+and clamped to the frozen region. Nothing happens, and an error message is shown, if the
+text is empty or if the title rows do not fit in the view.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _select_freeze!(pagerd::Pager)
+    rows, cols = _get_pager_display_size(pagerd)
+    title_rows = pagerd.title_rows
+
+    if pagerd.num_lines == 0
+        _set_message!(pagerd, "Nothing to freeze"; kind = :error)
+        return nothing
+    end
+
+    if (rows <= 0) || (cols <= 0) || (title_rows >= rows)
+        _set_message!(
+            pagerd, "Not enough rows to show the $title_rows title rows"; kind = :error
+        )
+        return nothing
+    end
+
+    saved = (
+        start_row = pagerd.start_row,
+        start_column = pagerd.start_column,
+        frozen_rows = pagerd.frozen_rows,
+        frozen_columns = pagerd.frozen_columns,
+        mode = pagerd.mode,
+    )
+
+    # Only the titles stay frozen, and everything else scrolls to the top-left corner of the
+    # text, so that the screen rows and columns are the text rows and columns.
+    pagerd.frozen_rows = title_rows
+    pagerd.frozen_columns = 0
+    pagerd.start_row = title_rows + 1
+    pagerd.start_column = 1
+    pagerd.mode = :freeze_selection
+    pagerd.freeze_selection_rows = saved.frozen_rows
+    pagerd.freeze_selection_columns = saved.frozen_columns
+    _clamp_freeze_selection!(pagerd)
+    _request_redraw!(pagerd)
+
+    applied = false
+
+    try
+        while true
+            if pagerd.redraw
+                _view!(pagerd)
+                _redraw!(pagerd)
+                _redraw_status_bar!(pagerd)
+            end
+
+            # A change of the display size repaints the view without waiting for a
+            # keystroke. The selection must stay inside the new view.
+            if !_wait_for_input!(pagerd)
+                _update_display_size!(pagerd)
+                _clamp_freeze_selection!(pagerd)
+                _request_redraw!(pagerd)
+                continue
+            end
+
+            k = _read_keystroke!(pagerd.input)
+
+            # Enter is bound to a movement, so it must be checked before the bindings.
+            if (k.value == "<enter>") || (k.value == "<keypad_enter>")
+                applied = true
+                break
+            end
+
+            action = _pager_action(k)
+
+            if (action === :quit) || (action === :quit_search) || (action === :quit_eot)
+                break
+            end
+
+            _move_freeze_selection!(pagerd, action, k)
+        end
+    finally
+        pagerd.mode = saved.mode
+    end
+
+    if applied
+        pagerd.frozen_rows = pagerd.freeze_selection_rows
+        pagerd.frozen_columns = pagerd.freeze_selection_columns
+        pagerd.visual_mode_line = 1
+        _set_message!(
+            pagerd,
+            "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
+        )
+    else
+        pagerd.frozen_rows = saved.frozen_rows
+        pagerd.frozen_columns = saved.frozen_columns
+    end
+
+    # The viewport is restored and kept outside the frozen region. Notice that the display
+    # size can have changed while the selection was active.
+    pagerd.start_row = saved.start_row
+    pagerd.start_column = saved.start_column
+    _clamp_viewport!(pagerd)
+
+    # The crop counters describe the frames of the selection, so they must be recomputed by
+    # the next `_view!` instead of being reused by the movement handling.
+    pagerd.cropped_lines = 0
+    pagerd.cropped_columns = 0
+
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _freeze_selection_bounds(pagerd::Pager) -> Tuple{Int, Int, Int}
+
+Return the minimum and the maximum numbers of rows, and the maximum number of columns, the
+freeze selection of `pagerd` can have.
+
+The rows are bounded by the title rows, which always stay frozen, and by the view and the
+text. The columns are bounded by the view, without the ruler, and by the widest line.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _freeze_selection_bounds(pagerd::Pager)
+    rows, cols = _get_pager_display_size(pagerd)
+    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+
+    max_rows = max(min(rows, pagerd.num_lines), 0)
+    min_rows = clamp(pagerd.title_rows, 0, max_rows)
+    max_columns = max(min(cols - ruler_width, _text_width(pagerd)), 0)
+
+    return min_rows, max_rows, max_columns
+end
+
+"""
+    _clamp_freeze_selection!(pagerd::Pager) -> Nothing
+
+Keep the freeze selection of `pagerd` inside its bounds.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _clamp_freeze_selection!(pagerd::Pager)
+    min_rows, max_rows, max_columns = _freeze_selection_bounds(pagerd)
+    pagerd.freeze_selection_rows = clamp(pagerd.freeze_selection_rows, min_rows, max_rows)
+    pagerd.freeze_selection_columns = clamp(pagerd.freeze_selection_columns, 0, max_columns)
+    return nothing
+end
+
+"""
+    _move_freeze_selection!(pagerd::Pager, action::Union{Nothing, Symbol}, k::Keystroke) ->
+        Nothing
+
+Move the freeze selection of `pagerd` according to the movement `action` or to the position
+of the mouse event `k`, and request a redraw if it changed.
+
+The single movements move the selection by one, the fast ones by five rows or ten columns,
+and `:home`, `:end`, `:bol`, and `:eol` move it to the bounds. A mouse press or drag inside
+the view selects the rows up to the pointer and the columns up to it, without the ruler.
+Every other keystroke is ignored.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `action::Union{Nothing, Symbol}`: Resolved pager action of `k`.
+- `k::Keystroke`: Keystroke to process.
+"""
+function _move_freeze_selection!(pagerd::Pager, action, k::Keystroke)
+    min_rows, max_rows, max_columns = _freeze_selection_bounds(pagerd)
+    rows = pagerd.freeze_selection_rows
+    columns = pagerd.freeze_selection_columns
+
+    if (k.value == "<mouse_press>") || (k.value == "<mouse_drag>")
+        # In this mode, the screen row of a text row is its line number, because the view
+        # starts at the first line after the titles. A click on the ruler selects no column,
+        # and one on the status line is ignored.
+        if 1 <= k.y <= _get_pager_display_size(pagerd)[1]
+            ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+            rows = k.y
+            columns = k.x - ruler_width
+        end
+    elseif action === :up
+        rows -= 1
+    elseif action === :down
+        rows += 1
+    elseif action === :fastup
+        rows -= 5
+    elseif action === :fastdown
+        rows += 5
+    elseif action === :home
+        rows = min_rows
+    elseif action === :end
+        rows = max_rows
+    elseif action === :left
+        columns -= 1
+    elseif action === :right
+        columns += 1
+    elseif action === :fastleft
+        columns -= 10
+    elseif action === :fastright
+        columns += 10
+    elseif action === :bol
+        columns = 0
+    elseif action === :eol
+        columns = max_columns
+    end
+
+    rows = clamp(rows, min_rows, max_rows)
+    columns = clamp(columns, 0, max_columns)
+
+    if (rows != pagerd.freeze_selection_rows) ||
+        (columns != pagerd.freeze_selection_columns)
+        pagerd.freeze_selection_rows = rows
+        pagerd.freeze_selection_columns = columns
+        _request_redraw!(pagerd)
+    end
 
     return nothing
 end

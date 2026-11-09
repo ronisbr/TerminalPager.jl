@@ -162,6 +162,8 @@ available faces are listed as follows:
     (**Default**: bold yellow)
 - `"mode_visual"`: Name of the visual mode on the status line.
     (**Default**: bold magenta)
+- `"mode_freeze"`: Name of the freeze selection mode on the status line.
+    (**Default**: bold cyan)
 - `"message_info"`: Informative message on the status line.
     (**Default**: green)
 - `"message_error"`: Error message on the status line.
@@ -174,6 +176,8 @@ available faces are listed as follows:
     (**Default**: bright black background)
 - `"visual_active_line"`: Visual line. Only its background is used.
     (**Default**: blue background)
+- `"freeze_block"`: Rows and columns selected in the freeze selection mode.
+    (**Default**: black on cyan)
 - `"ruler"`: Line number ruler.
     (**Default**: bright black)
 - `"scrollbar_track"`: Track of the scrollbar.

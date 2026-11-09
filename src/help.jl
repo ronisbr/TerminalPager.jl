@@ -206,10 +206,13 @@ const _HELP_SECTIONS = HelpSection[
     HelpSection(
         "Freezing Data",
         "Frozen rows and columns stay visible while scrolling. Title rows are frozen rows " *
-            "that do not scroll horizontally either.",
+            "that do not scroll horizontally either. The selection on the screen is " *
+            "moved with the movement keys or the mouse, applied with Enter, and " *
+            "cancelled with Esc.",
         :change_freeze,
         ActionHelp[
             ActionHelp(:change_freeze, "Set the frozen rows and columns."),
+            ActionHelp(:select_freeze, "Select the frozen rows and columns on the screen."),
             ActionHelp(:change_title_rows, "Set the title rows."),
         ],
     ),

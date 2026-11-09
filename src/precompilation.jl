@@ -102,6 +102,12 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, "f10\n10\n")
             # Title rows.
             write(stdin_wr, "t1\n")
+            # Select the frozen rows and columns on the screen, with the scrollbar on so
+            # that the painted frame feeds it, and then cancel a selection.
+            write(stdin_wr, "s")
+            write(stdin_wr, "F\eOB\eOC\r")
+            write(stdin_wr, "Fq")
+            write(stdin_wr, "s")
             # Down.
             write(stdin_wr, "\eOB")
             # Up.

@@ -44,7 +44,10 @@ move. `m` marks the visual line, and `y` copies the visual line and the marked l
 clipboard.
 
 Rows and columns can be frozen with `f`, so that they stay visible while scrolling, and `t`
-selects how many frozen rows are titles, which do not scroll horizontally either.
+selects how many frozen rows are titles, which do not scroll horizontally either. `F`
+selects the frozen rows and columns on the screen: the view moves to the top-left corner,
+the rows and the columns that would be frozen are highlighted, the movement keys or the
+mouse move the selection, `Enter` applies it, and `Esc` cancels it.
 
 ## Helpers
 

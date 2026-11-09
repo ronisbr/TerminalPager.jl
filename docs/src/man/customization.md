@@ -73,12 +73,14 @@ prefix `terminalpager_`. The available faces are:
 | `status_hint`         | Key hints, feature tags, and hidden text hints.        | Bright black.                      |
 | `mode_search`         | Name of the search mode on the status line.            | Bold yellow.                       |
 | `mode_visual`         | Name of the visual mode on the status line.            | Bold magenta.                      |
+| `mode_freeze`         | Name of the freeze selection mode on the status line.  | Bold cyan.                         |
 | `message_info`        | Informative message on the status line.                | Green.                             |
 | `message_error`       | Error message on the status line.                      | Red.                               |
 | `search_match`        | Inactive search match.                                 | Black on white.                    |
 | `search_active_match` | Active search match.                                   | Black on yellow.                   |
 | `visual_line`         | Lines marked in the visual mode (background only).     | Bright black background.           |
 | `visual_active_line`  | Visual line (background only).                         | Blue background.                   |
+| `freeze_block`        | Rows and columns of the freeze selection.              | Black on cyan.                     |
 | `ruler`               | Line number ruler.                                     | Bright black.                      |
 | `scrollbar_track`     | Track of the scrollbar.                                | Bright black.                      |
 | `scrollbar_thumb`     | Thumb of the scrollbar.                                | No attributes.                     |
