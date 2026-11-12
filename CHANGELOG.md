@@ -15,6 +15,8 @@ Version 0.9.0
   every fifth one, and the number of each tenth column right above its tick. The ruler
   follows the frozen and the scrolled columns. The keyword `show_column_ruler` of `pager`
   and the new preference `"show_column_ruler"` show it from the start.
+- ![Enhancement][badge-enhancement] The line-number ruler ends with a foot `┴` on the last
+  frozen row, so the ruler shows where the frozen rows end.
 
 Version 0.8.0
 -------------

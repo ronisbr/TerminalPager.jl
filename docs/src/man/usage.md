@@ -28,8 +28,8 @@ the text continues beyond the left or the right edge (`‹` and `›`), and the 
 draws it as a bar (see the [customization](customization.md) page). The movements follow
 `less` and Vi: the arrow keys, `j`, `k`, `h`, `l`, `Space`, `PgUp`, `PgDn`, `Home`, `End`,
 `g`, and `G`. Typing `:` followed by a line number moves the display to that line, `r`
-toggles a line number ruler, `R` toggles a column ruler on top of the view, `s` toggles a
-scrollbar, and `q` quits.
+toggles a line number ruler, which ends with a foot on the last frozen row, `R` toggles a
+column ruler on top of the view, `s` toggles a scrollbar, and `q` quits.
 
 The mouse wheel scrolls the text, and `SHIFT` and the wheel scroll it horizontally. Notice
 that, while the pager reports the mouse, selecting text with the terminal requires holding
