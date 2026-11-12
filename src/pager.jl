@@ -1241,9 +1241,55 @@ function _select_freeze!(pagerd::Pager)
     pagerd.frozen_columns = 0
     pagerd.start_row = title_rows + 1
     pagerd.start_column = 1
-    pagerd.mode = :freeze_selection
-    pagerd.freeze_selection_rows = saved.frozen_rows
-    pagerd.freeze_selection_columns = saved.frozen_columns
+
+    applied = _run_selection!(
+        pagerd, :freeze_selection, saved.mode, saved.frozen_rows, saved.frozen_columns
+    )
+
+    if applied
+        pagerd.frozen_rows = pagerd.freeze_selection_rows
+        pagerd.frozen_columns = pagerd.freeze_selection_columns
+        pagerd.visual_mode_line = 1
+        _set_message!(
+            pagerd,
+            "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
+        )
+    else
+        pagerd.frozen_rows = saved.frozen_rows
+        pagerd.frozen_columns = saved.frozen_columns
+    end
+
+    _end_selection!(pagerd, saved.start_row, saved.start_column)
+
+    return nothing
+end
+
+"""
+    _run_selection!(pagerd::Pager, mode::Symbol, saved_mode::Symbol, rows::Int,
+        columns::Int) -> Bool
+
+Run the on-screen selection loop of `pagerd` in `mode`, starting with `rows` rows and
+`columns` columns selected, and return whether the selection was applied.
+
+The loop redraws the screen, keeps the selection inside the view when the display is
+resized, and reads the keystrokes directly: Enter applies the selection, the keys bound to
+`:quit`, `:quit_search`, and `:quit_eot` cancel it, and the other keystrokes move it. The
+mode of the pager is set back to `saved_mode` when the loop ends.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `mode::Symbol`: Selection mode, `:freeze_selection` or `:title_selection`.
+- `saved_mode::Symbol`: Mode to restore when the loop ends.
+- `rows::Int`: Initial number of selected rows.
+- `columns::Int`: Initial number of selected columns.
+"""
+function _run_selection!(
+    pagerd::Pager, mode::Symbol, saved_mode::Symbol, rows::Int, columns::Int
+)
+    pagerd.mode = mode
+    pagerd.freeze_selection_rows = rows
+    pagerd.freeze_selection_columns = columns
     _clamp_freeze_selection!(pagerd)
     _request_redraw!(pagerd)
 
@@ -1283,26 +1329,28 @@ function _select_freeze!(pagerd::Pager)
             _move_freeze_selection!(pagerd, action, k)
         end
     finally
-        pagerd.mode = saved.mode
+        pagerd.mode = saved_mode
     end
 
-    if applied
-        pagerd.frozen_rows = pagerd.freeze_selection_rows
-        pagerd.frozen_columns = pagerd.freeze_selection_columns
-        pagerd.visual_mode_line = 1
-        _set_message!(
-            pagerd,
-            "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
-        )
-    else
-        pagerd.frozen_rows = saved.frozen_rows
-        pagerd.frozen_columns = saved.frozen_columns
-    end
+    return applied
+end
 
-    # The viewport is restored and kept outside the frozen region. Notice that the display
-    # size can have changed while the selection was active.
-    pagerd.start_row = saved.start_row
-    pagerd.start_column = saved.start_column
+"""
+    _end_selection!(pagerd::Pager, start_row::Int, start_column::Int) -> Nothing
+
+Restore the viewport of `pagerd` to `start_row` and `start_column` after an on-screen
+selection, keep it outside the frozen region, and request a redraw.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `start_row::Int`: First visible row to restore.
+- `start_column::Int`: First visible column to restore.
+"""
+function _end_selection!(pagerd::Pager, start_row::Int, start_column::Int)
+    # Notice that the display size can have changed while the selection was active.
+    pagerd.start_row = start_row
+    pagerd.start_column = start_column
     _clamp_viewport!(pagerd)
 
     # The crop counters describe the frames of the selection, so they must be recomputed by
