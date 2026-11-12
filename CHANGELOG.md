@@ -10,6 +10,11 @@ Version 0.9.0
   columns that would be frozen, the movement keys or the mouse move them, `Enter` applies
   the selection, and `Esc`, `q`, or `Ctrl-C` cancel it. The status line shows the mode
   name `FREEZE`, styled with the new face `mode_freeze`, and the selected rows and columns.
+- ![Feature][badge-feature] `R` (action `:toggle_column_ruler`) toggles a two-row column
+  ruler on top of the view: a line with a tick on every tenth column and a half tick on
+  every fifth one, and the number of each tenth column right above its tick. The ruler
+  follows the frozen and the scrolled columns. The keyword `show_column_ruler` of `pager`
+  and the new preference `"show_column_ruler"` show it from the start.
 
 Version 0.8.0
 -------------

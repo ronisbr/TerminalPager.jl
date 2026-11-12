@@ -21,9 +21,10 @@ scrollbar column, if it is shown.
 function _get_pager_display_size(p::Pager)
     rows, cols = p.display_size
 
-    # We need to remove one row due to the status bar and one column due to the scrollbar.
-    # Notice that a degenerate terminal must not produce negative sizes.
-    rows = max(rows - 1, 0)
+    # We need to remove one row due to the status bar, two rows due to the column ruler, and
+    # one column due to the scrollbar. Notice that a degenerate terminal must not produce
+    # negative sizes.
+    rows = max(rows - 1 - _column_ruler_rows(p), 0)
     p.show_scrollbar && (cols = max(cols - 1, 0))
 
     return rows, cols
@@ -114,13 +115,37 @@ _first_scrollable_row(p::Pager) = max(1, p.frozen_rows + 1)
     _view_rows(p::Pager) -> Int
 
 Return the number of rows of the display of `p` that show scrolling text, that is, without
-the status line and the frozen rows.
+the status line, the column ruler, and the frozen rows.
 
 # Arguments
 
 - `p::Pager`: Pager state to inspect.
 """
-_view_rows(p::Pager) = p.display_size[1] - 1 - p.frozen_rows
+_view_rows(p::Pager) = p.display_size[1] - 1 - _column_ruler_rows(p) - p.frozen_rows
+
+"""
+    _column_ruler_rows(p::Pager) -> Int
+
+Return the number of rows of the display of `p` taken by the column ruler, which is `2` when
+it is shown and `0` otherwise.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+_column_ruler_rows(p::Pager) = p.show_column_ruler ? 2 : 0
+
+"""
+    _frame_rows(p::Pager) -> Int
+
+Return the number of screen rows of the frame of `p`, which are the rows of the view plus the
+column ruler.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+_frame_rows(p::Pager) = _get_pager_display_size(p)[1] + _column_ruler_rows(p)
 
 """
     _update_display_size!(p::Pager) -> Nothing
@@ -339,6 +364,8 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
     (**Default**: `true`)
 - `show_ruler::Bool`: Show the line-number ruler initially.
     (**Default**: `false`)
+- `show_column_ruler::Bool`: Show the column ruler initially.
+    (**Default**: the value of the preference `"show_column_ruler"`)
 - `show_scrollbar::Bool`: Show the scrollbar initially.
     (**Default**: the value of the preference `"show_scrollbar"`)
 - `use_alternate_screen_buffer::Bool`: Request the terminal's alternate screen
@@ -381,6 +408,7 @@ function _pager!(
     has_help::Bool = true,
     has_visual_mode::Bool = true,
     show_ruler::Bool = false,
+    show_column_ruler::Bool = _get_preference("show_column_ruler")::Bool,
     show_scrollbar::Bool = _get_preference("show_scrollbar")::Bool,
     use_alternate_screen_buffer::Bool = true,
     input::Union{Nothing, PagerInput} = nothing,
@@ -481,6 +509,7 @@ function _pager!(
             input = session_input,
             num_lines = num_tokens,
             show_ruler = show_ruler,
+            show_column_ruler = show_column_ruler,
             show_scrollbar = show_scrollbar,
             scroll_regions = _get_preference("use_scroll_regions")::Bool,
             start_column = max(1, frozen_columns + 1),
@@ -719,9 +748,10 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
 
     # We should disable the visual line mode if there is no selectable line, that is, if all
     # lines are frozen or if the first content row is beyond the view. Notice that the view
-    # has `display_size[1] - 1` rows, because the last one is the command line, and that at
-    # `min_row == num_lines` exactly one selectable line remains.
-    if pagerd.visual_mode && ((min_row > num_lines) || (min_row > display_size[1] - 1))
+    # has `display_size[1] - 1` rows without the column ruler, because the last one is the
+    # command line, and that at `min_row == num_lines` exactly one selectable line remains.
+    max_view_row = display_size[1] - 1 - _column_ruler_rows(pagerd)
+    if pagerd.visual_mode && ((min_row > num_lines) || (min_row > max_view_row))
         pagerd.visual_mode = false
         pagerd.visual_mode_line = 1
 
@@ -933,6 +963,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :previous_match => nothing,
     :quit_search => nothing,
     :toggle_ruler => nothing,
+    :toggle_column_ruler => nothing,
     :toggle_scrollbar => nothing,
     :help => :help,
     :change_freeze => :change_freeze,
@@ -1086,6 +1117,8 @@ function _pager_event_process!(pagerd::Pager)
         _change_title_rows!(pagerd)
     elseif event == :toggle_ruler
         _toggle_ruler!(pagerd)
+    elseif event == :toggle_column_ruler
+        _toggle_column_ruler!(pagerd)
     elseif event == :toggle_scrollbar
         _toggle_scrollbar!(pagerd)
     elseif event == :toggle_visual_mode
@@ -1349,12 +1382,15 @@ function _move_freeze_selection!(pagerd::Pager, action, k::Keystroke)
 
     if (k.value == "<mouse_press>") || (k.value == "<mouse_drag>")
         # In this mode, the screen row of a text row is its line number, because the view
-        # starts at the first line after the titles. The guides are put on the pointer, so
-        # the rows above it and the columns at its left are selected. A click on the ruler
-        # selects no column, and one on the status line is ignored.
-        if 1 <= k.y <= _get_pager_display_size(pagerd)[1]
+        # starts at the first line after the titles and the column ruler. The guides are put
+        # on the pointer, so the rows above it and the columns at its left are selected. A
+        # click on either ruler selects nothing in its direction, and one on the status line
+        # is ignored.
+        view_row = k.y - _column_ruler_rows(pagerd)
+
+        if 1 <= view_row <= _get_pager_display_size(pagerd)[1]
             ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
-            rows = k.y - 1
+            rows = view_row - 1
             columns = k.x - ruler_width - 1
         end
     elseif action === :up
@@ -1481,6 +1517,27 @@ function _toggle_ruler!(pagerd::Pager)
 end
 
 """
+    _toggle_column_ruler!(pagerd::Pager) -> Nothing
+
+Show or hide the column ruler of `pagerd` and request a redraw. The ruler takes the first
+two rows of the view, so the viewport is clamped to the new number of rows.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _toggle_column_ruler!(pagerd::Pager)
+    pagerd.show_column_ruler = !pagerd.show_column_ruler
+    _clamp_viewport!(pagerd)
+
+    # Every row moved by two, so the snapshot no longer describes the screen.
+    _invalidate_frame!(pagerd)
+    _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
     _toggle_scrollbar!(pagerd::Pager) -> Nothing
 
 Show or hide the scrollbar of `pagerd` and request a redraw. Hiding it scrolls the view left
@@ -1542,7 +1599,7 @@ function _mouse_select!(pagerd::Pager)
     pagerd.visual_mode || return nothing
 
     view_rows = _view_rows(pagerd)
-    clicked_line = pagerd.mouse_row - pagerd.frozen_rows
+    clicked_line = pagerd.mouse_row - _column_ruler_rows(pagerd) - pagerd.frozen_rows
     last_line = min(view_rows, pagerd.num_lines - pagerd.start_row + 1)
 
     (1 <= clicked_line <= last_line) || return nothing
@@ -1836,7 +1893,7 @@ Write the rows of the prepared view buffer that changed to the terminal.
 """
 function _redraw!(pagerd::Pager)
     frame_cache = pagerd.frame_cache
-    max_rows = _get_pager_display_size(pagerd)[1]
+    max_rows = _frame_rows(pagerd)
 
     data, num_bytes = _frame_bytes(pagerd.buf.io)
     num_rows = _scan_frame_rows!(frame_cache, data, num_bytes, max_rows)
@@ -1967,7 +2024,9 @@ frame repaints exactly the rows that entered the view.
 """
 function _shift_frame!(out::IOBuffer, frame_cache::FrameCache, pagerd::Pager, max_rows::Int)
     delta = pagerd.start_row - frame_cache.start_row
-    top = pagerd.frozen_rows + 1
+
+    # The scrollable region starts after the column ruler and the frozen rows.
+    top = _column_ruler_rows(pagerd) + pagerd.frozen_rows + 1
     bottom = max_rows
     height = bottom - top + 1
 

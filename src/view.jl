@@ -53,6 +53,12 @@ function _view!(pagerd::Pager)
         pagerd.start_column = start_column
     end
 
+    # The column ruler is the first two rows of the frame, before the rows of the text.
+    if pagerd.show_column_ruler
+        _write_column_ruler!(buf.io, pagerd, cols, get(buf, :color, true)::Bool)
+        write(buf.io, UInt8('\n'))
+    end
+
     vm_active_line_background = display_config.visual_active_line
     vm_line_background = display_config.visual_line
 
@@ -218,6 +224,168 @@ function _scrollbar_thumb(pagerd::Pager, rows::Int)
     thumb_first = 1 + round(Int, progress * (rows - thumb))
 
     return thumb_first, thumb_first + thumb - 1
+end
+
+# Glyphs of the column ruler, all with a display width of one.
+const _COLUMN_RULER_LINE = '─'
+const _COLUMN_RULER_HALF_TICK = '┬'
+const _COLUMN_RULER_TICK = '┴'
+const _COLUMN_RULER_BREAK = '┆'
+
+"""
+    _write_column_ruler!(out::IOBuffer, pagerd::Pager, cols::Int, use_color::Bool) ->
+        Nothing
+
+Write the two rows of the column ruler of `pagerd` to `out`, for a view with `cols` columns.
+
+The second row is a line with a tick on every tenth text column and a half tick on every
+fifth one, and the first row prints the number of each tenth column right above its tick.
+The ruler numbers the text columns the view shows: the frozen columns first, and then the
+columns from the first visible one. The columns of the line-number ruler are left blank, and
+the ruler stops at the widest line of the text. If the numbering jumps between the frozen and
+the scrolled columns, the line carries a break mark on the first scrolled column.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer receiving the rows, separated by a newline.
+- `pagerd::Pager`: Pager state with the viewport and the display configuration.
+- `cols::Int`: Number of columns of the view.
+- `use_color::Bool`: Decorate the ruler with the face `ruler`.
+"""
+function _write_column_ruler!(out::IOBuffer, pagerd::Pager, cols::Int, use_color::Bool)
+    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+    width = max(cols - ruler_width, 0)
+    text_width = _text_width(pagerd)
+
+    # These are the sanitized values `textview` uses for the frozen columns and for the first
+    # scrolled column.
+    frozen_columns = clamp(pagerd.frozen_columns, 0, width)
+    start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
+
+    # Both rows are assembled before they are written, because the numbers end at their
+    # ticks. This path allocates a little on every frame, but only while the ruler is shown.
+    numbers = fill(' ', width)
+    ticks = fill(' ', width)
+
+    # The frozen columns are always the first ones of the text.
+    if frozen_columns > 0
+        _fill_column_ruler_segment!(
+            numbers, ticks, 0, 1, min(frozen_columns, text_width), false
+        )
+    end
+
+    # The scrolled columns follow. The break mark is drawn only if the numbering jumps.
+    last_column = min(start_column + (width - frozen_columns) - 1, text_width)
+
+    if last_column >= start_column
+        break_mark = (frozen_columns > 0) && (start_column > frozen_columns + 1)
+        _fill_column_ruler_segment!(
+            numbers, ticks, frozen_columns, start_column, last_column, break_mark
+        )
+    end
+
+    _write_column_ruler_row!(out, numbers, ruler_width, pagerd.display_config, use_color)
+    write(out, UInt8('\n'))
+    _write_column_ruler_row!(out, ticks, ruler_width, pagerd.display_config, use_color)
+
+    return nothing
+end
+
+"""
+    _fill_column_ruler_segment!(numbers::Vector{Char}, ticks::Vector{Char}, offset::Int,
+        first_column::Int, last_column::Int, break_mark::Bool) -> Nothing
+
+Fill the cells `offset + 1` onwards of the rows `numbers` and `ticks` of the column ruler
+with the text columns `first_column` to `last_column`.
+
+Every tenth column gets a tick and its number, right-aligned above the tick, and every fifth
+column gets a half tick. A number that does not fit in the segment is skipped, leaving its
+tick unlabelled. If `break_mark` is set, the first cell of the line is the break mark.
+
+# Arguments
+
+- `numbers::Vector{Char}`: Cells of the row with the numbers.
+- `ticks::Vector{Char}`: Cells of the row with the line and the ticks.
+- `offset::Int`: Number of cells before the segment.
+- `first_column::Int`: Text column of the first cell.
+- `last_column::Int`: Text column of the last cell.
+- `break_mark::Bool`: Draw the break mark on the first cell of the line.
+"""
+function _fill_column_ruler_segment!(
+    numbers::Vector{Char},
+    ticks::Vector{Char},
+    offset::Int,
+    first_column::Int,
+    last_column::Int,
+    break_mark::Bool,
+)
+    num_cells = last_column - first_column + 1
+    num_cells <= 0 && return nothing
+
+    @inbounds for i in 1:num_cells
+        column = first_column + i - 1
+        ticks[offset + i] = if column % 10 == 0
+            _COLUMN_RULER_TICK
+        elseif column % 5 == 0
+            _COLUMN_RULER_HALF_TICK
+        else
+            _COLUMN_RULER_LINE
+        end
+    end
+
+    first_tick = first_column + mod(-first_column, 10)
+
+    for column in first_tick:10:last_column
+        label = string(column)
+        i = column - first_column + 1
+        start = i - length(label) + 1
+        start < 1 && continue
+
+        for (k, c) in enumerate(label)
+            @inbounds numbers[offset + start + k - 1] = c
+        end
+    end
+
+    break_mark && (ticks[offset + 1] = _COLUMN_RULER_BREAK)
+
+    return nothing
+end
+
+"""
+    _write_column_ruler_row!(out::IOBuffer, cells::Vector{Char}, ruler_width::Int,
+        display_config::DisplayConfig, use_color::Bool) -> Nothing
+
+Write one row of the column ruler to `out`: `ruler_width` blank columns for the line-number
+ruler, and then `cells` without their trailing blanks.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer receiving the row.
+- `cells::Vector{Char}`: Cells of the row.
+- `ruler_width::Int`: Number of columns of the line-number ruler, or `0` if it is hidden.
+- `display_config::DisplayConfig`: Session display configuration with the ruler face.
+- `use_color::Bool`: Decorate the row with the face `ruler`.
+"""
+function _write_column_ruler_row!(
+    out::IOBuffer,
+    cells::Vector{Char},
+    ruler_width::Int,
+    display_config::DisplayConfig,
+    use_color::Bool,
+)
+    last = findlast(!=(' '), cells)
+    last === nothing && (last = 0)
+
+    use_color && write(out, display_config.ruler)
+    _write_blanks(out, ruler_width)
+
+    @inbounds for i in 1:last
+        write(out, cells[i])
+    end
+
+    use_color && write(out, _SGR_RESET)
+
+    return nothing
 end
 
 # Glyphs of the freeze guides, all with a display width of one.

@@ -42,6 +42,9 @@ The available preferences are:
 - `"pager_mode"`: If it is `"vi"`, some keybindings are modified to match the behavior of
     Vi. Notice that this change only takes effect when a new Julia session is initialized.
     (**Default** = `"default"`)
+- `"show_column_ruler"`: If `true`, the pager shows a two-row ruler with the column numbers
+    on top of the view unless the keyword `show_column_ruler` says otherwise.
+    (**Default** = `false`)
 - `"show_scrollbar"`: If `true`, the pager shows a scrollbar at the right edge of the view
     unless the keyword `show_scrollbar` says otherwise. (**Default** = `false`)
 - `"use_scroll_regions"`: If `true`, scrolling asks the terminal to shift the rows it

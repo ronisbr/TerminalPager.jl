@@ -95,6 +95,9 @@ Call the pager to show the output of the object `obj`.
 - `show_ruler::Bool`: If `true`, a vertical ruler is shown in the pager with the line
     numbers.
     (**Default**: `false`)
+- `show_column_ruler::Bool`: If `true`, a two-row ruler with the column numbers is shown
+    on top of the view.
+    (**Default**: the value of the preference `"show_column_ruler"`)
 - `show_scrollbar::Bool`: If `true`, a scrollbar is shown at the right edge of the view.
     (**Default**: the value of the preference `"show_scrollbar"`)
 - `use_alternate_screen_buffer::Bool`: If `true`, the pager will use the alternate screen

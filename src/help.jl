@@ -163,6 +163,7 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:quit, "Quit the pager."),
             ActionHelp(:quit_eot, "Quit the search, or the pager."),
             ActionHelp(:toggle_ruler, "Toggle the line number ruler."),
+            ActionHelp(:toggle_column_ruler, "Toggle the column ruler on top of the view."),
             ActionHelp(:toggle_scrollbar, "Toggle the scrollbar."),
         ],
     ),

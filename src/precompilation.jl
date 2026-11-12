@@ -94,8 +94,9 @@ PrecompileTools.@setup_workload begin
             str = _render_object(a)
             t = @async _pager(str; use_alternate_screen_buffer = false)
 
-            # Ruler.
+            # Ruler, and the column ruler on and off.
             write(stdin_wr, "r")
+            write(stdin_wr, "RR")
             # Scrollbar on and off.
             write(stdin_wr, "ss")
             # Freeze rows and columns.

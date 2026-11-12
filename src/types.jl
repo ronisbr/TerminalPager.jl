@@ -254,6 +254,7 @@ Store the mutable state for one pager session.
     before the scrollbar is added to it.
 - `title_rows::Int`: Number of title rows.
 - `show_ruler::Bool`: Whether to show the line-number ruler.
+- `show_column_ruler::Bool`: Whether to show the column ruler on top of the view.
 - `show_scrollbar::Bool`: Whether to show the scrollbar at the right edge of the view.
 - `scroll_regions::Bool`: Whether scrolling may shift the rows already on screen with the
     terminal scroll region sequences instead of repainting them.
@@ -298,6 +299,7 @@ Base.@kwdef mutable struct Pager
     freeze_buf::IOBuffer = IOBuffer()
     title_rows::Int = 0
     show_ruler::Bool = false
+    show_column_ruler::Bool = false
     show_scrollbar::Bool = false
     scroll_regions::Bool = true
     view_buf::IOBuffer = IOBuffer()

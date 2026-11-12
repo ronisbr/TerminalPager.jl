@@ -17,6 +17,7 @@ const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, String}}(
     "copy_stdout_to_clipboard_in_repl_mode" => false,
     "mouse" => true,
     "pager_mode" => "default",
+    "show_column_ruler" => false,
     "show_scrollbar" => false,
     "use_scroll_regions" => true,
 )
