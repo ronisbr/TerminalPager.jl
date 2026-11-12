@@ -27,7 +27,7 @@ const _FACES = Pair{Symbol, Face}[
     :search_active_match => Face(; foreground = :black, background = :yellow),
     :visual_line => Face(; background = :bright_black),
     :visual_active_line => Face(; background = :blue),
-    :freeze_block => Face(; foreground = :black, background = :cyan),
+    :freeze_guide => Face(; weight = :bold, foreground = :cyan),
     :ruler => Face(; foreground = :bright_black),
     :scrollbar_track => Face(; foreground = :bright_black),
     :scrollbar_thumb => Face(),
@@ -126,8 +126,8 @@ See also: [`drop_face!`](@ref).
     (**Default**: bright black background)
 - `"visual_active_line"`: Visual line. Only its background is used.
     (**Default**: blue background)
-- `"freeze_block"`: Rows and columns selected in the freeze selection mode.
-    (**Default**: black on cyan)
+- `"freeze_guide"`: Guide lines of the freeze selection mode.
+    (**Default**: bold cyan)
 - `"ruler"`: Line number ruler.
     (**Default**: bright black)
 - `"scrollbar_track"`: Track of the scrollbar.
@@ -374,7 +374,7 @@ function _display_config(face_of::F = _current_face) where {F <: Function}
         sgr(:search_active_match),
         background(:visual_line),
         background(:visual_active_line),
-        sgr(:freeze_block),
+        sgr(:freeze_guide),
         sgr(:ruler),
         sgr(:scrollbar_track),
         sgr(:scrollbar_thumb),

@@ -125,7 +125,7 @@ the background, as `textview` expects.
 - `search_active_match::String`: Active search match.
 - `visual_line::String`: Background of the lines marked in the visual mode.
 - `visual_active_line::String`: Background of the visual line.
-- `freeze_block::String`: Rows and columns selected in the freeze selection mode.
+- `freeze_guide::String`: Guide lines of the freeze selection mode.
 - `ruler::String`: Line number ruler.
 - `scrollbar_track::String`: Track of the scrollbar.
 - `scrollbar_thumb::String`: Thumb of the scrollbar.
@@ -148,7 +148,7 @@ struct DisplayConfig
     search_active_match::String
     visual_line::String
     visual_active_line::String
-    freeze_block::String
+    freeze_guide::String
     ruler::String
     scrollbar_track::String
     scrollbar_thumb::String
@@ -250,7 +250,7 @@ Store the mutable state for one pager session.
 - `frozen_rows::Int`: Number of frozen leading rows.
 - `freeze_selection_rows::Int`: Number of rows selected in the freeze selection mode.
 - `freeze_selection_columns::Int`: Number of columns selected in the freeze selection mode.
-- `freeze_buf::IOBuffer`: Reused buffer holding the view with the freeze selection painted
+- `freeze_buf::IOBuffer`: Reused buffer holding the view with the freeze guides drawn
     before the scrollbar is added to it.
 - `title_rows::Int`: Number of title rows.
 - `show_ruler::Bool`: Whether to show the line-number ruler.

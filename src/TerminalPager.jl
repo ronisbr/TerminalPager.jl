@@ -176,8 +176,8 @@ available faces are listed as follows:
     (**Default**: bright black background)
 - `"visual_active_line"`: Visual line. Only its background is used.
     (**Default**: blue background)
-- `"freeze_block"`: Rows and columns selected in the freeze selection mode.
-    (**Default**: black on cyan)
+- `"freeze_guide"`: Guide lines of the freeze selection mode.
+    (**Default**: bold cyan)
 - `"ruler"`: Line number ruler.
     (**Default**: bright black)
 - `"scrollbar_track"`: Track of the scrollbar.

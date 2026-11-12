@@ -80,7 +80,7 @@ prefix `terminalpager_`. The available faces are:
 | `search_active_match` | Active search match.                                   | Black on yellow.                   |
 | `visual_line`         | Lines marked in the visual mode (background only).     | Bright black background.           |
 | `visual_active_line`  | Visual line (background only).                         | Blue background.                   |
-| `freeze_block`        | Rows and columns of the freeze selection.              | Black on cyan.                     |
+| `freeze_guide`        | Guide lines of the freeze selection.                   | Bold cyan.                         |
 | `ruler`               | Line number ruler.                                     | Bright black.                      |
 | `scrollbar_track`     | Track of the scrollbar.                                | Bright black.                      |
 | `scrollbar_thumb`     | Thumb of the scrollbar.                                | No attributes.                     |

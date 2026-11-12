@@ -52,7 +52,7 @@ end
     @test config.search_active_match == "\e[0;30;43m"
     @test config.visual_line == "100"
     @test config.visual_active_line == "44"
-    @test config.freeze_block == "\e[0;30;46m"
+    @test config.freeze_guide == "\e[0;36;1m"
     @test config.scrollbar_track == "\e[0;90m"
     @test config.scrollbar_thumb == "\e[0m"
     @test config.help_title == "\e[0;36;1m"

@@ -103,7 +103,7 @@ PrecompileTools.@setup_workload begin
             # Title rows.
             write(stdin_wr, "t1\n")
             # Select the frozen rows and columns on the screen, with the scrollbar on so
-            # that the painted frame feeds it, and then cancel a selection.
+            # that the frame with the guides feeds it, and then cancel a selection.
             write(stdin_wr, "s")
             write(stdin_wr, "F\eOB\eOC\r")
             write(stdin_wr, "Fq")

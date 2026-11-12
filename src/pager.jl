@@ -1168,11 +1168,11 @@ end
 Select the frozen rows and columns of `pagerd` on the screen and request a redraw.
 
 The view moves to the top-left corner of the text with only the title rows frozen, and the
-rows and the columns that would be frozen are painted with the face `freeze_block`. The
-movement keys and the mouse move the selection, Enter applies it, and the keys bound to
-`:quit`, `:quit_search`, and `:quit_eot` cancel it. In both cases, the viewport is restored
-and clamped to the frozen region. Nothing happens, and an error message is shown, if the
-text is empty or if the title rows do not fit in the view.
+rows and the columns that would be frozen are marked by two guide lines drawn with the
+face `freeze_guide`. The movement keys and the mouse move the selection, Enter applies it,
+and the keys bound to `:quit`, `:quit_search`, and `:quit_eot` cancel it. In both cases, the
+viewport is restored and clamped to the frozen region. Nothing happens, and an error
+message is shown, if the text is empty or if the title rows do not fit in the view.
 
 # Arguments
 
@@ -1289,7 +1289,9 @@ Return the minimum and the maximum numbers of rows, and the maximum number of co
 freeze selection of `pagerd` can have.
 
 The rows are bounded by the title rows, which always stay frozen, and by the view and the
-text. The columns are bounded by the view, without the ruler, and by the widest line.
+text. The columns are bounded by the view, without the ruler, and by the widest line. The
+guides are drawn after the selected rows and columns, so the view bounds leave one row and
+one column for them.
 
 # Arguments
 
@@ -1299,9 +1301,9 @@ function _freeze_selection_bounds(pagerd::Pager)
     rows, cols = _get_pager_display_size(pagerd)
     ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
 
-    max_rows = max(min(rows, pagerd.num_lines), 0)
+    max_rows = max(min(rows - 1, pagerd.num_lines), 0)
     min_rows = clamp(pagerd.title_rows, 0, max_rows)
-    max_columns = max(min(cols - ruler_width, _text_width(pagerd)), 0)
+    max_columns = max(min(cols - ruler_width - 1, _text_width(pagerd)), 0)
 
     return min_rows, max_rows, max_columns
 end
@@ -1331,8 +1333,8 @@ of the mouse event `k`, and request a redraw if it changed.
 
 The single movements move the selection by one, the fast ones by five rows or ten columns,
 and `:home`, `:end`, `:bol`, and `:eol` move it to the bounds. A mouse press or drag inside
-the view selects the rows up to the pointer and the columns up to it, without the ruler.
-Every other keystroke is ignored.
+the view puts the guides on the pointer, selecting the rows above it and the columns at its
+left, without the ruler. Every other keystroke is ignored.
 
 # Arguments
 
@@ -1347,12 +1349,13 @@ function _move_freeze_selection!(pagerd::Pager, action, k::Keystroke)
 
     if (k.value == "<mouse_press>") || (k.value == "<mouse_drag>")
         # In this mode, the screen row of a text row is its line number, because the view
-        # starts at the first line after the titles. A click on the ruler selects no column,
-        # and one on the status line is ignored.
+        # starts at the first line after the titles. The guides are put on the pointer, so
+        # the rows above it and the columns at its left are selected. A click on the ruler
+        # selects no column, and one on the status line is ignored.
         if 1 <= k.y <= _get_pager_display_size(pagerd)[1]
             ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
-            rows = k.y
-            columns = k.x - ruler_width
+            rows = k.y - 1
+            columns = k.x - ruler_width - 1
         end
     elseif action === :up
         rows -= 1

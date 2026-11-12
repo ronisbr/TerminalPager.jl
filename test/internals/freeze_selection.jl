@@ -92,7 +92,7 @@ const _FREEZE_LINES = [
     @test pagerd.event === nothing
 end
 
-@testset "Freeze Selection Applies the Block" begin
+@testset "Freeze Selection Applies the Selection" begin
     pagerd = _create_freeze_pagerd(
         _FREEZE_LINES, "jjl\r"; start_row = 12, start_column = 5, cropped_lines = 3
     )
@@ -112,10 +112,10 @@ end
     @test pagerd.cropped_columns == 0
 
     # The status line showed the mode and the live selection, and the view started at the
-    # top-left corner.
+    # top-left corner, with the vertical guide over the first column of the first line.
     @test occursin("FREEZE", output)
     @test occursin("2×1", output)
-    @test occursin("row 1 ", output)
+    @test occursin("┃ow 1 v1_1", TerminalPager.remove_decorations(output))
 
     # The restored viewport is clamped to the frozen region.
     pagerd = _create_freeze_pagerd(
@@ -175,7 +175,8 @@ end
     @test pagerd.frozen_columns == 4
 
     # The rows are bounded by the view and by the text, and the columns by the view and by
-    # the widest line.
+    # the widest line. The guides are drawn after the selection, so the view bounds leave
+    # one row and one column for them.
     pagerd = _create_freeze_pagerd(
         ["abc", "de", "f", "", "ghij"], "\r"; frozen_rows = 50, frozen_columns = 100
     )
@@ -185,17 +186,17 @@ end
 
     pagerd = _create_freeze_pagerd(_FREEZE_LINES, "\$G\r")
     _run_select_freeze!(pagerd)
-    @test pagerd.frozen_rows == 9
-    @test pagerd.frozen_columns == 40
+    @test pagerd.frozen_rows == 8
+    @test pagerd.frozen_columns == 39
 
     # The ruler and the scrollbar reduce the columns.
     pagerd = _create_freeze_pagerd(_FREEZE_LINES, "\$\r"; show_ruler = true)
     _run_select_freeze!(pagerd)
-    @test pagerd.frozen_columns == 40 - TerminalPager._ruler_width(30)
+    @test pagerd.frozen_columns == 39 - TerminalPager._ruler_width(30)
 
     pagerd = _create_freeze_pagerd(_FREEZE_LINES, "\$\r"; show_scrollbar = true)
     _run_select_freeze!(pagerd)
-    @test pagerd.frozen_columns == 39
+    @test pagerd.frozen_columns == 38
 
     # The title rows always stay frozen.
     pagerd = _create_freeze_pagerd(_FREEZE_LINES, "kkkk\r"; title_rows = 2)
@@ -231,8 +232,8 @@ end
 
     move!(:end, "G")
     move!(:eol, "\$")
-    @test pagerd.freeze_selection_rows == 9
-    @test pagerd.freeze_selection_columns == 40
+    @test pagerd.freeze_selection_rows == 8
+    @test pagerd.freeze_selection_columns == 39
 
     move!(:home, "g")
     move!(:bol, "0")
@@ -271,11 +272,12 @@ end
 end
 
 @testset "Freeze Selection Mouse Press and Drag" begin
-    # A press selects the rows and the columns up to the pointer, and a drag follows it.
+    # A press puts the guides on the pointer, selecting the rows above it and the columns at
+    # its left, and a drag follows it.
     pagerd = _create_freeze_pagerd(_FREEZE_LINES, ["\e[<0;5;3M", "\e[<32;7;4M", "\r"])
     _run_select_freeze!(pagerd)
-    @test pagerd.frozen_rows == 4
-    @test pagerd.frozen_columns == 7
+    @test pagerd.frozen_rows == 3
+    @test pagerd.frozen_columns == 6
 
     # The ruler is not part of the columns, and a press on it selects none.
     ruler_width = TerminalPager._ruler_width(30)
@@ -283,16 +285,17 @@ end
         _FREEZE_LINES, ["\e[<0;$(ruler_width + 3);3M", "\r"]; show_ruler = true
     )
     _run_select_freeze!(pagerd)
-    @test pagerd.frozen_columns == 3
+    @test pagerd.frozen_columns == 2
 
     pagerd = _create_freeze_pagerd(
         _FREEZE_LINES, ["\e[<0;2;3M", "\r"]; show_ruler = true, frozen_columns = 5
     )
     _run_select_freeze!(pagerd)
-    @test pagerd.frozen_rows == 3
+    @test pagerd.frozen_rows == 2
     @test pagerd.frozen_columns == 0
 
-    # A press on the status line is ignored, and one on the scrollbar selects every column.
+    # A press on the status line is ignored, and one on the scrollbar column selects every
+    # column.
     pagerd = _create_freeze_pagerd(
         _FREEZE_LINES, ["\e[<0;5;10M", "\r"]; frozen_rows = 2, frozen_columns = 2
     )
@@ -304,8 +307,8 @@ end
         _FREEZE_LINES, ["\e[<0;40;2M", "\r"]; show_scrollbar = true
     )
     _run_select_freeze!(pagerd)
-    @test pagerd.frozen_rows == 2
-    @test pagerd.frozen_columns == 39
+    @test pagerd.frozen_rows == 1
+    @test pagerd.frozen_columns == 38
 
     # The wheel and the release are ignored.
     pagerd = _create_freeze_pagerd(
@@ -316,8 +319,8 @@ end
     @test pagerd.frozen_columns == 0
 end
 
-@testset "Freeze Block Rendering" begin
-    face = "\e[0;30;46m"
+@testset "Freeze Guide Rendering" begin
+    face = "\e[0;36;1m"
     lines = ["\e[1mabc\e[0mdef", "gh\e[1mijkl\e[0m", "x"]
 
     pagerd = _create_redraw_pagerd(lines; display_size = (5, 12), color = true)
@@ -329,34 +332,51 @@ end
 
     @test length(rows) == 4
 
-    # The selected row is painted edge to edge without its decorations.
-    @test rows[1] == face * "abcdef      " * "\e[0m"
+    # The vertical guide replaces the column after the selected ones, and the rest of the
+    # row keeps its decorations.
+    @test rows[1] == "\e[1mab" * face * "┃" * "\e[0m" * "\e[1m" * "\e[0mdef"
 
-    # The selected columns are painted, and the rest of the row keeps its decorations.
-    @test rows[2] == face * "gh" * "\e[0m" * "\e[1mijkl\e[0m"
+    # The horizontal guide replaces the row after the selected ones, edge to edge, with a
+    # crossing on the vertical guide.
+    @test rows[2] == face * "━━╋━━━━━━━━━" * "\e[0m"
 
-    # A short row and a row past the end of the text are padded.
-    @test rows[3] == face * "x " * "\e[0m"
-    @test rows[4] == face * "  " * "\e[0m"
+    # A short row and a row past the end of the text are padded up to the vertical guide.
+    @test rows[3] == "x " * face * "┃" * "\e[0m"
+    @test rows[4] == "  " * face * "┃" * "\e[0m"
 
     for row in rows
         @test TerminalPager.printable_textwidth(row) <= 12
     end
 
-    # The decoration state of the painted part is restored before the rest of the row.
+    # The decoration state of the text under the guide is restored before the rest of the
+    # row.
     pagerd = _create_redraw_pagerd(["ab", "\e[1mcdef\e[0m"]; display_size = (3, 12), color = true)
     pagerd.mode = :freeze_selection
     pagerd.freeze_selection_columns = 2
     TerminalPager._view!(pagerd)
     rows = split(String(take!(copy(pagerd.buf.io))), '\n')
-    @test rows[2] == face * "cd" * "\e[0m" * "\e[1m" * "ef\e[0m"
+    @test rows[1] == face * "━━╋━━━━━━━━━" * "\e[0m"
+    @test rows[2] == "\e[1mcd" * face * "┃" * "\e[0m" * "\e[1m" * "f\e[0m"
 
-    # Nothing is painted without selected rows and columns.
+    # Without selected rows and columns, the guides sit on the first row and column. The
+    # escape sequences before the first character stay in front of the vertical guide.
     pagerd.freeze_selection_columns = 0
     TerminalPager._view!(pagerd)
-    @test !occursin(face, String(take!(copy(pagerd.buf.io))))
+    rows = split(String(take!(copy(pagerd.buf.io))), '\n')
+    @test rows[1] == face * "╋━━━━━━━━━━━" * "\e[0m"
+    @test rows[2] == "\e[1m" * face * "┃" * "\e[0m" * "\e[1m" * "def\e[0m"
 
-    # The ruler is kept on the rows below the selected ones.
+    # A wide character under the vertical guide is replaced by blanks on both sides.
+    pagerd = _create_redraw_pagerd(["a漢b"]; display_size = (3, 12), color = true)
+    pagerd.mode = :freeze_selection
+    pagerd.freeze_selection_rows = 1
+    pagerd.freeze_selection_columns = 1
+    TerminalPager._view!(pagerd)
+    rows = split(String(take!(copy(pagerd.buf.io))), '\n')
+    @test rows[1] == "a" * face * "┃" * "\e[0m" * " b"
+
+    # The ruler is kept on every row, and both guides start after it. The rows past the end
+    # of the text leave its columns blank.
     pagerd = _create_redraw_pagerd(lines; display_size = (5, 12), color = true)
     pagerd.mode = :freeze_selection
     pagerd.show_ruler = true
@@ -364,31 +384,41 @@ end
     pagerd.freeze_selection_columns = 2
     TerminalPager._view!(pagerd)
     rows = split(String(take!(copy(pagerd.buf.io))), '\n')
-    @test rows[1] == face * " 1 │abcdef  " * "\e[0m"
-    @test startswith(rows[2], "\e[0;90m 2 │\e[0m" * face * "gh\e[0m")
-    @test TerminalPager.printable_textwidth(rows[2]) == 10
+    @test startswith(rows[1], "\e[0;90m 1 │\e[0m" * "\e[1mab" * face * "┃\e[0m")
+    @test rows[2] == "\e[0;90m 2 │\e[0m" * face * "━━╋━━━━━" * "\e[0m"
+    @test rows[4] == "      " * face * "┃" * "\e[0m"
+    @test TerminalPager.printable_textwidth(rows[1]) == 10
+    @test TerminalPager.printable_textwidth(rows[2]) == 12
 
-    # The scrollbar is appended after the painted frame.
+    pagerd.freeze_selection_rows = 3
+    TerminalPager._view!(pagerd)
+    rows = split(String(take!(copy(pagerd.buf.io))), '\n')
+    @test rows[4] == "    " * face * "━━╋━━━━━" * "\e[0m"
+    pagerd.freeze_selection_rows = 1
+
+    # The scrollbar is appended after the frame with the guides.
     pagerd.show_scrollbar = true
     TerminalPager._view!(pagerd)
     rows = split(String(take!(copy(pagerd.buf.io))), '\n')
-    @test startswith(rows[1], face * " 1 │abcdef " * "\e[0m" * "\e[12G")
+    @test startswith(rows[2], "\e[0;90m 2 │\e[0m" * face * "━━╋━━━━" * "\e[0m" * "\e[12G")
     @test occursin("\e[12G", rows[4])
 
-    # The visual backgrounds are not drawn, and the search matches outside the block are.
+    # The visual backgrounds are not drawn, and the search matches outside the guides are.
     pagerd = _create_redraw_pagerd(lines; display_size = (5, 12), color = true)
     pagerd.visual_mode = true
     pagerd.visual_mode_line = 2
     TerminalPager._apply_search!(pagerd, r"kl")
     pagerd.mode = :freeze_selection
-    pagerd.freeze_selection_rows = 1
+    pagerd.freeze_selection_rows = 2
     pagerd.freeze_selection_columns = 2
     TerminalPager._view!(pagerd)
     frame = String(take!(copy(pagerd.buf.io)))
     @test !occursin(pagerd.display_config.visual_active_line * "m", frame)
     @test occursin(pagerd.display_config.search_active_match, frame)
 
-    # The incremental redraw repaints only the rows that changed.
+    # The incremental redraw repaints only the rows that changed: moving the horizontal
+    # guide down by one changes the row it leaves and the row it enters, which are adjacent
+    # and painted as a single run.
     pagerd = _create_redraw_pagerd(_FREEZE_LINES; display_size = (10, 40), color = true)
     pagerd.mode = :freeze_selection
     pagerd.freeze_selection_rows = 1
@@ -401,7 +431,8 @@ end
     @test occursin("\e[2;1H", output)
     @test !occursin("\e[1;1H", output)
     @test !occursin("\e[3;1H", output)
-    @test !occursin("\r\n", output)
+    @test !occursin("\e[4;1H", output)
+    @test count("\r\n", output) == 1
 end
 
 @testset "Status Line in the Freeze Mode" begin

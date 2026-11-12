@@ -64,7 +64,7 @@ function _view!(pagerd::Pager)
     end
 
     # With the scrollbar or the freeze selection, the view is rendered into a scratch
-    # buffer, and the frame is assembled from it with the selection painted and the
+    # buffer, and the frame is assembled from it with the freeze guides drawn and the
     # scrollbar appended to every row.
     show_scrollbar = pagerd.show_scrollbar
     selecting = pagerd.mode == :freeze_selection
@@ -80,7 +80,7 @@ function _view!(pagerd::Pager)
     # The render call is issued once per branch so that the visual arguments are concrete
     # at each call site. Selecting them into union-typed locals first cost roughly 300
     # bytes per frame in boxing. The visual backgrounds are not drawn while the freeze
-    # selection is active, because the selection is painted over the view.
+    # selection is active, because the guides are drawn over the view.
     cropped_lines, cropped_columns = if pagerd.visual_mode && !selecting
         # These buffers are reused across frames. Otherwise, every frame allocates one vector
         # per selected line.
@@ -106,16 +106,16 @@ function _view!(pagerd::Pager)
     frame = pagerd.view_buf
 
     if selecting
-        # The painted frame feeds the scrollbar, or it is the frame itself.
-        painted = show_scrollbar ? pagerd.freeze_buf : buf.io
+        # The frame with the guides feeds the scrollbar, or it is the frame itself.
+        drawn = show_scrollbar ? pagerd.freeze_buf : buf.io
 
         if show_scrollbar
-            truncate(painted, 0)
-            seekstart(painted)
+            truncate(drawn, 0)
+            seekstart(drawn)
         end
 
-        _paint_freeze_selection!(painted, frame, rows, cols, pagerd)
-        frame = painted
+        _draw_freeze_guides!(drawn, frame, rows, cols, pagerd)
+        frame = drawn
     end
 
     if show_scrollbar
@@ -220,21 +220,26 @@ function _scrollbar_thumb(pagerd::Pager, rows::Int)
     return thumb_first, thumb_first + thumb - 1
 end
 
+# Glyphs of the freeze guides, all with a display width of one.
+const _FREEZE_GUIDE_HORIZONTAL = "━"
+const _FREEZE_GUIDE_VERTICAL = "┃"
+const _FREEZE_GUIDE_CROSSING = "╋"
+
 """
-    _paint_freeze_selection!(out::IOBuffer, frame::IOBuffer, rows::Int, cols::Int,
+    _draw_freeze_guides!(out::IOBuffer, frame::IOBuffer, rows::Int, cols::Int,
         pagerd::Pager) -> Nothing
 
-Copy the view in `frame` to `out`, painting the rows and the columns selected in the freeze
-selection mode of `pagerd` with the face `freeze_block`.
+Copy the view in `frame` to `out`, drawing the guides of the freeze selection mode of
+`pagerd` with the face `freeze_guide`.
 
-The selected rows are painted across the `cols` columns of the view, and the selected
-columns are painted on every one of the `rows` rows below them, after the ruler. The
-decorations of the text inside the painted region are removed, so that the region is
-uniform, and the decoration state of the text at the right of the painted columns is
-restored. Rows missing from `frame`, when the text is shorter than the view, are emitted
-blank so that the painted columns span the whole view. Notice that the face is written even
-if the terminal has no color support, because `frame` already carries the escape sequences
-of the text.
+The horizontal guide replaces the view row after the selected rows, and the vertical guide
+replaces the text column after the selected columns on every other row, with a crossing
+where they meet. The ruler is kept on every row, so both guides start after it. The text
+under the guides is hidden, and the decoration state of the text at the right of the
+vertical guide is restored. Rows missing from `frame`, when the text is shorter than the
+view, are emitted blank so that the vertical guide spans the whole view. Notice that the
+face is written even if the terminal has no color support, because `frame` already carries
+the escape sequences of the text.
 
 # Arguments
 
@@ -244,10 +249,10 @@ of the text.
 - `cols::Int`: Number of columns of the view.
 - `pagerd::Pager`: Pager state with the selection and the display configuration.
 """
-function _paint_freeze_selection!(
+function _draw_freeze_guides!(
     out::IOBuffer, frame::IOBuffer, rows::Int, cols::Int, pagerd::Pager
 )
-    face = pagerd.display_config.freeze_block
+    face = pagerd.display_config.freeze_guide
     selected_rows = pagerd.freeze_selection_rows
     selected_columns = pagerd.freeze_selection_columns
     ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
@@ -269,7 +274,7 @@ function _paint_freeze_selection!(
             ""
         end
 
-        _paint_freeze_row!(
+        _draw_freeze_guides_row!(
             out, line, row, selected_rows, selected_columns, ruler_width, cols, face
         )
         row < rows && write(out, UInt8('\n'))
@@ -278,9 +283,9 @@ function _paint_freeze_selection!(
         row_first = i + 1
     end
 
-    # The rows after the end of the text only carry the selection.
+    # The rows after the end of the text only carry the guides.
     while row <= rows
-        _paint_freeze_row!(
+        _draw_freeze_guides_row!(
             out, "", row, selected_rows, selected_columns, ruler_width, cols, face
         )
         row < rows && write(out, UInt8('\n'))
@@ -291,12 +296,13 @@ function _paint_freeze_selection!(
 end
 
 """
-    _paint_freeze_row!(out::IOBuffer, line::String, row::Int, selected_rows::Int,
+    _draw_freeze_guides_row!(out::IOBuffer, line::String, row::Int, selected_rows::Int,
         selected_columns::Int, ruler_width::Int, cols::Int, face::String) -> Nothing
 
-Write the view row `line`, which is the row `row` of the view, to `out`, painting it with
-`face` if it is one of the `selected_rows` first rows, or painting its `selected_columns`
-first columns after the `ruler_width` columns of the ruler otherwise.
+Write the view row `line`, which is the row `row` of the view, to `out`, replacing its text
+by the horizontal guide if it follows the `selected_rows` first rows, or drawing the
+vertical guide on the column after its `selected_columns` first columns otherwise. The
+`ruler_width` columns of the ruler are kept in both cases.
 
 # Arguments
 
@@ -307,9 +313,9 @@ first columns after the `ruler_width` columns of the ruler otherwise.
 - `selected_columns::Int`: Number of selected columns.
 - `ruler_width::Int`: Number of columns of the ruler, or `0` if it is hidden.
 - `cols::Int`: Number of columns of the view.
-- `face::String`: Escape sequence of the face of the selection.
+- `face::String`: Escape sequence of the face of the guides.
 """
-function _paint_freeze_row!(
+function _draw_freeze_guides_row!(
     out::IOBuffer,
     line::String,
     row::Int,
@@ -319,46 +325,63 @@ function _paint_freeze_row!(
     cols::Int,
     face::String,
 )
-    # A selected row is painted edge to edge, ruler included.
-    if row <= selected_rows
-        plain = remove_decorations(line)
-        write(out, face)
-        write(out, plain)
-        _write_blanks(out, cols - printable_textwidth(plain))
-        write(out, _SGR_RESET)
-        return nothing
-    end
+    # One-based view column of the vertical guide.
+    guide_column = ruler_width + selected_columns + 1
 
-    if selected_columns <= 0
-        write(out, line)
-        return nothing
-    end
-
-    # The ruler is kept as it is. Its last cell is followed by a reset, and the face starts
-    # with one, so neither leaks into the other.
+    # The ruler is kept as it is on every row. Its last cell is followed by a reset, and the
+    # face starts with one, so neither leaks into the other. The rows after the end of the
+    # text have no ruler, so its columns are left blank to keep the guides aligned.
     text = line
 
     if ruler_width > 0
-        ruler, text = split_string(line, ruler_width)
-        write(out, ruler)
+        if isempty(line)
+            _write_blanks(out, ruler_width)
+        else
+            ruler, text = split_string(line, ruler_width)
+            write(out, ruler)
+        end
     end
 
-    plain = remove_decorations(text)
-    width = printable_textwidth(plain)
+    # The row after the selected ones is the horizontal guide.
+    if row == selected_rows + 1
+        write(out, face)
+
+        for column in (ruler_width + 1):cols
+            if column == guide_column
+                write(out, _FREEZE_GUIDE_CROSSING)
+            else
+                write(out, _FREEZE_GUIDE_HORIZONTAL)
+            end
+        end
+
+        write(out, _SGR_RESET)
+        return nothing
+    end
+
+    # The vertical guide is outside the view only until the selection is clamped after a
+    # resize.
+    if guide_column > cols
+        write(out, text)
+        return nothing
+    end
+
+    width = printable_textwidth(remove_decorations(text))
 
     if width <= selected_columns
-        write(out, face)
-        write(out, plain)
+        write(out, text)
         _write_blanks(out, selected_columns - width)
+        write(out, face)
+        write(out, _FREEZE_GUIDE_VERTICAL)
         write(out, _SGR_RESET)
     else
         # Both functions replace a wide character at the split point by blanks, so that the
-        # widths are kept. The escape sequences of the painted part are written after it,
-        # restoring the decoration state of the rest of the row.
+        # widths are kept. The escape sequences of the text under the guide are written
+        # after it, restoring the decoration state of the rest of the row.
         head, _ = split_string(text, selected_columns)
-        ansi, rest = left_crop(text, selected_columns)
+        ansi, rest = left_crop(text, selected_columns + 1)
+        write(out, head)
         write(out, face)
-        write(out, remove_decorations(head))
+        write(out, _FREEZE_GUIDE_VERTICAL)
         write(out, _SGR_RESET)
         write(out, ansi)
         write(out, rest)
