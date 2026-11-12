@@ -17,6 +17,7 @@ const _PROMPT_WIDTH = 1
 const _MODE_SEARCH = "SEARCH"
 const _MODE_VISUAL = "VISUAL"
 const _MODE_FREEZE = "FREEZE"
+const _MODE_TITLES = "TITLES"
 const _MODE_WIDTH = 6
 
 const _NO_MATCH = "no match"
@@ -326,14 +327,18 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     # Everything but the numbers is constant, so the widths are computed from the number of
     # digits. Assembling strings here allocated at every keystroke.
     # The prompt is written in the base face, whereas the mode names have their own faces.
-    # The freeze selection takes over the row while it is active.
+    # The on-screen selections take over the row while they are active.
     in_freeze = pagerd.mode == :freeze_selection
-    in_visual = pagerd.visual_mode && !in_freeze
+    in_titles = pagerd.mode == :title_selection
+    in_selection = in_freeze || in_titles
+    in_visual = pagerd.visual_mode && !in_selection
     in_search = pagerd.mode == :searching
-    show_mode = in_freeze || in_visual || in_search
+    show_mode = in_selection || in_visual || in_search
     w_mode = show_mode ? _MODE_WIDTH : _PROMPT_WIDTH
     mode_name = if in_freeze
         _MODE_FREEZE
+    elseif in_titles
+        _MODE_TITLES
     elseif in_visual
         _MODE_VISUAL
     elseif in_search
@@ -341,7 +346,7 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     else
         _PROMPT
     end
-    mode_face = if in_freeze
+    mode_face = if in_selection
         display_config.mode_freeze
     elseif in_visual
         display_config.mode_visual
@@ -349,7 +354,7 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         display_config.mode_search
     end
 
-    # Details of the mode: "r×c", "n selected", "match i/n", or "no match".
+    # Details of the mode: "r×c", "t", "n selected", "match i/n", or "no match".
     selection_rows = pagerd.freeze_selection_rows
     selection_columns = pagerd.freeze_selection_columns
     num_selected = length(pagerd.visual_mode_selected_lines)
@@ -357,6 +362,8 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     match_id = pagerd.active_search_match_id
     w_detail = if in_freeze
         ndigits(selection_rows) + 1 + ndigits(selection_columns)
+    elseif in_titles
+        ndigits(selection_rows)
     elseif in_visual
         ndigits(num_selected) + 9
     elseif in_search
@@ -366,9 +373,9 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     end
 
     # Feature tags: "frozen r×c", "titles t", and "ruler". The frozen tag is hidden while
-    # the freeze selection is active, because the detail shows the selection instead.
+    # an on-screen selection is active, because the detail shows the selection instead.
     frozen_columns = pagerd.frozen_columns
-    show_frozen = !in_freeze && ((frozen_rows > 0) || (frozen_columns > 0))
+    show_frozen = !in_selection && ((frozen_rows > 0) || (frozen_columns > 0))
     w_frozen = show_frozen ? 8 + ndigits(frozen_rows) + ndigits(frozen_columns) : 0
     title_rows = pagerd.title_rows
     w_titles = title_rows > 0 ? 7 + ndigits(title_rows) : 0
@@ -377,7 +384,7 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     w_tags = w_frozen + w_titles + w_ruler + max(num_tags - 1, 0) * _ITEM_GAP
 
     # Key hints of the current mode.
-    hint_mode = if in_freeze
+    hint_mode = if in_selection
         :freeze
     elseif in_visual
         :visual
@@ -448,6 +455,8 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
             _write_decimal(out, selection_rows)
             write(out, "×")
             _write_decimal(out, selection_columns)
+        elseif in_titles
+            _write_decimal(out, selection_rows)
         elseif in_visual
             _write_decimal(out, num_selected)
             write(out, " selected")

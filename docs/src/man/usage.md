@@ -48,7 +48,9 @@ Rows and columns can be frozen with `f`, so that they stay visible while scrolli
 selects how many frozen rows are titles, which do not scroll horizontally either. `F`
 selects the frozen rows and columns on the screen: the view moves to the top-left corner,
 two guide lines mark the rows and the columns that would be frozen, the movement keys or
-the mouse move them, `Enter` applies the selection, and `Esc` cancels it.
+the mouse move them, `Enter` applies the selection, and `Esc` cancels it. `T` selects the
+title rows the same way with a single guide line, and freezes them if fewer rows were
+frozen.
 
 ## Helpers
 

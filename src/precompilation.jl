@@ -108,6 +108,9 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, "s")
             write(stdin_wr, "F\eOB\eOC\r")
             write(stdin_wr, "Fq")
+            # Select the title rows on the screen, and then cancel a selection.
+            write(stdin_wr, "T\eOB\r")
+            write(stdin_wr, "Tq")
             write(stdin_wr, "s")
             # Down.
             write(stdin_wr, "\eOB")

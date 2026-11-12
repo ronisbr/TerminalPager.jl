@@ -10,6 +10,10 @@ Version 0.9.0
   columns that would be frozen, the movement keys or the mouse move them, `Enter` applies
   the selection, and `Esc`, `q`, or `Ctrl-C` cancel it. The status line shows the mode
   name `FREEZE`, styled with the new face `mode_freeze`, and the selected rows and columns.
+- ![Feature][badge-feature] The title rows can be selected on the screen with `T` (action
+  `:select_title_rows`), with a single guide line under the rows that would be titles. The
+  frozen rows are raised to the title rows when fewer rows were frozen. The status line
+  shows the mode name `TITLES` and the selected rows.
 - ![Feature][badge-feature] `R` (action `:toggle_column_ruler`) toggles a two-row column
   ruler on top of the view: a line with a tick on every tenth column and a half tick on
   every fifth one, and the number of each tenth column right above its tick. The ruler

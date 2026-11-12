@@ -243,12 +243,14 @@ Store the mutable state for one pager session.
 - `message::String`: Message shown on the command line until the next keystroke, or an
     empty string.
 - `message_kind::Symbol`: Kind of `message`, `:info` or `:error`.
-- `mode::Symbol`: Current pager mode, `:view`, `:searching`, or `:freeze_selection`.
+- `mode::Symbol`: Current pager mode, `:view`, `:searching`, `:freeze_selection`, or
+    `:title_selection`.
 - `event::Union{Nothing, Symbol}`: Pending pager event.
 - `features::Vector{Symbol}`: Features enabled for the session.
 - `frozen_columns::Int`: Number of frozen leading columns.
 - `frozen_rows::Int`: Number of frozen leading rows.
-- `freeze_selection_rows::Int`: Number of rows selected in the freeze selection mode.
+- `freeze_selection_rows::Int`: Number of rows selected in the freeze and title selection
+    modes.
 - `freeze_selection_columns::Int`: Number of columns selected in the freeze selection mode.
 - `freeze_buf::IOBuffer`: Reused buffer holding the view with the freeze guides drawn
     before the scrollbar is added to it.
