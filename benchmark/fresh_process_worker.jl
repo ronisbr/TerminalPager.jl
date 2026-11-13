@@ -2,7 +2,7 @@ using REPL
 
 load_time = @elapsed Base.eval(Main, :(using TerminalPager))
 lines = ["short αβγ", "second line"]
-layout_time = @elapsed text_layout = TerminalPager.TextViewLayout(lines)
+layout_time = @elapsed text_layout = TerminalPager.ViewLayout(lines)
 config_time = @elapsed config = TerminalPager._display_config()
 
 # The frame must not reach the real terminal, otherwise this worker would corrupt the report
@@ -22,7 +22,7 @@ pagerd = TerminalPager.Pager(;
 first_view_time = @elapsed TerminalPager._view!(pagerd)
 first_redraw_time = @elapsed begin
     TerminalPager._redraw!(pagerd)
-    TerminalPager._redraw_cmd_line!(pagerd)
+    TerminalPager._redraw_status_bar!(pagerd)
 end
 second_view_time = @elapsed TerminalPager._view!(pagerd)
 

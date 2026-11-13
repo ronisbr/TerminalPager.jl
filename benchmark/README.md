@@ -25,7 +25,7 @@ julia --project=benchmark benchmark/fresh_process.jl
 ```
 
 Set `BENCHMARK_SAMPLES` to control the number of processes per configuration. Each process
-is retained as a row in one table, with package load, `TextViewLayout` construction,
+is retained as a row in one table, with package load, `ViewLayout` construction,
 `DisplayConfig` construction, first `_view!`, and repeated `_view!` shown separately.
 
 For a fast no-color rendering check without running the full suite:

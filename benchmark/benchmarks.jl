@@ -28,7 +28,7 @@ function make_pager(lines; display_size = (25, 80))
     term = REPL.Terminals.TTYTerminal("", stdin, benchmark_output, stderr)
     io = IOBuffer()
     buf = IOContext(io, :color => true)
-    text_layout = TerminalPager.TextViewLayout(lines)
+    text_layout = TerminalPager.ViewLayout(lines)
     return TerminalPager.Pager(;
         term = term,
         buf = buf,
@@ -88,7 +88,7 @@ end
 
 """
     baseline_find_matches(
-        text_layout::TerminalPager.TextViewLayout,
+        text_layout::TerminalPager.ViewLayout,
         regex::Regex,
     ) -> Tuple{TerminalPager.SearchMatches, Int}
 
@@ -96,7 +96,7 @@ Run the previous search-and-count construction path without ordered navigation m
 
 # Arguments
 
-- `text_layout::TerminalPager.TextViewLayout`: Provide the prepared text layout to search.
+- `text_layout::TerminalPager.ViewLayout`: Provide the prepared text layout to search.
 - `regex::Regex`: Provide the regular expression to match.
 """
 function baseline_find_matches(text_layout, regex)
@@ -143,11 +143,9 @@ Process one navigation key and update crop metrics as the production loop does.
 - `key::TerminalPager.Keystroke`: Provide the navigation keystroke to process.
 """
 function process_navigation!(pagerd, key)
-    old_row = pagerd.start_row
-    old_column = pagerd.start_column
-    action = TerminalPager._pager_key_process!(pagerd, key)
-    TerminalPager._update_crop_after_action!(pagerd, old_row, old_column, action)
-    return action
+    # The movements keep the crop counters of the pager, so that the next key of a burst
+    # sees the boundaries without rendering a frame.
+    return TerminalPager._pager_key_process!(pagerd, key)
 end
 
 """
@@ -199,7 +197,7 @@ end
 
 SUITE["preferences"] = BenchmarkGroup()
 SUITE["preferences"]["access"] = @benchmarkable TerminalPager._get_preference(
-    "active_search_decoration"
+    "status_position"
 )
 SUITE["preferences"]["session snapshot"] = @benchmarkable TerminalPager._display_config()
 
@@ -224,7 +222,7 @@ short_lines = ["row $i: αβγ " * repeat("text ", 30) for i in 1:100]
 SUITE["view"] = BenchmarkGroup()
 SUITE["layout"] = BenchmarkGroup()
 layout_lines = ["row $i αβγ " * repeat("text ", 30) for i in 1:1_000]
-SUITE["layout"]["construction"] = @benchmarkable TerminalPager.TextViewLayout($layout_lines)
+SUITE["layout"]["construction"] = @benchmarkable TerminalPager.ViewLayout($layout_lines)
 
 SUITE["prepared view"] = BenchmarkGroup()
 SUITE["prepared view"]["first view"] = @benchmarkable(
@@ -264,11 +262,10 @@ ordered_matches = TerminalPager._ordered_search_matches(large_matches, 100_000)
 search_pager = make_pager(fill("x", 100_000); display_size = (25, 80))
 search_pager.search_matches = large_matches
 search_pager.ordered_search_matches = ordered_matches
-search_pager.num_matches = length(ordered_matches)
 search_pager.active_search_match_id = 50_000
 movement_ids = [isodd(i) ? 1 : 100_000 for i in 1:100]
 search_lines = fill("x", 100_000)
-search_layout = TerminalPager.TextViewLayout(search_lines)
+search_layout = TerminalPager.ViewLayout(search_lines)
 search_regex = r"x"
 construction_pager = make_pager(search_lines; display_size = (25, 80))
 
@@ -384,7 +381,7 @@ without writing to the real terminal.
 function make_redraw_pager(lines; display_size = (25, 80))
     sink = IOContext(devnull, :color => true, :displaysize => display_size)
     term = REPL.Terminals.TTYTerminal("", stdin, sink, sink)
-    text_layout = TerminalPager.TextViewLayout(lines)
+    text_layout = TerminalPager.ViewLayout(lines)
     return TerminalPager.Pager(;
         term = term,
         buf = IOContext(IOBuffer(), :color => true),
@@ -440,15 +437,15 @@ SUITE["redraw"]["visual line movement"] = @benchmarkable(
     )
 )
 
-SUITE["redraw"]["command line"] = @benchmarkable TerminalPager._redraw_cmd_line!(
+SUITE["redraw"]["status line"] = @benchmarkable TerminalPager._redraw_status_bar!(
     $redraw_pager
 )
 
-SUITE["redraw"]["view + redraw + command line"] = @benchmarkable(
+SUITE["redraw"]["view + redraw + status line"] = @benchmarkable(
     begin
         TerminalPager._view!($redraw_pager)
         TerminalPager._redraw!($redraw_pager)
-        TerminalPager._redraw_cmd_line!($redraw_pager)
+        TerminalPager._redraw_status_bar!($redraw_pager)
     end,
     setup = ($redraw_pager.start_row = ($redraw_pager.start_row % 20) + 1)
 )
