@@ -196,7 +196,9 @@ const _HELP_SECTIONS = HelpSection[
     ),
     HelpSection(
         "Searching",
-        "The search is case-insensitive unless the pattern has an uppercase letter.",
+        "The search is case-insensitive unless the pattern has an uppercase letter. " *
+            "Alt-l at the prompt toggles the literal mode, which searches the pattern as " *
+            "typed.",
         nothing,
         ActionHelp[
             ActionHelp(:search, "Search for a regex."),

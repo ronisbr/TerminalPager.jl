@@ -41,7 +41,10 @@ that, while the pager reports the mouse, selecting text with the terminal requir
 Typing `/` searches for a regular expression. The matches are highlighted while the pattern
 is typed, `n` and `N` navigate them, and `ESC` leaves the search. The search is
 case-insensitive unless the pattern has an uppercase letter. The up and down keys at the
-prompt recall the previous patterns of the session.
+prompt recall the previous patterns of the session. `Alt+l` at the prompt toggles the literal
+mode, shown as `[lit]` and kept for the session, in which the pattern is searched as typed,
+so that `a[1]` finds `a[1]` and not `a1`. A regular expression can also quote a part of the
+pattern with `\Q` and `\E`.
 
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
 move. `m` marks the visual line, and `y` copies the visual line and the marked lines to the

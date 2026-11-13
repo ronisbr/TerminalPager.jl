@@ -705,12 +705,17 @@ CTRL-U to clear the command, and the up and down keys to recall the commands in 
     no other keystroke is buffered, or `nothing`. It must return a `String`, which is shown
     at the right of the prompt row when it fits, for example a live match count.
     (**Default**: `nothing`)
+- `on_key::Any`: Callable object invoked with every `Keystroke` before the editor handles
+    it, or `nothing`. It must return `true` if it consumed the keystroke, in which case the
+    command is treated as changed, so that `on_change` runs and the prompt is repainted.
+    (**Default**: `nothing`)
 """
 function _read_cmd!(
     pagerd::Pager;
     prefix::String = "/",
     history::Union{Nothing, Vector{String}} = nothing,
     on_change = nothing,
+    on_key = nothing,
 )
     term = pagerd.term
     use_color = get(term.out_stream, :color, true)::Bool
@@ -794,7 +799,12 @@ function _read_cmd!(
             k = _read_keystroke!(pagerd.input)
             value = k.value
 
-            if value == "<enter>"
+            if !isnothing(on_key) && on_key(k)::Bool
+                # The caller handled the keystroke, for example a toggle of a search option,
+                # which can change the result of the command without changing its text.
+                changed = true
+
+            elseif value == "<enter>"
                 break
 
             elseif (value == "<esc>") || (k.ctrl && (value == "c"))

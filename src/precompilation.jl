@@ -145,6 +145,8 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, ":50%\n")
             write(stdin_wr, ":+1\n")
             write(stdin_wr, ":\$\n")
+            # Literal search toggled on and off at the prompt.
+            write(stdin_wr, "/\el0.1986\el\n")
             # Search.
             write(stdin_wr, "/0.1986\n")
             # Next search.

@@ -329,6 +329,25 @@ end
     @test !occursin("too long", String(take!(pagerd.term.out_stream)))
 end
 
+@testset "Command Line Key Hook" begin
+    # A hook that consumes a keystroke keeps it out of the command and marks the command as
+    # changed, so that the change callback runs again with the same text.
+    consumed = TerminalPager.Keystroke[]
+    calls = String[]
+    on_key = k -> (k.value == "a") ? (push!(consumed, k); true) : false
+    on_change = text -> (push!(calls, text); "K:$(length(consumed))")
+    pagerd = _create_modal_pagerd(["x"], "bab\n")
+    cmd = TerminalPager._read_cmd!(pagerd; on_change = on_change, on_key = on_key)
+    @test cmd == "bb"
+    @test length(consumed) == 1
+    @test calls == ["b", "b", "bb"]
+    @test occursin("K:1", String(take!(pagerd.term.out_stream)))
+
+    # A hook that consumes nothing leaves the editor untouched.
+    pagerd = _create_modal_pagerd(["x"], "ab\n")
+    @test TerminalPager._read_cmd!(pagerd; on_key = _ -> false) == "ab"
+end
+
 @testset "Command Line Change Callback With Pasted Input" begin
     # A pasted text arrives at once, and the callback, which can search the whole text, used
     # to run once per character, although only the last result was shown. It now runs when

@@ -34,6 +34,9 @@ Version 0.9.0
   or `-5`, and `$` or `end` for the last page, besides a line number. The new preference
   `"status_position"` shows the top row over the number of lines on the status line, like
   `L120/3456`, instead of the percentage, or both.
+- ![Feature][badge-feature] `Alt+l` at the search prompt toggles the literal mode, shown as
+  `[lit]` and kept for the session, in which the pattern is searched as typed instead of as
+  a regular expression.
 
 Version 0.8.0
 -------------

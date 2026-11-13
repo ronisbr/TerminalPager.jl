@@ -264,6 +264,7 @@ Store the mutable state for one pager session.
     terminal scroll region sequences instead of repainting them.
 - `view_buf::IOBuffer`: Reused buffer holding the rendered view before the scrollbar is added
     to it.
+- `literal_search::Bool`: Whether the search patterns are literal text instead of regexes.
 - `visual_mode::Bool`: Whether visual selection mode is active.
 - `visual_mode_line::Int`: Active visual line relative to the viewport.
 - `visual_mode_selected_lines::Vector{Int}`: Selected source-line indices.
@@ -308,6 +309,7 @@ Base.@kwdef mutable struct Pager
     status_position::Symbol = :percent
     scroll_regions::Bool = true
     view_buf::IOBuffer = IOBuffer()
+    literal_search::Bool = false
     visual_mode::Bool = false
     visual_mode_line::Int = 1
     visual_mode_selected_lines::Vector{Int} = Int[]

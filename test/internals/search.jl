@@ -48,6 +48,59 @@ end
     @test isnothing(TerminalPager._try_regex("a{2,1}"))
 end
 
+@testset "Literal Search" begin
+    # The literal mode quotes the pattern, keeping the smart case.
+    @test TerminalPager._literal_pattern("a[1]") == "\\Qa[1]\\E"
+    @test TerminalPager._literal_pattern("x\\Ey") == "\\Qx\\E\\\\E\\Qy\\E"
+    regex = TerminalPager._try_regex("a[1]"; literal = true)
+    @test occursin(regex, "xa[1]x")
+    @test occursin(regex, "xA[1]x")
+    @test !occursin(regex, "a1")
+    @test !occursin(TerminalPager._try_regex("A[1]"; literal = true), "xa[1]x")
+    @test occursin(TerminalPager._try_regex("x\\Ey"; literal = true), "x\\Ey")
+    @test occursin(TerminalPager._try_regex("x.*y"; literal = false), "xzy")
+    @test !occursin(TerminalPager._try_regex("x.*y"; literal = true), "xzy")
+
+    # ALT-l at the prompt toggles the mode, which is shown and kept for the session.
+    lines = ["x.*y", "xzy", "x.*y"]
+    pagerd = _create_modal_pagerd(lines, "\elx.*y\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.literal_search
+    @test [m.line for m in pagerd.ordered_search_matches] == [1, 3]
+    @test occursin("[lit] match 1/2", String(take!(pagerd.term.out_stream)))
+
+    # The next search is still literal, and the tag is shown before the pattern is typed.
+    pagerd.input = TerminalPager.PagerInput(TypedInput("x.*y\n"))
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test [m.line for m in pagerd.ordered_search_matches] == [1, 3]
+
+    # Toggling the mode after the pattern reruns the search before Enter is confirmed.
+    pagerd.input = TerminalPager.PagerInput(TypedInput("x.*y\el\n"))
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test !pagerd.literal_search
+    @test [m.line for m in pagerd.ordered_search_matches] == [1, 2, 3]
+    @test !occursin("[lit]", split(String(take!(pagerd.term.out_stream)), "x.*y")[end])
+
+    # The toggle arriving with Enter in one paste is applied by the confirmed search.
+    pagerd.input = TerminalPager.PagerInput(TypedInput(["x.*y", "\el\n"]))
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.literal_search
+    @test [m.line for m in pagerd.ordered_search_matches] == [1, 3]
+
+    # The tag is shown for huge texts, whose matches are not previewed.
+    pagerd = _create_modal_pagerd(lines, "\elx.*y\n")
+    pagerd.num_lines = TerminalPager._INCREMENTAL_SEARCH_MAX_LINES + 1
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test [m.line for m in pagerd.ordered_search_matches] == [1, 3]
+    @test occursin("[lit]", String(take!(pagerd.term.out_stream)))
+    empty!(TerminalPager._SEARCH_HISTORY)
+end
+
 @testset "Ordered Match Index Strategies" begin
     # The index is built by sorting the matched lines when they are sparse, and by walking the
     # lines when almost every one of them matches. Both must produce the same result.

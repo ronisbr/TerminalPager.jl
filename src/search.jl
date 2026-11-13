@@ -140,18 +140,57 @@ case behavior of `less` and `vim`.
 # Arguments
 
 - `str::AbstractString`: Pattern typed by the user.
+
+# Keywords
+
+- `literal::Bool`: Match `str` as literal text instead of a regular expression.
+    (**Default**: `false`)
 """
-function _try_regex(str::AbstractString)
+function _try_regex(str::AbstractString; literal::Bool = false)
     flags = any(isuppercase, str) ? "" : "i"
+    pattern = literal ? _literal_pattern(str) : str
 
     # PCRE throws when the pattern is malformed, e.g. when the user types `/[`. There is no
     # `tryparse(Regex, ...)` in Base, so we must catch the error here. Otherwise, it escapes
     # the pager main loop and tears down the session.
     return try
-        Regex(str, flags)
+        Regex(pattern, flags)
     catch
         nothing
     end
+end
+
+"""
+    _literal_pattern(str::AbstractString) -> String
+
+Return a regular expression matching `str` as literal text, quoting it with `\\Q` and
+`\\E`. A `\\E` inside `str` ends the quote, so it is escaped and the quote is resumed.
+
+# Arguments
+
+- `str::AbstractString`: Text to match.
+"""
+function _literal_pattern(str::AbstractString)
+    return "\\Q" * replace(str, "\\E" => "\\E\\\\E\\Q") * "\\E"
+end
+
+# Tag shown at the search prompt while the patterns are literal.
+const _LITERAL_TAG = "[lit]"
+
+"""
+    _toggle_literal_search!(pagerd::Pager, k::Keystroke) -> Bool
+
+Toggle the literal search of `pagerd` if `k` is ALT-l and return whether it was.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `k::Keystroke`: Keystroke typed at the search prompt.
+"""
+function _toggle_literal_search!(pagerd::Pager, k::Keystroke)
+    (k.alt && !k.ctrl && !k.shift && (k.value == "l")) || return false
+    pagerd.literal_search = !pagerd.literal_search
+    return true
 end
 
 # Texts up to this number of lines are searched while the pattern is typed. Above it, every
@@ -165,9 +204,9 @@ const _INCREMENTAL_SEARCH_MAX_LINES = 100_000
 Prompt for a search pattern and highlight its matches in `pagerd`.
 
 While the pattern is typed, the matches in a text with up to `_INCREMENTAL_SEARCH_MAX_LINES`
-lines are previewed, and the prompt shows the active match. Cancelling the prompt, or
-leaving it empty, keeps the search state and the viewport from before it. An invalid pattern
-reports an error.
+lines are previewed, and the prompt shows the active match. ALT-l toggles the literal search,
+shown as `[lit]` and kept for the session. Cancelling the prompt, or leaving it empty, keeps
+the search state and the viewport from before it. An invalid pattern reports an error.
 
 # Arguments
 
@@ -177,22 +216,29 @@ function _search!(pagerd::Pager)
     saved = _search_state(pagerd)
     incremental = pagerd.num_lines <= _INCREMENTAL_SEARCH_MAX_LINES
     previewed = Ref("")
+    previewed_literal = Ref(pagerd.literal_search)
 
     on_change = if incremental
         pattern -> begin
             previewed[] = pattern
+            previewed_literal[] = pagerd.literal_search
             _preview_search!(pagerd, pattern, saved)
         end
     else
-        nothing
+        # The matches of a huge text are not previewed, but the literal tag is still shown.
+        _ -> pagerd.literal_search ? _LITERAL_TAG : ""
     end
 
-    cmd_input = _read_cmd!(pagerd; history = _SEARCH_HISTORY, on_change = on_change)
+    on_key = k -> _toggle_literal_search!(pagerd, k)
+
+    cmd_input = _read_cmd!(
+        pagerd; history = _SEARCH_HISTORY, on_change = on_change, on_key = on_key
+    )
 
     if isnothing(cmd_input) || isempty(cmd_input)
         _restore_search_state!(pagerd, saved)
     else
-        regex = _try_regex(cmd_input)
+        regex = _try_regex(cmd_input; literal = pagerd.literal_search)
 
         if isnothing(regex)
             _restore_search_state!(pagerd, saved)
@@ -200,8 +246,13 @@ function _search!(pagerd::Pager)
         else
             _push_history!(_SEARCH_HISTORY, cmd_input)
 
-            # The preview already applied the confirmed pattern.
-            if !(incremental && (previewed[] == cmd_input))
+            # The preview already applied the confirmed pattern, unless the literal mode was
+            # toggled after it.
+            if !(
+                incremental &&
+                (previewed[] == cmd_input) &&
+                (previewed_literal[] == pagerd.literal_search)
+            )
                 _restore_viewport!(pagerd, saved)
                 _apply_search!(pagerd, regex)
             end
@@ -302,7 +353,8 @@ drift while the pattern is edited. An empty or invalid pattern restores `saved`.
 - `saved::NamedTuple`: State returned by [`_search_state`](@ref) before the prompt.
 """
 function _preview_search!(pagerd::Pager, pattern::String, saved::NamedTuple)
-    regex = isempty(pattern) ? nothing : _try_regex(pattern)
+    literal = pagerd.literal_search
+    regex = isempty(pattern) ? nothing : _try_regex(pattern; literal = literal)
 
     status = if isnothing(regex)
         _restore_search_state!(pagerd, saved)
@@ -313,6 +365,11 @@ function _preview_search!(pagerd::Pager, pattern::String, saved::NamedTuple)
         num_matches = length(pagerd.ordered_search_matches)
         match_id = pagerd.active_search_match_id
         num_matches > 0 ? "match $match_id/$num_matches" : "no match"
+    end
+
+    # The literal tag comes first, so that the user sees why the pattern is not a regex.
+    if literal
+        status = isempty(status) ? _LITERAL_TAG : _LITERAL_TAG * " " * status
     end
 
     _view!(pagerd)
