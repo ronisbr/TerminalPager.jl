@@ -167,6 +167,7 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:toggle_scrollbar, "Toggle the scrollbar."),
             ActionHelp(:show_position, "Show the visible lines and columns."),
             ActionHelp(:yank_all, "Copy the whole text to the clipboard."),
+            ActionHelp(:save, "Save the text, or the selection, to a file."),
         ],
     ),
     HelpSection(

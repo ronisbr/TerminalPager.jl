@@ -752,6 +752,9 @@ end
 # Search patterns confirmed in this session, from the oldest to the newest, recalled with
 # the up and down keys at the search prompt.
 const _SEARCH_HISTORY = String[]
+
+# Paths confirmed at the save prompt in this session, from the oldest to the newest.
+const _SAVE_HISTORY = String[]
 const _MAX_HISTORY = 100
 
 """

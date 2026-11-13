@@ -316,6 +316,7 @@ function __init__()
     # into the compiled image as well. Hence, the history is emptied so that every session
     # starts without the patterns of another one.
     empty!(_SEARCH_HISTORY)
+    empty!(_SAVE_HISTORY)
 
     # The faces live in the registry of StyledStrings.jl, which is not serialized with this
     # package. Hence, they must be registered at every session start, and only then can the

@@ -996,6 +996,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :yank => :visual_mode,
     :toggle_visual_anchor => :visual_mode,
     :yank_all => nothing,
+    :save => nothing,
 )
 
 """
@@ -1164,6 +1165,8 @@ function _pager_event_process!(pagerd::Pager)
         _toggle_visual_anchor!(pagerd)
     elseif event == :yank_all
         _yank_all!(pagerd)
+    elseif event == :save
+        _save!(pagerd)
     end
 
     # Some events move the view, such as going to a line or to a search match. The visual
@@ -2139,27 +2142,96 @@ end
 """
     _assemble_yank_text(
         lines::AbstractVector{<:AbstractString},
-        line_ids::AbstractVector{<:Integer}
+        line_ids::AbstractVector{<:Integer};
+        kwargs...
     ) -> Tuple{String, Int}
 
-Assemble sorted, deduplicated, undecorated lines with a trailing newline and return the
-text and selected-line count.
+Assemble sorted, deduplicated lines with a trailing newline and return the text and the
+selected-line count. The decorations are removed unless `keep_decorations` is `true`.
 
 # Arguments
 
 - `lines::AbstractVector{<:AbstractString}`: Canonical line sequence.
 - `line_ids::AbstractVector{<:Integer}`: One-based line indices to sort and deduplicate.
+
+# Keywords
+
+- `keep_decorations::Bool`: Keep the escape sequences of the lines.
+    (**Default**: `false`)
 """
-function _assemble_yank_text(lines::AbstractVector{<:AbstractString}, line_ids)
+function _assemble_yank_text(
+    lines::AbstractVector{<:AbstractString}, line_ids; keep_decorations::Bool = false
+)
     ids = sort!(unique!(collect(Int, line_ids)))
     sizehint = sum(id -> sizeof(lines[id]) + 1, ids; init = 0)
     buf = IOBuffer(; sizehint = sizehint)
 
     for id in ids
-        write(buf, remove_decorations(lines[id]), '\n')
+        write(buf, keep_decorations ? lines[id] : remove_decorations(lines[id]), '\n')
     end
 
     return String(take!(buf)), length(ids)
+end
+
+"""
+    _save!(pagerd::Pager) -> Nothing
+
+Prompt for a path and save the lines selected in the visual mode of `pagerd`, or the whole
+text outside it, to that file without the decorations. A path starting with `!` keeps them.
+A tilde is expanded, an existing file is overwritten only after a confirmation, and the
+result or the error is reported on the status line.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose text is saved.
+"""
+function _save!(pagerd::Pager)
+    cmd_input = _read_cmd!(pagerd; prefix = "Save to › ", history = _SAVE_HISTORY)
+    _request_redraw!(pagerd)
+    isnothing(cmd_input) && return nothing
+
+    keep_decorations = startswith(cmd_input, '!')
+    path = expanduser(strip(keep_decorations ? cmd_input[2:end] : cmd_input))
+    isempty(path) && return nothing
+
+    ids = pagerd.visual_mode ? _selected_line_ids(pagerd) : 1:pagerd.num_lines
+
+    if isempty(ids)
+        _set_message!(pagerd, "Nothing to save"; kind = :error)
+        return nothing
+    end
+
+    if ispath(path)
+        answer = _prompt_key!(pagerd, "Overwrite $path? (y/n)")
+
+        if answer != 'y'
+            _set_message!(pagerd, "Save cancelled")
+            return nothing
+        end
+    end
+
+    text, num_saved_lines = _assemble_yank_text(
+        pagerd.text_layout, ids; keep_decorations = keep_decorations
+    )
+
+    # The errors of the file system, like a missing directory or a denied permission, are
+    # reported on the status line instead of tearing down the pager.
+    try
+        write(path, text)
+    catch err
+        err isa SystemError || rethrow()
+        _set_message!(pagerd, "Could not save: $(Libc.strerror(err.errnum))"; kind = :error)
+        return nothing
+    end
+
+    _push_history!(_SAVE_HISTORY, cmd_input)
+    if num_saved_lines > 1
+        _set_message!(pagerd, "$num_saved_lines lines saved to $path")
+    else
+        _set_message!(pagerd, "1 line saved to $path")
+    end
+
+    return nothing
 end
 
 """

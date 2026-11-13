@@ -55,6 +55,10 @@ is pressed again or `M` marks the whole range, and `y` copies the visual line, t
 and the marked lines to the clipboard. `Y` copies the whole text from any mode. The status
 line shows how many lines are selected.
 
+`S` saves the whole text, or the selection in the visual mode, to a file without the
+decorations; a path starting with `!` keeps them, `~` is expanded, and an existing file is
+overwritten only after a confirmation.
+
 `m` followed by a letter bookmarks the top line, or the visual line in the visual mode, and
 `'` followed by the letter jumps back to it. `''` returns to the position before the last
 jump, search, or `:` goto. The bookmarked lines are marked with `•` in the line number ruler.

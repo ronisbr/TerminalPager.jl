@@ -136,6 +136,8 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, "MkMk")
             # Anchor a range, mark it, and copy the whole text.
             write(stdin_wr, "VjjMY")
+            # Save prompt, cancelled.
+            write(stdin_wr, "S\e")
             # Exit visual mode.
             write(stdin_wr, "v")
             # Help.

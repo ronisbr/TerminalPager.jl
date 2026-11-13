@@ -14,6 +14,9 @@ Version 0.9.0
   visual line, which is highlighted up to the visual line as it moves; `M` marks the whole
   range and `y` copies it with the marked lines. `Y` (action `:yank_all`) copies the whole
   text to the clipboard from any mode. The status line shows how many lines are selected.
+- ![Feature][badge-feature] `S` (action `:save`) saves the whole text, or the selection in
+  the visual mode, to a file without the decorations. A path starting with `!` keeps them,
+  `~` is expanded, and an existing file is overwritten only after a confirmation.
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the
