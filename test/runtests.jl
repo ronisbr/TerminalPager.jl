@@ -117,6 +117,11 @@ function Base.read(io::TypedInput, ::Type{UInt8})
     return byte
 end
 
+# The tests copy text, which must not replace the clipboard of the user. The copied texts
+# are recorded here instead.
+const _TEST_CLIPBOARD = String[]
+TerminalPager._CLIPBOARD[] = text -> push!(_TEST_CLIPBOARD, text)
+
 include("./internals/screen.jl")
 include("./internals/redraw.jl")
 include("./internals/key_bindings.jl")

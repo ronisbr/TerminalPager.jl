@@ -201,11 +201,27 @@ end
     lines = ["line $i" for i in 1:3]
     @test TerminalPager._pager_action(TerminalPager.Keystroke(; value = "Y")) === :yank_all
 
-    # The whole text is copied from any mode; the clipboard may be unavailable in CI.
+    # The whole text is copied from any mode.
     pagerd = _create_modal_pagerd(lines, "")
     pagerd.event = :yank_all
     @test TerminalPager._pager_event_process!(pagerd)
-    @test pagerd.message in ("3 lines copied", "Could not copy to the system clipboard")
+    @test pagerd.message == "3 lines copied"
+    @test _TEST_CLIPBOARD[end] == "line 1\nline 2\nline 3\n"
+
+    # The lines are kept even if the system clipboard is not available.
+    test_clipboard = TerminalPager._CLIPBOARD[]
+
+    try
+        TerminalPager._CLIPBOARD[] = text -> error("There is no clipboard.")
+        pagerd = _create_modal_pagerd(lines, "")
+        pagerd.event = :yank_all
+        @test TerminalPager._pager_event_process!(pagerd)
+        @test pagerd.message == "Could not copy to the system clipboard"
+        @test pagerd.message_kind === :error
+        @test TerminalPager.yanked() == lines
+    finally
+        TerminalPager._CLIPBOARD[] = test_clipboard
+    end
 
     pagerd = _create_modal_pagerd(String[], "")
     pagerd.event = :yank_all

@@ -390,6 +390,9 @@ function __init__()
     empty!(_LAST_YANK)
     empty!(_PAGER_HISTORY)
 
+    # The functions replaced by the precompilation workload are also serialized.
+    _CLIPBOARD[] = InteractiveUtils.clipboard
+
     # The faces live in the registry of StyledStrings.jl, which is not serialized with this
     # package. Hence, they must be registered at every session start, and only then can the
     # customized ones be applied.

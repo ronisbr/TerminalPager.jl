@@ -107,6 +107,11 @@ PrecompileTools.@setup_workload begin
             merge!(_KEYBINDINGS, _DEFAULT_KEYBINDINGS)
             _keybindings_changed!()
 
+            # The workload must not change anything outside this process either. The
+            # sessions below copy text, which must not replace the clipboard of the user.
+            # The function that copies to the clipboard is also set again by `__init__`.
+            _CLIPBOARD[] = Returns(nothing)
+
             # Create a mock REPL to precompile the REPL integration functions.
             mock_repl = REPL.LineEditREPL(
                 REPL.Terminals.TTYTerminal("", stdin, stdout, stderr), true

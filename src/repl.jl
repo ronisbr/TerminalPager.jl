@@ -539,7 +539,7 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             str = String(take!(buf))
             pager(str; _repl_mode_options(shown_value, str, covers)...)
 
-            copy_to_clipboard && clipboard(remove_decorations(str))
+            copy_to_clipboard && _CLIPBOARD[](remove_decorations(str))
         end
     catch err
         Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())

@@ -73,7 +73,7 @@ function _copy_lines!(
     # `clipboard` throws when no system clipboard provider is available, for example in a
     # headless session. The error must not tear down the pager.
     copied = try
-        clipboard(yanked_text)
+        _CLIPBOARD[](yanked_text)
         true
     catch
         false
@@ -174,6 +174,11 @@ end
 # Function that opens a file in the editor at a line. It is a reference so that the tests
 # can replace it.
 const _EDITOR = Ref{Any}(InteractiveUtils.edit)
+
+# Function that copies a text to the system clipboard. It is a reference so that the tests
+# and the precompilation workload can replace it, because they must not change the
+# clipboard of the user.
+const _CLIPBOARD = Ref{Any}(InteractiveUtils.clipboard)
 
 """
     _edit!(pagerd::Pager) -> Nothing
