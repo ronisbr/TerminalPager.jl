@@ -30,8 +30,10 @@ macro help(f)
     # jumbling the resulting string, so use the `Symbol` instead.
     f_str = string(Meta.isexpr(f, :macrocall) ? f.args[1] : f)
 
+    # The documentation is searched in the module where the macro is called, which is the
+    # active module when it is called from the REPL.
     ex_out = quote
-        $TerminalPager._show_help($f_str)
+        $TerminalPager._show_help($f_str, $__module__)
     end
 
     return esc(ex_out)

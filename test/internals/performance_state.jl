@@ -248,6 +248,14 @@ end
         @eval @help write
         @test queries[end][1] == "write"
         @test pages[end][2] == pairs((use_alternate_screen_buffer = true,))
+
+        # The documentation is searched in the module where the macro is called.
+        macro_name = GlobalRef(TerminalPager, Symbol("@help"))
+        Core.eval(
+            InlineHelpModule,
+            Expr(:macrocall, macro_name, LineNumberNode(@__LINE__, @__FILE__), :local_name),
+        )
+        @test queries[end] == ("local_name", InlineHelpModule)
     finally
         TerminalPager._HELP_GETTER[] = old_getter
         TerminalPager._HELP_PAGER[] = old_pager
