@@ -418,17 +418,8 @@ function _draw_freeze_guides!(
     vertical = pagerd.mode == :freeze_selection
     ruler_width = _shown_ruler_width(pagerd)
 
-    data, num_bytes = _frame_bytes(frame)
-    row = 1
-    row_first = 1
-
-    @inbounds for i in 1:(num_bytes + 1)
-        # The last row is not terminated by a newline.
-        (i <= num_bytes) && (data[i] != UInt8('\n')) && continue
-        (i > num_bytes) && (row_first > num_bytes) && (row > 1) && break
-        row > rows && break
-
-        row_size = i - row_first
+    # The rows after the end of the text only carry the guides.
+    _foreach_frame_row(out, frame, rows) do data, row_first, row_size, row
         line = if row_size > 0
             GC.@preserve data unsafe_string(pointer(data, row_first), row_size)
         else
@@ -446,19 +437,6 @@ function _draw_freeze_guides!(
             face,
             vertical,
         )
-        row < rows && write(out, UInt8('\n'))
-
-        row += 1
-        row_first = i + 1
-    end
-
-    # The rows after the end of the text only carry the guides.
-    while row <= rows
-        _draw_freeze_guides_row!(
-            out, "", row, selected_rows, selected_columns, ruler_width, cols, face, vertical
-        )
-        row < rows && write(out, UInt8('\n'))
-        row += 1
     end
 
     return nothing
@@ -599,6 +577,38 @@ function _append_scrollbar!(
     use_color::Bool,
     display_config::DisplayConfig,
 )
+    # The rows after the end of the text only carry the scrollbar.
+    _foreach_frame_row(out, frame, rows) do data, row_first, row_size, row
+        row_size > 0 &&
+            GC.@preserve data unsafe_write(out, pointer(data, row_first), UInt(row_size))
+
+        _write_scrollbar_cell!(
+            out, column, thumb_first <= row <= thumb_last, use_color, display_config
+        )
+    end
+
+    return nothing
+end
+
+"""
+    _foreach_frame_row(f::F, out::IOBuffer, frame::IOBuffer, rows::Int) -> Nothing where {F}
+
+Call `f(data, row_first, row_size, row)` for each one of the `rows` rows of the view in
+`frame`, where `data` is the storage of `frame`, `row_first` is the index of the first byte
+of the row, `row_size` is its number of bytes, and `row` is its one-based number. A newline
+is written to `out` after every row but the last one.
+
+The rows missing from `frame`, when the text is shorter than the view, are passed with no
+bytes, so that the caller can still write what every row of the view carries.
+
+# Arguments
+
+- `f::F`: Function that writes one row to `out`.
+- `out::IOBuffer`: Buffer receiving the rows.
+- `frame::IOBuffer`: Rendered view, one row per line.
+- `rows::Int`: Number of rows of the view.
+"""
+function _foreach_frame_row(f::F, out::IOBuffer, frame::IOBuffer, rows::Int) where {F}
     data, num_bytes = _frame_bytes(frame)
     row = 1
     row_first = 1
@@ -609,23 +619,15 @@ function _append_scrollbar!(
         (i > num_bytes) && (row_first > num_bytes) && (row > 1) && break
         row > rows && break
 
-        row_size = i - row_first
-        row_size > 0 &&
-            GC.@preserve data unsafe_write(out, pointer(data, row_first), UInt(row_size))
-        _write_scrollbar_cell!(
-            out, column, thumb_first <= row <= thumb_last, use_color, display_config
-        )
+        f(data, row_first, i - row_first, row)
         row < rows && write(out, UInt8('\n'))
 
         row += 1
         row_first = i + 1
     end
 
-    # The rows after the end of the text only carry the scrollbar.
     while row <= rows
-        _write_scrollbar_cell!(
-            out, column, thumb_first <= row <= thumb_last, use_color, display_config
-        )
+        f(data, 1, 0, row)
         row < rows && write(out, UInt8('\n'))
         row += 1
     end
