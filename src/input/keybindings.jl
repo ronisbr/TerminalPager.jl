@@ -235,7 +235,7 @@ end
 """
     _store_keybinding!(kb::Tuple{String, Bool, Bool, Bool}, value::String) -> Nothing
 
-Persist `value`, an action name or [`_DELETED_BINDING`](@ref), for the binding `kb` in the
+Persist `value`, an action name or `_DELETED_BINDING`, for the binding `kb` in the
 preference `"keybindings"`.
 
 # Arguments
@@ -254,7 +254,7 @@ end
     _load_keybindings!() -> Nothing
 
 Apply the key bindings persisted in the preference `"keybindings"` to `_KEYBINDINGS`. An
-entry with the value [`_DELETED_BINDING`](@ref) removes the binding. The entries with an
+entry with the value `_DELETED_BINDING` removes the binding. The entries with an
 unknown action are skipped, and one warning lists them, so that an old preference never
 breaks the package initialization.
 """
