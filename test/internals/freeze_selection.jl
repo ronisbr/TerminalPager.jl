@@ -476,3 +476,21 @@ end
         TerminalPager.reset_keybindings()
     end
 end
+
+@testset "Freeze Guide Keeps the Decoration With the Ruler" begin
+    # The decoration that begins before the first character of the text must be restored
+    # after the vertical guide, with and without the line-number ruler.
+    face = "\e[0;36;1m"
+    text = "\e[31mred red red\e[0m plain"
+    guide = face * TerminalPager._FREEZE_GUIDE_VERTICAL * "\e[0m"
+
+    out = IOBuffer()
+    TerminalPager._draw_freeze_guides_row!(out, text, 1, 5, 3, 0, 40, face, true)
+    @test String(take!(out)) == "\e[31mred" * guide * "\e[31mred red\e[0m plain"
+
+    ruler = "\e[0;90m 1 │\e[0m"
+    TerminalPager._draw_freeze_guides_row!(out, ruler * text, 1, 5, 3, 4, 40, face, true)
+    row = String(take!(out))
+    @test startswith(row, ruler * "\e[31mred" * guide)
+    @test endswith(row, "\e[31mred red\e[0m plain")
+end

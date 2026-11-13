@@ -526,10 +526,12 @@ function _draw_freeze_guides_row!(
         write(out, _SGR_RESET)
     else
         # Both functions replace a wide character at the split point by blanks, so that the
-        # widths are kept. The escape sequences of the text under the guide are written
-        # after it, restoring the decoration state of the rest of the row.
+        # widths are kept. The escape sequences before the guide are written after it,
+        # restoring the decoration state of the rest of the row. Notice that they are taken
+        # from the entire row, including the ruler, because the escape sequences before
+        # the first character of the text were split with the ruler.
         head, _ = split_string(text, selected_columns)
-        ansi, rest = left_crop(text, selected_columns + 1)
+        ansi, rest = left_crop(line, ruler_width + selected_columns + 1)
         write(out, head)
         write(out, face)
         write(out, _FREEZE_GUIDE_VERTICAL)
