@@ -10,11 +10,13 @@
 
 # The value type must stay a small concrete union. With `Any`, every preference read
 # inferred as `Any`, which made the session options in `_pager!` and in the REPL mode
-# dynamically dispatched.
-const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, String}}(
+# dynamically dispatched. Every read asserts the type of its preference anyway.
+const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, Int, String}}(
     "always_use_alternate_screen_buffer_in_repl_mode" => false,
     "block_alternate_screen_buffer" => false,
     "copy_stdout_to_clipboard_in_repl_mode" => false,
+    "history_max_bytes" => 50_000_000,
+    "history_size" => 5,
     "mouse" => true,
     "pager_mode" => "default",
     "show_column_ruler" => false,
@@ -37,7 +39,7 @@ const _REPLACED_PREFERENCES = Dict{String, String}(
 # roughly 50 µs. Opening a pager reads five of them, and every `pager>` command reads two more.
 # Since preferences cannot change without going through the functions below, the values are
 # cached here.
-const _PREFERENCE_CACHE = Dict{String, Union{Bool, String}}()
+const _PREFERENCE_CACHE = Dict{String, Union{Bool, Int, String}}()
 
 ############################################################################################
 #                                     Public Functions                                     #
@@ -172,18 +174,37 @@ function _invalidate_preference_cache!()
 end
 
 """
-    _validate_preference(pref::String, value::Any) -> Union{Bool, String}
+    _validate_preference(pref::String, value::Any) -> Union{Bool, Int, String}
 
-Validate a known preference against the type of its built-in default.
+Validate a known preference against the type of its built-in default. An integer preference
+accepts any integer but a `Bool`, which is converted to `Int`, and must be positive.
 
 # Arguments
 
 - `pref::String`: Name of a supported preference.
 - `value::Any`: Candidate preference value.
 """
-function _validate_preference(pref::String, value)::Union{Bool, String}
+function _validate_preference(pref::String, value)::Union{Bool, Int, String}
     _check_preference_name(pref)
     expected_type = typeof(_AVAILABLE_PREFERENCES[pref])
+
+    if expected_type === Int
+        # The preferences are stored as TOML integers, which load as `Int64`. A `Bool` is an
+        # `Integer` in Julia, but it is not a count.
+        ((value isa Integer) && !(value isa Bool)) || throw(
+            ArgumentError(
+                "Preference \"$pref\" must be an Int; received $(typeof(value))."
+            ),
+        )
+
+        value = Int(value)
+        (value >= 1) || throw(
+            ArgumentError("Preference \"$pref\" must be at least 1; received $value."),
+        )
+
+        return value
+    end
+
     value isa expected_type || throw(
         ArgumentError(
             "Preference \"$pref\" must be a $expected_type; received $(typeof(value))."

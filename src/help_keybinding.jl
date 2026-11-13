@@ -205,10 +205,10 @@ function _register_help_escapes!(escapes)
 end
 
 """
-    _register_shortcuts(f::Any, repl::Any) -> Task
+    _register_shortcuts(f::Any, repl::Any; main_mode::Bool = true) -> Task
 
 Register escape shortcuts in the REPL by calling `f(escapes)`, where `escapes` is the escape
-key map of the main prompt or of a pager prompt.
+key map of the main prompt, unless `main_mode` is `false`, or of a pager prompt.
 
 `f` is also recorded, so that the pager prompts created afterwards receive the shortcuts
 too. Otherwise, the order in which the REPL hooks run decides whether the pager prompt
@@ -218,8 +218,13 @@ exists when the shortcuts are registered.
 
 - `f::Any`: Callable object that adds entries to an escape keymap.
 - `repl::Any`: REPL instance whose keymaps are updated asynchronously.
+
+# Keywords
+
+- `main_mode::Bool`: Register the shortcuts in the main prompt too.
+    (**Default**: `true`)
 """
-function _register_shortcuts(f, repl)
+function _register_shortcuts(f, repl; main_mode::Bool = true)
     # Non-line-edit REPLs, such as the basic REPL used on a dumb terminal, have no keymap
     # interface at all, so polling for one below would never terminate.
     has_interface = hasfield(typeof(repl), :interface)
@@ -247,7 +252,8 @@ function _register_shortcuts(f, repl)
         modes = repl.interface.modes
 
         for m in modes
-            ((m === first(modes)) || _is_pager_mode(m)) && f(m.keymap_dict['\e'])
+            ((main_mode && (m === first(modes))) || _is_pager_mode(m)) &&
+                f(m.keymap_dict['\e'])
         end
 
         return nothing

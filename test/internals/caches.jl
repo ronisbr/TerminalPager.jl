@@ -35,8 +35,15 @@
     @test_throws ArgumentError TerminalPager._validate_preference("pager_mode", true)
 
     # The preference storage is concretely typed, so reads must not infer as Any.
-    @test (@inferred Union{Bool, String} TerminalPager._get_preference("pager_mode")) isa
+    @test (@inferred Union{Bool, Int, String} TerminalPager._get_preference("pager_mode")) isa
         String
+
+    # The integer preferences accept integers but not booleans, and must be positive.
+    @test TerminalPager._validate_preference("history_size", Int64(3)) === 3
+    @test TerminalPager._validate_preference("history_size", Int32(3)) === 3
+    @test_throws ArgumentError TerminalPager._validate_preference("history_size", true)
+    @test_throws ArgumentError TerminalPager._validate_preference("history_size", 0)
+    @test_throws ArgumentError TerminalPager._validate_preference("history_size", "5")
 
     # The pager mode only supports two values. Anything else used to be accepted,
     # persisted, and then silently treated as the default mode.

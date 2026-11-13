@@ -56,6 +56,7 @@ include("./debug.jl")
 include("./faces.jl")
 include("./help.jl")
 include("./helpers.jl")
+include("./history.jl")
 include("./pager.jl")
 include("./preferences.jl")
 include("./repl.jl")
@@ -139,6 +140,12 @@ The user can define custom preferences using the function
     `pager>` REPL mode that does not throw is also copied to the system clipboard, without
     any decoration, even when it fits the display and no pager is opened.
     (**Default**: `false`)
+- `"history_size"`: Number of texts shown by the pager that are kept in the history, which
+    `TerminalPager.last` reopens.
+    (**Default**: `5`)
+- `"history_max_bytes"`: Number of bytes of the texts kept in the history. The oldest texts
+    are dropped beyond it, but the most recent one is always kept.
+    (**Default**: `50_000_000`)
 - `"mouse"`: If `true`, the pager reports the mouse events: the wheel scrolls the text, SHIFT
     and the wheel scroll it horizontally, and clicking a line in the visual mode moves the
     visual line to it or marks it. Notice that, while the mouse is reported, selecting text
@@ -268,7 +275,15 @@ function pager(obj::AbstractString; return_selection::Bool = false, kwargs...)
 
     # `_pager` requires a `String`. The conversion is a no-op for a `String`, whereas any
     # other subtype, such as a `SubString`, must be copied.
-    return _pager(String(obj); return_selection = return_selection, kwargs...)
+    str = String(obj)
+
+    # The text is recorded before the session, so that a session interrupted with CTRL-C is
+    # in the history too. Its result restores the viewport when the text is reopened.
+    entry = _push_pager_history!(str, (; kwargs...))
+    result = _pager(str; return_selection = true, kwargs...)
+    (result isa PagerResult) && (entry.result = result)
+
+    return return_selection ? result : nothing
 end
 
 const less = pager
@@ -325,6 +340,7 @@ function __init__()
     empty!(_SEARCH_HISTORY)
     empty!(_SAVE_HISTORY)
     empty!(_LAST_YANK)
+    empty!(_PAGER_HISTORY)
 
     # The faces live in the registry of StyledStrings.jl, which is not serialized with this
     # package. Hence, they must be registered at every session start, and only then can the
@@ -353,6 +369,7 @@ function __init__()
             end
 
             _register_help_shortcuts(repl)
+            _register_history_shortcuts(repl)
         end
     else
         atreplinit(_init_repl_integrations)
@@ -380,6 +397,7 @@ function _init_repl_integrations(repl)
         _init_pager_repl_mode_when_ready(repl)
 
         _register_help_shortcuts(repl)
+        _register_history_shortcuts(repl)
     end
 
     return nothing

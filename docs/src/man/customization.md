@@ -34,6 +34,11 @@ The available preferences are:
     `pager>` REPL mode that does not throw is copied to the clipboard, even when it fits the
     display and no pager is opened. Notice that the decorations (ANSI sequences) are
     removed. (**Default** = `false`)
+- `"history_size"`: Number of texts shown by the pager that are kept in the history, which
+    `TerminalPager.last` reopens. (**Default** = `5`)
+- `"history_max_bytes"`: Number of bytes of the texts kept in the history. The oldest texts
+    are dropped beyond it, but the most recent one is always kept.
+    (**Default** = `50_000_000`)
 - `"mouse"`: If `true`, the pager reports the mouse events: the wheel scrolls the text,
     SHIFT and the wheel scroll it horizontally, and clicking a line in the visual mode moves
     the visual line to it or marks it. Notice that, while the mouse is reported, selecting

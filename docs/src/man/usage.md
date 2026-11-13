@@ -128,6 +128,23 @@ julia> @stdout_to_pager for i = 1:100
 !!! note
     This macro can also be called using the shorter name `@out2pr`.
 
+### Reopening the Last Output
+
+The pager runs on the alternate screen buffer, so the text disappears when it quits. The texts
+shown by the pager in the session are kept in a history: `TerminalPager.last()` reopens the
+most recent one with the viewport and the search of the last session over it, `last(n)`
+reopens the `n`-th most recent one, and `TerminalPager.history()` lists them. In the `pager>`
+prompt, `Alt+l` reopens the last text and `Alt+Shift+l` opens a menu to pick one. The
+preferences `"history_size"` and `"history_max_bytes"` bound the history.
+
+```julia-repl
+julia> TerminalPager.history()
+#1  10:32  101 lines  101×100 Matrix{Float64}:
+#2  10:30  43 lines  write(io::IO, x)
+
+julia> TerminalPager.last(2)
+```
+
 ## REPL Modes
 
 **TerminalPager.jl** comes with a REPL mode that automatically renders the command output to

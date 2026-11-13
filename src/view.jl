@@ -104,7 +104,7 @@ function _view!(pagerd::Pager)
         # wins.
         range = _visual_range(pagerd)
 
-        for line in max(first(range), start_row):min(last(range), start_row + rows - 1)
+        for line in max(first(range), start_row):min(Base.last(range), start_row + rows - 1)
             line == visual_line && continue
             push!(visual_lines, line)
             push!(visual_line_backgrounds, vm_line_background)

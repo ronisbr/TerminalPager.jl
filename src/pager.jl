@@ -417,6 +417,9 @@ result of a text printed by the automatic mode is empty.
     no waiter, and the session closes the waiter it created. A nested session shares the
     waiter of its parent.
     (**Default**: `_default_input_waiter`)
+- `_restore::Union{Nothing, PagerResult}`: Result of a previous session over the text whose
+    viewport and search are restored, or `nothing` to start at the top.
+    (**Default**: `nothing`)
 """
 function _pager!(
     @nospecialize(term::REPL.Terminals.TTYTerminal),
@@ -440,6 +443,7 @@ function _pager!(
     manage_cursor::Bool = true,
     manage_mouse::Bool = true,
     _waiter_factory = _default_input_waiter,
+    _restore::Union{Nothing, PagerResult} = nothing,
 )
     # The raw text is split only when no layout is supplied, and the result feeds both the
     # auto-fit check and the layout construction.
@@ -519,6 +523,8 @@ function _pager!(
             text_layout = session_layout,
             title_rows = title_rows,
         )
+
+        isnothing(_restore) || _restore_state!(pagerd, _restore)
 
         # The waiter lets a change of the display size interrupt the wait for the input, so
         # that the screen is repainted without a keystroke. A nested session, such as the
@@ -1734,6 +1740,41 @@ function _goto_line!(pagerd::Pager)
     end
 
     _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _restore_state!(pagerd::Pager, result::PagerResult) -> Nothing
+
+Restore in `pagerd` the viewport and the search recorded in `result` by a previous session
+over the same text. The viewport is clamped to the text and to the frozen rows and columns,
+and a search pattern that is not valid anymore is ignored.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `result::PagerResult`: Result of the previous session.
+"""
+function _restore_state!(pagerd::Pager, result::PagerResult)
+    min_row = _first_scrollable_row(pagerd)
+    pagerd.start_row = clamp(result.start_row, min_row, max(min_row, pagerd.num_lines))
+    pagerd.start_column = max(result.start_column, pagerd.frozen_columns + 1)
+    _clamp_viewport!(pagerd)
+
+    if !isempty(result.search_pattern)
+        parsed = _parse_search_input(result.search_pattern)
+
+        if !isnothing(parsed) && !isempty(parsed[1])
+            regex = _try_regex(parsed[1]; literal = pagerd.literal_search)
+
+            if !isnothing(regex)
+                _find_matches!(pagerd, regex; columns = parsed[2])
+                pagerd.search_pattern = result.search_pattern
+                pagerd.mode = :searching
+            end
+        end
+    end
 
     return nothing
 end

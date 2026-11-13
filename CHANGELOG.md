@@ -26,6 +26,13 @@ Version 0.9.0
 - ![Feature][badge-feature] `e` (action `:edit`) opens the whole text, or the selection in
   the visual mode, in the editor of `InteractiveUtils.edit` at the current line, and repaints
   the pager when the editor returns.
+- ![Feature][badge-feature] The texts shown by the pager are kept in a history, so that they
+  can be reopened after the alternate screen buffer erased them: `TerminalPager.last()`
+  reopens the most recent one with the viewport and the search of the last session over it,
+  `TerminalPager.last(n)` reopens the `n`-th most recent one, and `TerminalPager.history()`
+  lists them. In the `pager>` prompt, `Alt+l` reopens the last text and `Alt+Shift+l` opens
+  a menu to pick one. The new preferences `"history_size"` and `"history_max_bytes"` bound
+  the history.
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the

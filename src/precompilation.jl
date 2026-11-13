@@ -86,6 +86,7 @@ PrecompileTools.@setup_workload begin
             mock_repl.interface = REPL.setup_interface(mock_repl)
             _init_pager_repl_mode(mock_repl)
             _register_help_shortcuts(mock_repl)
+            _register_history_shortcuts(mock_repl)
 
             # The public entry point prints the text when the standard streams are not
             # terminals, which is the case here. Hence, the workload renders the object
@@ -174,6 +175,26 @@ PrecompileTools.@setup_workload begin
             t = @async _pager(str; return_selection = true)
             write(stdin_wr, "vM\n")
             wait(t)
+
+            # Pager restoring the viewport and the search of a previous session, which is
+            # what reopening an entry of the history does.
+            t = @async _pager(
+                str;
+                use_alternate_screen_buffer = false,
+                _restore = PagerResult(String[], 5, 1, "0.1986"),
+            )
+            write(stdin_wr, "q")
+            wait(t)
+
+            # The history of the texts shown by the pager and its menu.
+            TerminalPager._push_pager_history!(str, (; use_alternate_screen_buffer = false))
+            TerminalPager.history(devnull)
+            TerminalPager._history_menu(
+                REPL.Terminals.TTYTerminal("", IOBuffer("q"), devnull, devnull);
+                request = (t, m) ->
+                    REPL.TerminalMenus.request(t, m; suppress_output = true),
+            )
+            empty!(TerminalPager._PAGER_HISTORY)
 
             # Pager with auto mode, which exercises the `printable_textwidth` code path.
             # This is important because the REPL mode always uses `auto = true`.

@@ -638,7 +638,7 @@ which is zero when the search is not restricted.
 """
 function _column_range_width(columns::UnitRange{Int})
     first_column = first(columns)
-    last_column = last(columns)
+    last_column = Base.last(columns)
     ((first_column <= 1) && (last_column == typemax(Int))) && return 0
 
     # `@`, the first column unless it is the first one, `:`, and the last column unless the
@@ -660,7 +660,7 @@ range starting at the first column.
 """
 function _write_column_range(io::IO, columns::UnitRange{Int})
     first_column = first(columns)
-    last_column = last(columns)
+    last_column = Base.last(columns)
     write(io, UInt8('@'))
     (first_column > 1) && _write_decimal(io, first_column)
     write(io, UInt8(':'))
