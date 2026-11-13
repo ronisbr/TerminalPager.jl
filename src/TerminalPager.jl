@@ -306,8 +306,10 @@ function __init__()
     _register_faces!()
     _load_face_preferences!()
 
-    # Modify the key bindings if the user wants `vi` mode.
+    # Modify the key bindings if the user wants `vi` mode, and then apply the persisted ones,
+    # which take precedence over the mode bindings.
     _apply_mode_keybindings!()
+    _load_keybindings!()
 
     if isdefined(Base, :active_repl)
         repl = Base.active_repl

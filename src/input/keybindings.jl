@@ -88,6 +88,195 @@ function _keybindings_changed!()
     return nothing
 end
 
+# Every pager action, in the order they are documented. The key bindings are validated
+# against this list, so a typo in an action name is reported instead of binding a dead key.
+const _ACTIONS = Symbol[
+    :quit,
+    :quit_eot,
+    :help,
+    :up,
+    :down,
+    :left,
+    :right,
+    :fastup,
+    :fastdown,
+    :fastleft,
+    :fastright,
+    :bol,
+    :eol,
+    :pageup,
+    :pagedown,
+    :halfpageup,
+    :halfpagedown,
+    :home,
+    :end,
+    :wheel_up,
+    :wheel_down,
+    :goto_line,
+    :search,
+    :next_match,
+    :previous_match,
+    :quit_search,
+    :change_freeze,
+    :select_freeze,
+    :change_title_rows,
+    :select_title_rows,
+    :toggle_ruler,
+    :toggle_column_ruler,
+    :toggle_scrollbar,
+    :toggle_visual_mode,
+    :select_visual_mode_line,
+    :mouse_select,
+    :yank,
+]
+
+# Name of the preference that stores the persisted key bindings.
+const _KEYBINDINGS_PREFERENCE = "keybindings"
+
+# Value stored in the preference for a default binding that was deleted.
+const _DELETED_BINDING = "delete"
+
+"""
+    _check_action(action::Symbol) -> Nothing
+
+Throw an `ArgumentError` if `action` is not a pager action.
+
+# Arguments
+
+- `action::Symbol`: Action to check.
+"""
+function _check_action(action::Symbol)
+    action in _ACTIONS && return nothing
+
+    throw(
+        ArgumentError(
+            "$action is not a pager action. The valid actions are: " *
+                join((":$a" for a in _ACTIONS), ", ") * ".",
+        ),
+    )
+end
+
+"""
+    _actions_docstring() -> String
+
+Return the list of the pager actions wrapped for the docstring of [`set_keybinding`](@ref).
+"""
+function _actions_docstring()
+    return join(_wrap_words(join((":$a" for a in _ACTIONS), ", "), 80), "\n    ")
+end
+
+"""
+    _encode_binding(kb::Tuple{String, Bool, Bool, Bool}) -> String
+
+Return the key of the binding `kb` in the preference `"keybindings"`, which is the modifiers
+`alt+`, `ctrl+`, and `shift+`, in this order, followed by the key value.
+
+# Arguments
+
+- `kb::Tuple{String, Bool, Bool, Bool}`: Key value and ALT, CTRL, and SHIFT flags.
+"""
+function _encode_binding(kb::Tuple{String, Bool, Bool, Bool})
+    value, alt, ctrl, shift = kb
+    return (alt ? "alt+" : "") * (ctrl ? "ctrl+" : "") * (shift ? "shift+" : "") * value
+end
+
+"""
+    _decode_binding(str::AbstractString) -> Tuple{String, Bool, Bool, Bool}
+
+Return the binding encoded in `str` by [`_encode_binding`](@ref). The modifiers are
+stripped in the order `alt+`, `ctrl+`, and `shift+`, and the rest is the key value, so that
+`"alt++"` is the key `+` with ALT.
+
+# Arguments
+
+- `str::AbstractString`: Encoded binding.
+"""
+function _decode_binding(str::AbstractString)
+    value = String(str)
+    alt = startswith(value, "alt+") && ncodeunits(value) > 4
+    alt && (value = value[5:end])
+    ctrl = startswith(value, "ctrl+") && ncodeunits(value) > 5
+    ctrl && (value = value[6:end])
+    shift = startswith(value, "shift+") && ncodeunits(value) > 6
+    shift && (value = value[7:end])
+    return (value, alt, ctrl, shift)
+end
+
+"""
+    _keybinding_preferences() -> Dict{String, String}
+
+Return a copy of the key bindings persisted with [`set_keybinding`](@ref) and
+[`delete_keybinding`](@ref), keyed by the encoded binding. Entries whose value is not a
+string are dropped.
+"""
+function _keybinding_preferences()
+    stored = @load_preference(_KEYBINDINGS_PREFERENCE, nothing)
+    stored isa AbstractDict || return Dict{String, String}()
+    return Dict{String, String}(String(k) => v for (k, v) in stored if v isa AbstractString)
+end
+
+"""
+    _store_keybinding!(kb::Tuple{String, Bool, Bool, Bool}, value::String) -> Nothing
+
+Persist `value`, an action name or [`_DELETED_BINDING`](@ref), for the binding `kb` in the
+preference `"keybindings"`.
+
+# Arguments
+
+- `kb::Tuple{String, Bool, Bool, Bool}`: Key value and ALT, CTRL, and SHIFT flags.
+- `value::String`: Value to store.
+"""
+function _store_keybinding!(kb::Tuple{String, Bool, Bool, Bool}, value::String)
+    stored = _keybinding_preferences()
+    stored[_encode_binding(kb)] = value
+    @set_preferences!(_KEYBINDINGS_PREFERENCE => stored)
+    return nothing
+end
+
+"""
+    _load_keybindings!() -> Nothing
+
+Apply the key bindings persisted in the preference `"keybindings"` to `_KEYBINDINGS`. An
+entry with the value [`_DELETED_BINDING`](@ref) removes the binding. The entries with an
+unknown action are skipped, and one warning lists them, so that an old preference never
+breaks the package initialization.
+"""
+function _load_keybindings!()
+    stored = @load_preference(_KEYBINDINGS_PREFERENCE, nothing)
+    isnothing(stored) && return nothing
+
+    if !(stored isa AbstractDict)
+        @warn "The preference \"$_KEYBINDINGS_PREFERENCE\" must be a table. It was ignored."
+        return nothing
+    end
+
+    skipped = String[]
+
+    for (encoded, value) in stored
+        kb = _decode_binding(String(encoded))
+
+        if value == _DELETED_BINDING
+            delete!(_KEYBINDINGS, kb)
+        elseif (value isa AbstractString) && (Symbol(value) in _ACTIONS)
+            _KEYBINDINGS[kb] = Symbol(value)
+        else
+            push!(skipped, "$encoded => $value")
+        end
+    end
+
+    if !isempty(skipped)
+        sort!(skipped)
+        @warn(
+            "The preference \"$_KEYBINDINGS_PREFERENCE\" has unknown actions, which were " *
+                "ignored: " * join(skipped, ", ") * "."
+        )
+    end
+
+    _keybindings_changed!()
+
+    return nothing
+end
+
 # Short names of the special keys, used wherever a key binding is shown to the user.
 const _KEY_NAMES = Dict{String, String}(
     " " => "Space",
@@ -162,10 +351,11 @@ end
 
 """
     delete_keybinding(key::String; alt::Bool = false, ctrl::Bool = false,
-        shift::Bool = false) -> Nothing
+        shift::Bool = false, persist::Bool = false) -> Nothing
 
 Delete the keybinding `key`. The modifier keys can be selected using the keywords `alt`,
-`ctrl`, and `shift`.
+`ctrl`, and `shift`. If `persist` is `true`, the deletion is stored in the preference
+`"keybindings"` and applied at every session start.
 
 For more information about how to specify `key`, see [`set_keybinding`](@ref).
 
@@ -181,11 +371,19 @@ For more information about how to specify `key`, see [`set_keybinding`](@ref).
     (**Default**: `false`)
 - `shift::Bool`: Select a binding that requires SHIFT.
     (**Default**: `false`)
+- `persist::Bool`: Store the deletion with **Preferences.jl**.
+    (**Default**: `false`)
 """
 function delete_keybinding(
-    key::String; alt::Bool = false, ctrl::Bool = false, shift::Bool = false
+    key::String;
+    alt::Bool = false,
+    ctrl::Bool = false,
+    shift::Bool = false,
+    persist::Bool = false,
 )
-    delete!(_KEYBINDINGS, (key, alt, ctrl, shift))
+    kb = (key, alt, ctrl, shift)
+    delete!(_KEYBINDINGS, kb)
+    persist && _store_keybinding!(kb, _DELETED_BINDING)
     _keybindings_changed!()
     return nothing
 end
@@ -223,23 +421,37 @@ function _apply_mode_keybindings!(get_preference::F = _get_preference) where {F 
 end
 
 """
-    reset_keybindings() -> Nothing
+    reset_keybindings(; persist::Bool = false) -> Nothing
 
-Reset the key bindings to the original ones.
+Reset the key bindings to the original ones, which are the defaults, the bindings of the
+preference `"pager_mode"`, and the bindings persisted in the preference `"keybindings"`. If
+`persist` is `true`, the persisted bindings are dropped first, so that only the defaults and
+the mode bindings remain.
+
+# Keywords
+
+- `persist::Bool`: Drop the key bindings persisted with **Preferences.jl**.
+    (**Default**: `false`)
 """
-function reset_keybindings()
+function reset_keybindings(; persist::Bool = false)
+    persist && @delete_preferences!(_KEYBINDINGS_PREFERENCE)
+
     empty!(_KEYBINDINGS)
     merge!(_KEYBINDINGS, _DEFAULT_KEYBINDINGS)
 
     # Key bindings that depend on the mode.
     _apply_mode_keybindings!()
 
+    # The persisted bindings are part of the session defaults. Otherwise, a reset after a
+    # persisted change would silently drop the stored bindings until the next session.
+    _load_keybindings!()
+
     return nothing
 end
 
 """
     set_keybinding(key::String, action::Symbol; alt::Bool = false,
-        ctrl::Bool = false, shift::Bool = false) -> Nothing
+        ctrl::Bool = false, shift::Bool = false, persist::Bool = false) -> Nothing
 
 Set key binding `key` to the action `action`. The modifier keys can be selected using the
 keywords `alt`, `ctrl`, and `shift`.
@@ -264,12 +476,14 @@ be selected with the keyword `ctrl` instead, for example
 
 `action` can be one of the following symbols:
 
-    :quit, :quit_eot, :help, :up, :down, :left, :right, :fastup, :fastdown,
-    :fastleft, :fastright, :bol, :eol, :pageup, :pagedown, :halfpageup,
-    :halfpagedown, :home, :end, :wheel_up, :wheel_down, :goto_line, :search,
-    :next_match, :previous_match, :quit_search, :change_freeze, :select_freeze,
-    :change_title_rows, :select_title_rows, :toggle_ruler, :toggle_column_ruler,
-    :toggle_scrollbar, :toggle_visual_mode, :select_visual_mode_line, :mouse_select, :yank
+    $(_actions_docstring())
+
+Any other action throws an `ArgumentError`.
+
+If `persist` is `true`, the binding is stored in the preference `"keybindings"` and applied
+at every session start, after the bindings of the preference `"pager_mode"`. The stored
+bindings are dropped with `reset_keybindings(; persist = true)` or
+[`drop_all_preferences!`](@ref).
 
 # Arguments
 
@@ -284,11 +498,21 @@ be selected with the keyword `ctrl` instead, for example
     (**Default**: `false`)
 - `shift::Bool`: Require SHIFT for the binding.
     (**Default**: `false`)
+- `persist::Bool`: Store the binding with **Preferences.jl**.
+    (**Default**: `false`)
 """
 function set_keybinding(
-    key::String, action::Symbol; alt::Bool = false, ctrl::Bool = false, shift::Bool = false
+    key::String,
+    action::Symbol;
+    alt::Bool = false,
+    ctrl::Bool = false,
+    shift::Bool = false,
+    persist::Bool = false,
 )
-    _KEYBINDINGS[(key, alt, ctrl, shift)] = action
+    _check_action(action)
+    kb = (key, alt, ctrl, shift)
+    _KEYBINDINGS[kb] = action
+    persist && _store_keybinding!(kb, String(action))
     _keybindings_changed!()
     return nothing
 end

@@ -164,9 +164,28 @@ preferences set with [`TerminalPager.set_face!`](@ref).
 The user can also change the default keybindings to perform actions inside the pager. For
 more information, see the functions: [`TerminalPager.set_keybinding`](@ref),
 [`TerminalPager.delete_keybinding`](@ref), and [`TerminalPager.reset_keybindings`](@ref).
-Notice that those modifications **do not** persist between Julia sessions. Hence, if the
-user wants a permanent configuration, they should add those commands to the `startup.jl`
-script.
+Those modifications last for the current session unless the keyword `persist` is `true`, in
+which case they are stored in the preference `"keybindings"` and applied at every session
+start, after the bindings of the preference `"pager_mode"`:
+
+```julia
+julia> TerminalPager.set_keybinding("x", :quit; persist = true)
+
+julia> TerminalPager.delete_keybinding("q"; persist = true)
+```
+
+The persisted bindings are dropped with `TerminalPager.reset_keybindings(; persist = true)`
+or [`TerminalPager.drop_all_preferences!`](@ref). They are stored in the
+`LocalPreferences.toml` of the active environment, where the key is the modifiers `alt+`,
+`ctrl+`, and `shift+`, in this order, followed by the key value, and the value is the action
+name or `"delete"` for a removed default binding:
+
+```toml
+[TerminalPager.keybindings]
+"alt+<left>" = "bol"
+x = "quit"
+q = "delete"
+```
 
 The name and the modifiers of a key can be found with [`TerminalPager.debug_keycode`](@ref),
 which prints every key pressed as the pager decodes it until `q` is pressed:

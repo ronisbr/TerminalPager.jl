@@ -21,6 +21,13 @@ Version 0.9.0
   and the new preference `"show_column_ruler"` show it from the start.
 - ![Enhancement][badge-enhancement] The line-number ruler ends with a foot `┴` on the last
   frozen row, so the ruler shows where the frozen rows end.
+- ![Feature][badge-feature] `TerminalPager.set_keybinding` and
+  `TerminalPager.delete_keybinding` accept the keyword `persist`, which stores the change in
+  the new preference `"keybindings"` and applies it at every session start, after the
+  bindings of the preference `"pager_mode"`. `TerminalPager.reset_keybindings(; persist =
+  true)` and `TerminalPager.drop_all_preferences!` drop the stored bindings.
+- ![Enhancement][badge-enhancement] `TerminalPager.set_keybinding` throws an `ArgumentError`
+  for an unknown action instead of silently binding a dead key.
 
 Version 0.8.0
 -------------

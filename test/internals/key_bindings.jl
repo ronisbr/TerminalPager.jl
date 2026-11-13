@@ -136,3 +136,100 @@ end
     @test TerminalPager._pager_action(k) === :quit_search
     @test TerminalPager._DEFAULT_KEYBINDINGS[("c", false, true, false)] === :quit_search
 end
+
+@testset "Key Binding Encoding" begin
+    for kb in (
+        ("<left>", true, false, false),
+        ("x", false, true, true),
+        ("+", true, false, false),
+        (" ", false, false, false),
+        ("alt+", false, false, false),
+        ("<F1>", true, true, true),
+    )
+        @test TerminalPager._decode_binding(TerminalPager._encode_binding(kb)) == kb
+    end
+
+    @test TerminalPager._encode_binding(("<left>", true, false, false)) == "alt+<left>"
+    @test TerminalPager._encode_binding(("x", false, true, true)) == "ctrl+shift+x"
+    @test TerminalPager._encode_binding(("+", true, false, false)) == "alt++"
+end
+
+@testset "Persistent Key Bindings" begin
+    try
+        TerminalPager.reset_keybindings(; persist = true)
+        @test isempty(TerminalPager._keybinding_preferences())
+
+        # A binding set without `persist` is not stored.
+        TerminalPager.set_keybinding("w", :quit)
+        @test isempty(TerminalPager._keybinding_preferences())
+
+        TerminalPager.set_keybinding("x", :quit; persist = true)
+        TerminalPager.delete_keybinding("q"; persist = true)
+        TerminalPager.set_keybinding("<left>", :bol; alt = true, shift = true, persist = true)
+
+        stored = TerminalPager._keybinding_preferences()
+        @test stored["x"] == "quit"
+        @test stored["q"] == "delete"
+        @test stored["alt+shift+<left>"] == "bol"
+
+        # A non-persistent reset keeps the persisted bindings, which are part of the session
+        # defaults, and drops the others.
+        TerminalPager.reset_keybindings()
+        @test TerminalPager._KEYBINDINGS[("x", false, false, false)] === :quit
+        @test !haskey(TerminalPager._KEYBINDINGS, ("q", false, false, false))
+        @test !haskey(TerminalPager._KEYBINDINGS, ("w", false, false, false))
+        @test TerminalPager._KEYBINDINGS[("<left>", true, false, true)] === :bol
+
+        # A persistent reset restores the defaults and empties the preference.
+        TerminalPager.reset_keybindings(; persist = true)
+        @test !haskey(TerminalPager._KEYBINDINGS, ("x", false, false, false))
+        @test TerminalPager._KEYBINDINGS[("q", false, false, false)] === :quit
+        @test isempty(TerminalPager._keybinding_preferences())
+
+        # `drop_all_preferences!` drops the persisted bindings too.
+        TerminalPager.set_keybinding("x", :quit; persist = true)
+        TerminalPager.drop_all_preferences!()
+        @test isempty(TerminalPager._keybinding_preferences())
+        @test !haskey(TerminalPager._KEYBINDINGS, ("x", false, false, false))
+    finally
+        TerminalPager.reset_keybindings(; persist = true)
+    end
+end
+
+@testset "Unknown Stored Action" begin
+    try
+        TerminalPager.Preferences.set_preferences!(
+            TerminalPager,
+            "keybindings" => Dict("z" => "nope", "y" => "quit", "w" => 1);
+            force = true,
+        )
+
+        @test_logs (:warn, r"unknown actions.*w => 1, z => nope") TerminalPager._load_keybindings!()
+        @test TerminalPager._KEYBINDINGS[("y", false, false, false)] === :quit
+        @test !haskey(TerminalPager._KEYBINDINGS, ("z", false, false, false))
+        @test !haskey(TerminalPager._KEYBINDINGS, ("w", false, false, false))
+
+        # A preference that is not a table is ignored with a warning.
+        TerminalPager.Preferences.set_preferences!(
+            TerminalPager, "keybindings" => "quit"; force = true
+        )
+        @test_logs (:warn, r"must be a table") TerminalPager._load_keybindings!()
+    finally
+        TerminalPager.reset_keybindings(; persist = true)
+    end
+
+    @test_throws ArgumentError TerminalPager.set_keybinding("x", :nope)
+    @test !haskey(TerminalPager._KEYBINDINGS, ("x", false, false, false))
+end
+
+@testset "Action List" begin
+    @test Set(values(TerminalPager._DEFAULT_KEYBINDINGS)) ⊆ Set(TerminalPager._ACTIONS)
+    @test keys(TerminalPager._EVENT_FEATURES) ⊆ Set(TerminalPager._ACTIONS)
+    @test allunique(TerminalPager._ACTIONS)
+
+    doc = string(@doc TerminalPager.set_keybinding)
+
+    for action in TerminalPager._ACTIONS
+        @test occursin(":$action", doc)
+    end
+end

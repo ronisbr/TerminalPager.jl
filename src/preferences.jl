@@ -46,7 +46,8 @@ const _PREFERENCE_CACHE = Dict{String, Union{Bool, String}}()
     drop_all_preferences!() -> Nothing
 
 Drop all preferences, including the faces customized with [`set_face!`](@ref), which are
-reset to their built-in defaults.
+reset to their built-in defaults, and the key bindings persisted with
+[`set_keybinding`](@ref).
 
 # Examples
 
@@ -69,6 +70,11 @@ function drop_all_preferences!()
     for (name, _) in _FACES
         resetfaces!(Symbol(_FACE_PREFIX, name))
     end
+
+    # The persisted key bindings are dropped and the session bindings are rebuilt without
+    # them.
+    @delete_preferences!(_KEYBINDINGS_PREFERENCE)
+    reset_keybindings()
 
     _invalidate_preference_cache!()
 
