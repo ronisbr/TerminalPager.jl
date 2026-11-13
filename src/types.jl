@@ -7,6 +7,92 @@
 const SearchMatches = Dict{Int, Vector{Tuple{Int, Int}}}
 
 """
+    struct ViewOptions
+
+Store what the renderer needs to write a view of a [`ViewLayout`](@ref): the rows and the
+columns of the view, the limits of the display, and how the rows are decorated. A negative
+number of rows or columns means every remaining one, and a negative limit means none.
+
+# Fields
+
+- `first_row::Int`: First scrolled row.
+    (**Default**: `1`)
+- `num_rows::Int`: Number of scrolled rows.
+    (**Default**: `-1`)
+- `first_column::Int`: First scrolled printable column.
+    (**Default**: `1`)
+- `num_columns::Int`: Number of scrolled columns.
+    (**Default**: `-1`)
+- `frozen_rows::Int`: Number of leading rows written before the scrolled ones.
+    (**Default**: `0`)
+- `frozen_columns::Int`: Number of leading columns written before the scrolled ones in every
+    row.
+    (**Default**: `0`)
+- `title_rows::Int`: Number of frozen rows written from the first column, which do not
+    scroll horizontally.
+    (**Default**: `0`)
+- `max_rows::Int`: Number of rows of the display, including the frozen ones.
+    (**Default**: `-1`)
+- `max_columns::Int`: Width of the display, including the ruler.
+    (**Default**: `-1`)
+- `show_ruler::Bool`: Write the line-number ruler before each row.
+    (**Default**: `false`)
+- `ruler_foot::Bool`: End the ruler of the last frozen row with a foot instead of a bar.
+    (**Default**: `false`)
+- `line_numbers::Union{Nothing, Vector{Int}}`: Number written in the ruler for each row of
+    the layout, which must not decrease, or `nothing` to write the row index. The width of
+    the ruler follows the last number.
+    (**Default**: `nothing`)
+- `ruler_marks::Union{Nothing, Set{Int}}`: Rows whose ruler starts with a mark instead of a
+    blank, or `nothing` for none.
+    (**Default**: `nothing`)
+- `search_matches::Union{Nothing, SearchMatches}`: Search matches of each row, as the first
+    printable column and the width of each match, or `nothing` for none.
+    (**Default**: `nothing`)
+- `active_match::NTuple{2, Int}`: Row and index in the row of the active search match, or
+    `(0, 0)` for none. A location without a match is ignored.
+    (**Default**: `(0, 0)`)
+- `visual_rows::Union{Nothing, Vector{Int}}`: Rows written with a background, or `nothing`
+    for none. The first background of a repeated row wins.
+    (**Default**: `nothing`)
+- `visual_backgrounds::Union{String, Vector{String}}`: SGR parameters of the background of
+    every visual row, or of each one of them.
+    (**Default**: `"44"`)
+- `highlight::String`: Escape sequence that decorates the search matches.
+    (**Default**: `"\\e[7m"`)
+- `active_highlight::String`: Escape sequence that decorates the active search match.
+    (**Default**: `"\\e[30;43m"`)
+- `ruler_decoration::String`: Escape sequence that decorates the ruler.
+    (**Default**: `"\\e[90m"`)
+- `ruler_mark_decoration::String`: Escape sequence that decorates the marks of the ruler, or
+    an empty string to decorate them like the ruler.
+    (**Default**: `""`)
+"""
+Base.@kwdef struct ViewOptions
+    first_row::Int = 1
+    num_rows::Int = -1
+    first_column::Int = 1
+    num_columns::Int = -1
+    frozen_rows::Int = 0
+    frozen_columns::Int = 0
+    title_rows::Int = 0
+    max_rows::Int = -1
+    max_columns::Int = -1
+    show_ruler::Bool = false
+    ruler_foot::Bool = false
+    line_numbers::Union{Nothing, Vector{Int}} = nothing
+    ruler_marks::Union{Nothing, Set{Int}} = nothing
+    search_matches::Union{Nothing, SearchMatches} = nothing
+    active_match::NTuple{2, Int} = (0, 0)
+    visual_rows::Union{Nothing, Vector{Int}} = nothing
+    visual_backgrounds::Union{String, Vector{String}} = "44"
+    highlight::String = "\e[7m"
+    active_highlight::String = "\e[30;43m"
+    ruler_decoration::String = "\e[90m"
+    ruler_mark_decoration::String = ""
+end
+
+"""
     Keystroke
 
 Represent one decoded keystroke.
@@ -110,7 +196,7 @@ Store the pager faces rendered into escape sequences for one pager session.
 
 Every field holds a complete SGR sequence that resets the attributes and then selects the
 ones of the face, except the visual line backgrounds, which hold only the SGR parameters of
-the background, as `_textview` expects.
+the background, as [`ViewOptions`](@ref) expects.
 
 # Fields
 

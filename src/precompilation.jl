@@ -293,23 +293,25 @@ PrecompileTools.@setup_workload begin
                 TerminalPager._textview(
                     devnull,
                     prepared_layout,
-                    (1, -1, 1, -1);
-                    active_match_location = active_location,
-                    frozen_lines_at_beginning = 1,
-                    maximum_number_of_columns = 40,
-                    maximum_number_of_lines = 10,
-                    ruler_foot = true,
-                    search_matches = prepared_matches,
-                    show_ruler = true,
+                    ViewOptions(;
+                        active_match = active_location,
+                        frozen_rows = 1,
+                        max_columns = 40,
+                        max_rows = 10,
+                        ruler_foot = true,
+                        search_matches = prepared_matches,
+                        show_ruler = true,
+                    ),
                 )
                 TerminalPager._textview(
                     devnull,
                     ViewLayout(prepared_layout, [2]),
-                    (1, -1, 1, -1);
-                    line_numbers = [2],
-                    maximum_number_of_columns = 40,
-                    maximum_number_of_lines = 10,
-                    show_ruler = true,
+                    ViewOptions(;
+                        line_numbers = [2],
+                        max_columns = 40,
+                        max_rows = 10,
+                        show_ruler = true,
+                    ),
                 )
             end
         end

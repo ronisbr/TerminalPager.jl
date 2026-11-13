@@ -26,7 +26,7 @@ function _view!(pagerd::Pager)
     _reset_buffer!(buf.io)
 
     # A degenerate display cannot show any content, so rendering must be skipped entirely.
-    # Passing a nonpositive maximum number of lines to `_textview` means unbounded, which
+    # A negative maximum number of rows means unbounded for the renderer, which
     # would render the whole document into the frame buffer.
     if (rows <= 0) || (cols <= 0)
         _reset_crop!(pagerd)
@@ -57,9 +57,6 @@ function _view!(pagerd::Pager)
         write(buf.io, UInt8('\n'))
     end
 
-    vm_active_line_background = display_config.visual_active_line
-    vm_line_background = display_config.visual_line
-
     active_match_location = if active_search_match_id == 0
         (0, 0)
     else
@@ -78,46 +75,37 @@ function _view!(pagerd::Pager)
         buf
     end
 
-    # The render call is issued once per branch so that the visual arguments are concrete
-    # at each call site. Selecting them into union-typed locals first cost roughly 300
-    # bytes per frame in boxing. The visual backgrounds are not drawn while the freeze
-    # selection is active, because the guides are drawn over the view.
-    cropped_lines, cropped_columns = if pagerd.visual_mode && !selecting
-        # These buffers are reused across frames. Otherwise, every frame allocates one vector
-        # per selected line.
-        visual_lines = pagerd.visual_lines
-        visual_line_backgrounds = pagerd.visual_line_backgrounds
-        empty!(visual_lines)
-        empty!(visual_line_backgrounds)
-
-        visual_line = pagerd.visual_mode_line + start_row - 1
-        push!(visual_lines, visual_line)
-        push!(visual_line_backgrounds, vm_active_line_background)
-
-        # The range is clamped to the view, so that a huge range costs nothing per frame.
-        # The visual line keeps its own background because the first background of a row
-        # wins.
-        range = _visual_range(pagerd)
-
-        for line in max(first(range), start_row):min(Base.last(range), start_row + rows - 1)
-            line == visual_line && continue
-            push!(visual_lines, line)
-            push!(visual_line_backgrounds, vm_line_background)
-        end
-
-        # The marks are source lines, and the hidden ones are not drawn.
-        for line in pagerd.visual_mode_selected_lines
-            row = _first_row_of_line(pagerd, line)
-            row == 0 && continue
-            push!(visual_lines, row)
-            push!(visual_line_backgrounds, vm_line_background)
-        end
-
-        _render_view(pagerd, target, rows, cols, active_match_location, visual_lines,
-            visual_line_backgrounds)
+    # The visual backgrounds are not drawn while the freeze selection is active, because
+    # the guides are drawn over the view.
+    visual_rows = if pagerd.visual_mode && !selecting
+        _visual_rows!(pagerd, rows)
     else
-        _render_view(pagerd, target, rows, cols, active_match_location, nothing, "")
+        nothing
     end
+
+    options = ViewOptions(;
+        active_highlight = display_config.search_active_match,
+        active_match = active_match_location,
+        first_column = start_column,
+        first_row = start_row,
+        frozen_columns = pagerd.frozen_columns,
+        frozen_rows = pagerd.frozen_rows,
+        highlight = display_config.search_match,
+        line_numbers = pagerd.row_to_line,
+        max_columns = cols,
+        max_rows = rows,
+        ruler_decoration = display_config.ruler,
+        ruler_foot = true,
+        ruler_mark_decoration = display_config.bookmark,
+        ruler_marks = _bookmark_rows(pagerd),
+        search_matches = pagerd.search_matches,
+        show_ruler = pagerd.show_ruler,
+        title_rows = pagerd.title_rows,
+        visual_backgrounds = pagerd.visual_line_backgrounds,
+        visual_rows = visual_rows,
+    )
+
+    cropped_lines, cropped_columns = _textview(target, pagerd.text_layout, options)
 
     frame = pagerd.view_buf
 
@@ -154,56 +142,52 @@ function _view!(pagerd::Pager)
 end
 
 """
-    _render_view(pagerd::Pager, io::IO, rows::Int, cols::Int,
-        active_match_location::NTuple{2, Int}, visual_lines::Union{Nothing, Vector{Int}},
-        visual_line_backgrounds::Union{String, Vector{String}}) -> Tuple{Int, Int}
+    _visual_rows!(pagerd::Pager, rows::Int) -> Vector{Int}
 
-Render the viewport of `pagerd` into `io` and return the crop counters.
+Fill the reused buffers of `pagerd` with the rows rendered with a background in the visual
+mode and with the background of each one of them, for a view with `rows` rows, and return
+the buffer with the rows: the visual line, the range between the anchor and the visual
+line, and the marked lines.
 
 # Arguments
 
-- `pagerd::Pager`: Pager state to render.
-- `io::IO`: Buffer receiving the rendered view.
-- `rows::Int`: Number of available view rows.
-- `cols::Int`: Number of available view columns.
-- `active_match_location::NTuple{2, Int}`: Line and in-line index of the active match.
-- `visual_lines::Union{Nothing, Vector{Int}}`: Lines rendered with a visual background.
-- `visual_line_backgrounds::Union{String, Vector{String}}`: Background of each entry of
-    `visual_lines`.
+- `pagerd::Pager`: Pager state to inspect and whose buffers are filled.
+- `rows::Int`: Number of rows of the view.
 """
-function _render_view(
-    pagerd::Pager,
-    io::IO,
-    rows::Int,
-    cols::Int,
-    active_match_location::NTuple{2, Int},
-    visual_lines::Union{Nothing, Vector{Int}},
-    visual_line_backgrounds::Union{String, Vector{String}},
-)
-    display_config = pagerd.display_config
+function _visual_rows!(pagerd::Pager, rows::Int)
+    # These buffers are reused across frames. Otherwise, every frame allocates one vector
+    # per selected line.
+    visual_lines = pagerd.visual_lines
+    backgrounds = pagerd.visual_line_backgrounds
+    empty!(visual_lines)
+    empty!(backgrounds)
 
-    return _textview(
-        io,
-        pagerd.text_layout,
-        (pagerd.start_row, -1, pagerd.start_column, -1);
-        active_highlight = display_config.search_active_match,
-        active_match_location = active_match_location,
-        frozen_columns_at_beginning = pagerd.frozen_columns,
-        frozen_lines_at_beginning = pagerd.frozen_rows,
-        highlight = display_config.search_match,
-        line_numbers = pagerd.row_to_line,
-        maximum_number_of_columns = cols,
-        maximum_number_of_lines = rows,
-        ruler_decoration = display_config.ruler,
-        ruler_foot = true,
-        ruler_mark_decoration = display_config.bookmark,
-        ruler_marks = _bookmark_rows(pagerd),
-        search_matches = pagerd.search_matches,
-        show_ruler = pagerd.show_ruler,
-        title_lines = pagerd.title_rows,
-        visual_lines = visual_lines,
-        visual_line_backgrounds = visual_line_backgrounds,
-    )
+    display_config = pagerd.display_config
+    start_row = pagerd.start_row
+
+    visual_line = _visual_line_index(pagerd)
+    push!(visual_lines, visual_line)
+    push!(backgrounds, display_config.visual_active_line)
+
+    # The range is clamped to the view, so that a huge range costs nothing per frame. The
+    # visual line keeps its own background because the first background of a row wins.
+    range = _visual_range(pagerd)
+
+    for line in max(first(range), start_row):min(Base.last(range), start_row + rows - 1)
+        line == visual_line && continue
+        push!(visual_lines, line)
+        push!(backgrounds, display_config.visual_line)
+    end
+
+    # The marks are source lines, and the hidden ones are not drawn.
+    for line in pagerd.visual_mode_selected_lines
+        row = _first_row_of_line(pagerd, line)
+        row == 0 && continue
+        push!(visual_lines, row)
+        push!(backgrounds, display_config.visual_line)
+    end
+
+    return visual_lines
 end
 
 """

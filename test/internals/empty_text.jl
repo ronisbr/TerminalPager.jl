@@ -45,7 +45,7 @@ end
 
 @testset "Degenerate Display Sizes" begin
     # With one terminal row, only the command line fits. Rendering must be skipped:
-    # passing a nonpositive maximum number of lines to `_textview` means unbounded, which
+    # a negative maximum number of rows means unbounded for the renderer, which
     # would render the whole document into the frame buffer.
     pagerd = _create_modal_pagerd(["line $i" for i in 1:5], "")
     pagerd.display_size = (1, 40)

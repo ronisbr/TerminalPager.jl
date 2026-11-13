@@ -22,10 +22,23 @@ Render `lines` with the renderer of this package and return the bytes and the cr
 # Arguments
 
 - `lines::Vector{String}`: Lines of the text.
-- `view::NTuple{4, Int}`: View passed to the renderer.
+- `view::NTuple{4, Int}`: First row, number of rows, first column, and number of columns of
+    the view.
+
+# Keywords
+
+- `kwargs...`: Other fields of `TerminalPager.ViewOptions`.
 """
 function _ported_view(lines::Vector{String}, view::NTuple{4, Int}; kwargs...)
-    return TerminalPager._textview(TerminalPager.ViewLayout(lines), view; kwargs...)
+    options = TerminalPager.ViewOptions(;
+        first_row = view[1],
+        num_rows = view[2],
+        first_column = view[3],
+        num_columns = view[4],
+        kwargs...,
+    )
+
+    return TerminalPager._textview(TerminalPager.ViewLayout(lines), options)
 end
 
 """
@@ -236,16 +249,16 @@ const _VIEW_DECORATIONS = (
         @testset "$name: Single Axis" begin
             base = (
                 view = (2, -1, 3, -1),
-                frozen_lines_at_beginning = 1,
-                frozen_columns_at_beginning = 2,
-                title_lines = 1,
+                frozen_rows = 1,
+                frozen_columns = 2,
+                title_rows = 1,
                 show_ruler = true,
-                maximum_number_of_lines = 10,
-                maximum_number_of_columns = 24,
-                visual_lines = [3],
-                visual_line_backgrounds = "44",
+                max_rows = 10,
+                max_columns = 24,
+                visual_rows = [3],
+                visual_backgrounds = "44",
                 search_matches = matches,
-                active_match_location = (0, 0),
+                active_match = (0, 0),
             )
 
             variations = Any[]
@@ -253,28 +266,28 @@ const _VIEW_DECORATIONS = (
                 push!(variations, (; view = (r, -1, c, -1)))
             end
             for f in frozen_lines
-                push!(variations, (; frozen_lines_at_beginning = f))
+                push!(variations, (; frozen_rows = f))
             end
             for f in frozen_columns
-                push!(variations, (; frozen_columns_at_beginning = f))
+                push!(variations, (; frozen_columns = f))
             end
             for t in titles
-                push!(variations, (; title_lines = t))
+                push!(variations, (; title_rows = t))
             end
             for m in max_lines
-                push!(variations, (; maximum_number_of_lines = m))
+                push!(variations, (; max_rows = m))
             end
             for m in max_columns
-                push!(variations, (; maximum_number_of_columns = m))
+                push!(variations, (; max_columns = m))
             end
             for (vl, vb) in visuals
-                push!(variations, (; visual_lines = vl, visual_line_backgrounds = vb))
+                push!(variations, (; visual_rows = vl, visual_backgrounds = vb))
             end
             for s in searches
                 push!(variations, (; search_matches = s))
             end
             for loc in active_locations
-                push!(variations, (; active_match_location = loc))
+                push!(variations, (; active_match = loc))
             end
             push!(variations, (; show_ruler = false))
 
@@ -312,16 +325,16 @@ const _VIEW_DECORATIONS = (
 
                 kwargs = merge(
                     (
-                        frozen_lines_at_beginning = fl,
-                        frozen_columns_at_beginning = fc,
-                        title_lines = t,
+                        frozen_rows = fl,
+                        frozen_columns = fc,
+                        title_rows = t,
                         show_ruler = ruler,
-                        maximum_number_of_lines = ml,
-                        maximum_number_of_columns = mc,
-                        visual_lines = vl,
-                        visual_line_backgrounds = vb,
+                        max_rows = ml,
+                        max_columns = mc,
+                        visual_rows = vl,
+                        visual_backgrounds = vb,
                         search_matches = s,
-                        active_match_location = loc,
+                        active_match = loc,
                     ),
                     decorations,
                 )
@@ -342,7 +355,7 @@ const _VIEW_DECORATIONS = (
         push!(checksums, _view_checksum(lines, view, (;)))
         push!(
             checksums,
-            _view_checksum(lines, view, (; show_ruler = true, frozen_lines_at_beginning = 2)),
+            _view_checksum(lines, view, (; show_ruler = true, frozen_rows = 2)),
         )
     end
 
@@ -353,7 +366,7 @@ const _VIEW_DECORATIONS = (
 
     # A vector of backgrounds must have one entry per visual line.
     @test_throws ArgumentError _ported_view(
-        lines, (1, -1, 1, -1); visual_lines = [1, 2], visual_line_backgrounds = ["44"]
+        lines, (1, -1, 1, -1); visual_rows = [1, 2], visual_backgrounds = ["44"]
     )
 end
 
@@ -361,20 +374,24 @@ end
     lines = ["line $i" for i in 1:12]
     layout = TerminalPager.ViewLayout(lines)
 
+    # Render the layout with the options in the keywords and return only the text.
+    function render(; kwargs...)
+        options = TerminalPager.ViewOptions(; kwargs...)
+        return first(TerminalPager._textview(layout, options))
+    end
+
     # The ruler numbers follow `line_numbers`, and its width follows the last number.
-    text, _, _ = TerminalPager._textview(
-        layout, (1, 3, 1, -1); show_ruler = true, line_numbers = [7, 20, 300, (301:309)...]
+    text = render(;
+        num_rows = 3, show_ruler = true, line_numbers = [7, 20, 300, (301:309)...]
     )
     @test text == "\e[90m   7 │\e[0mline 1\n\e[90m  20 │\e[0mline 2\n\e[90m 300 │\e[0mline 3"
 
-    text, _, _ = TerminalPager._textview(
-        layout, (1, 3, 1, 4); show_ruler = true, maximum_number_of_columns = 10
-    )
+    text = render(; num_rows = 3, num_columns = 4, show_ruler = true, max_columns = 10)
     @test text == "\e[90m  1 │\e[0mline\n\e[90m  2 │\e[0mline\n\e[90m  3 │\e[0mline"
 
     # The foot replaces the bar on the last frozen row only, and follows the display limit.
-    text, _, _ = TerminalPager._textview(
-        layout, (3, 2, 1, -1); show_ruler = true, frozen_lines_at_beginning = 2, ruler_foot = true
+    text = render(;
+        first_row = 3, num_rows = 2, show_ruler = true, frozen_rows = 2, ruler_foot = true
     )
     @test split(text, '\n') == [
         "\e[90m  1 │\e[0mline 1",
@@ -382,18 +399,9 @@ end
         "\e[90m  3 │\e[0mline 3",
         "\e[90m  4 │\e[0mline 4",
     ]
-    text, _, _ = TerminalPager._textview(
-        layout, (1, -1, 1, -1); show_ruler = true, ruler_foot = true
-    )
+    text = render(; show_ruler = true, ruler_foot = true)
     @test !occursin("┴", text)
-    text, _, _ = TerminalPager._textview(
-        layout,
-        (1, -1, 1, -1);
-        show_ruler = true,
-        frozen_lines_at_beginning = 5,
-        maximum_number_of_lines = 3,
-        ruler_foot = true,
-    )
+    text = render(; show_ruler = true, frozen_rows = 5, max_rows = 3, ruler_foot = true)
     @test split(text, '\n') == [
         "\e[90m  1 │\e[0mline 1",
         "\e[90m  2 │\e[0mline 2",
@@ -401,9 +409,7 @@ end
     ]
 
     # A marked row starts with the mark instead of the blank.
-    text, _, _ = TerminalPager._textview(
-        layout, (1, 3, 1, -1); show_ruler = true, ruler_marks = Set([2, 99])
-    )
+    text = render(; num_rows = 3, show_ruler = true, ruler_marks = Set([2, 99]))
     @test split(text, '\n') == [
         "\e[90m  1 │\e[0mline 1",
         "\e[90m• 2 │\e[0mline 2",
@@ -412,12 +418,8 @@ end
 
     # An active match location without a match is ignored instead of throwing.
     matches = TerminalPager.string_search_per_line(lines, r"line 2")
-    text, _, _ = TerminalPager._textview(
-        layout, (1, 2, 1, -1); search_matches = matches, active_match_location = (5, 7)
-    )
+    text = render(; num_rows = 2, search_matches = matches, active_match = (5, 7))
     @test text == "line 1\n\e[7mline 2\e[0m"
-    text, _, _ = TerminalPager._textview(
-        layout, (1, 2, 1, -1); search_matches = matches, active_match_location = (2, 1)
-    )
+    text = render(; num_rows = 2, search_matches = matches, active_match = (2, 1))
     @test text == "line 1\n\e[30;43mline 2\e[0m"
 end
