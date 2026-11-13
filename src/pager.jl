@@ -1441,11 +1441,11 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :change_freeze
         _change_freeze!(pagerd)
     elseif event == :select_freeze
-        _select_freeze!(pagerd)
+        _select_on_screen!(pagerd, :freeze_selection)
     elseif event == :change_title_rows
         _change_title_rows!(pagerd)
     elseif event == :select_title_rows
-        _select_title_rows!(pagerd)
+        _select_on_screen!(pagerd, :title_selection)
     elseif event == :toggle_ruler
         _toggle_ruler!(pagerd)
     elseif event == :toggle_column_ruler
@@ -1529,132 +1529,82 @@ function _change_freeze!(pagerd::Pager)
 end
 
 """
-    _select_freeze!(pagerd::Pager) -> Nothing
+    _select_on_screen!(pagerd::Pager, mode::Symbol) -> Nothing
 
-Select the frozen rows and columns of `pagerd` on the screen and request a redraw.
+Select on the screen the frozen rows and columns of `pagerd`, if `mode` is
+`:freeze_selection`, or its title rows, if `mode` is `:title_selection`, and request a
+redraw.
 
-The view moves to the top-left corner of the text with only the title rows frozen, and the
-rows and the columns that would be frozen are marked by two guide lines drawn with the
-face `freeze_guide`. The movement keys and the mouse move the selection, Enter applies it,
-and the keys bound to `:quit`, `:quit_search`, and `:quit_eot` cancel it. In both cases, the
-viewport is restored and clamped to the frozen region. Nothing happens, and an error
-message is shown, if the text is empty or if the title rows do not fit in the view.
+The view moves to the top-left corner of the text, so that the screen rows and columns are
+the text rows and columns. Only the title rows stay frozen while the frozen rows and
+columns are selected, and nothing stays frozen while the title rows are. The rows and the
+columns that would be selected are marked by guide lines drawn with the face
+`freeze_guide`, the title selection having only the one under the rows. The movement keys
+and the mouse move the selection, Enter applies it, and the keys bound to `:quit`,
+`:quit_search`, and `:quit_eot` cancel it. In both cases, the viewport is restored and
+clamped to the frozen region.
+
+Since the titles are always frozen, applying more title rows than frozen rows freezes them
+as well. Nothing happens, and an error message is shown, if the text is empty, if the view
+has no rows, or if the title rows do not fit in the view while the frozen rows are selected.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
+- `mode::Symbol`: Selection mode, `:freeze_selection` or `:title_selection`.
 """
-function _select_freeze!(pagerd::Pager)
+function _select_on_screen!(pagerd::Pager, mode::Symbol)
+    selecting_titles = mode == :title_selection
     rows, cols = _get_pager_display_size(pagerd)
+
+    start_row = pagerd.start_row
+    start_column = pagerd.start_column
+    frozen_rows = pagerd.frozen_rows
+    frozen_columns = pagerd.frozen_columns
     title_rows = pagerd.title_rows
 
     if pagerd.num_lines == 0
-        _set_message!(pagerd, "Nothing to freeze"; kind = :error)
+        message = selecting_titles ? "Nothing to select" : "Nothing to freeze"
+        _set_message!(pagerd, message; kind = :error)
         return nothing
     end
 
-    if (rows <= 0) || (cols <= 0) || (title_rows >= rows)
-        _set_message!(
-            pagerd, "Not enough rows to show the $title_rows title rows"; kind = :error
-        )
+    if (rows <= 0) || (cols <= 0) || (!selecting_titles && (title_rows >= rows))
+        message = if selecting_titles
+            "Not enough rows to select the title rows"
+        else
+            "Not enough rows to show the $title_rows title rows"
+        end
+
+        _set_message!(pagerd, message; kind = :error)
         return nothing
     end
 
-    saved = (
-        start_row = pagerd.start_row,
-        start_column = pagerd.start_column,
-        frozen_rows = pagerd.frozen_rows,
-        frozen_columns = pagerd.frozen_columns,
-        mode = pagerd.mode,
-    )
-
-    # Only the titles stay frozen, and everything else scrolls to the top-left corner of the
-    # text, so that the screen rows and columns are the text rows and columns.
-    pagerd.frozen_rows = title_rows
+    # Everything but the rows kept frozen scrolls to the top-left corner of the text.
+    kept_rows = selecting_titles ? 0 : title_rows
+    pagerd.frozen_rows = kept_rows
     pagerd.frozen_columns = 0
-    pagerd.start_row = title_rows + 1
+    pagerd.title_rows = kept_rows
+    pagerd.start_row = kept_rows + 1
     pagerd.start_column = 1
 
     applied = _run_selection!(
-        pagerd, :freeze_selection, saved.mode, saved.frozen_rows, saved.frozen_columns
+        pagerd,
+        mode,
+        selecting_titles ? title_rows : frozen_rows,
+        selecting_titles ? 0 : frozen_columns,
     )
 
-    if applied
-        pagerd.frozen_rows = pagerd.freeze_selection_rows
-        pagerd.frozen_columns = pagerd.freeze_selection_columns
-        pagerd.visual_mode_line = 1
-        _set_message!(
-            pagerd,
-            "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
-        )
-    else
-        pagerd.frozen_rows = saved.frozen_rows
-        pagerd.frozen_columns = saved.frozen_columns
-    end
+    pagerd.frozen_rows = frozen_rows
+    pagerd.frozen_columns = frozen_columns
+    pagerd.title_rows = title_rows
 
-    _end_selection!(pagerd, saved.start_row, saved.start_column)
-
-    return nothing
-end
-
-"""
-    _select_title_rows!(pagerd::Pager) -> Nothing
-
-Select the title rows of `pagerd` on the screen and request a redraw.
-
-The view moves to the top-left corner of the text with nothing frozen, and a guide line
-drawn with the face `freeze_guide` marks the rows that would be titles. The movement keys
-and the mouse move it, Enter applies the selection, and the keys bound to `:quit`,
-`:quit_search`, and `:quit_eot` cancel it. Since the titles are always frozen, applying more
-title rows than frozen rows freezes them as well. In both cases, the viewport is restored and
-clamped to the frozen region. Nothing happens, and an error message is shown, if the text is
-empty or if the view has no rows.
-
-# Arguments
-
-- `pagerd::Pager`: Pager state to update.
-"""
-function _select_title_rows!(pagerd::Pager)
-    rows, cols = _get_pager_display_size(pagerd)
-
-    if pagerd.num_lines == 0
-        _set_message!(pagerd, "Nothing to select"; kind = :error)
-        return nothing
-    end
-
-    if (rows <= 0) || (cols <= 0)
-        _set_message!(pagerd, "Not enough rows to select the title rows"; kind = :error)
-        return nothing
-    end
-
-    saved = (
-        start_row = pagerd.start_row,
-        start_column = pagerd.start_column,
-        frozen_rows = pagerd.frozen_rows,
-        frozen_columns = pagerd.frozen_columns,
-        title_rows = pagerd.title_rows,
-        mode = pagerd.mode,
-    )
-
-    # Nothing stays frozen, and the view scrolls to the top-left corner of the text, so that
-    # the screen rows are the text rows.
-    pagerd.frozen_rows = 0
-    pagerd.frozen_columns = 0
-    pagerd.title_rows = 0
-    pagerd.start_row = 1
-    pagerd.start_column = 1
-
-    applied = _run_selection!(pagerd, :title_selection, saved.mode, saved.title_rows, 0)
-
-    pagerd.frozen_rows = saved.frozen_rows
-    pagerd.frozen_columns = saved.frozen_columns
-
-    if applied
+    if applied && selecting_titles
         title_rows = pagerd.freeze_selection_rows
         pagerd.title_rows = title_rows
 
         # The titles are always frozen.
-        if title_rows > saved.frozen_rows
+        if title_rows > frozen_rows
             pagerd.frozen_rows = title_rows
             pagerd.visual_mode_line = 1
             _set_message!(
@@ -1663,18 +1613,22 @@ function _select_title_rows!(pagerd::Pager)
         else
             _set_message!(pagerd, "$title_rows title rows")
         end
-    else
-        pagerd.title_rows = saved.title_rows
+    elseif applied
+        pagerd.frozen_rows = pagerd.freeze_selection_rows
+        pagerd.frozen_columns = pagerd.freeze_selection_columns
+        pagerd.visual_mode_line = 1
+        _set_message!(
+            pagerd, "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns"
+        )
     end
 
-    _end_selection!(pagerd, saved.start_row, saved.start_column)
+    _end_selection!(pagerd, start_row, start_column)
 
     return nothing
 end
 
 """
-    _run_selection!(pagerd::Pager, mode::Symbol, saved_mode::Symbol, rows::Int,
-        columns::Int) -> Bool
+    _run_selection!(pagerd::Pager, mode::Symbol, rows::Int, columns::Int) -> Bool
 
 Run the on-screen selection loop of `pagerd` in `mode`, starting with `rows` rows and
 `columns` columns selected, and return whether the selection was applied.
@@ -1682,19 +1636,17 @@ Run the on-screen selection loop of `pagerd` in `mode`, starting with `rows` row
 The loop redraws the screen, keeps the selection inside the view when the display is
 resized, and reads the keystrokes directly: Enter applies the selection, the keys bound to
 `:quit`, `:quit_search`, and `:quit_eot` cancel it, and the other keystrokes move it. The
-mode of the pager is set back to `saved_mode` when the loop ends.
+mode of the pager is restored when the loop ends.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
 - `mode::Symbol`: Selection mode, `:freeze_selection` or `:title_selection`.
-- `saved_mode::Symbol`: Mode to restore when the loop ends.
 - `rows::Int`: Initial number of selected rows.
 - `columns::Int`: Initial number of selected columns.
 """
-function _run_selection!(
-    pagerd::Pager, mode::Symbol, saved_mode::Symbol, rows::Int, columns::Int
-)
+function _run_selection!(pagerd::Pager, mode::Symbol, rows::Int, columns::Int)
+    saved_mode = pagerd.mode
     pagerd.mode = mode
     pagerd.freeze_selection_rows = rows
     pagerd.freeze_selection_columns = columns
@@ -2311,6 +2263,23 @@ function _selected_line_ids(pagerd::Pager)
 end
 
 """
+    _selected_text(pagerd::Pager) -> ViewLayout, Vector{Int}
+
+Return the layout and the indices of the lines that the commands acting on the text of
+`pagerd` must use: the source layout and the lines selected in the visual mode, or the
+layout of the visible rows and all of them outside it.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _selected_text(pagerd::Pager)
+    # The selection is made of source lines, whereas the whole text is the visible rows.
+    pagerd.visual_mode && return pagerd.source_layout, _selected_line_ids(pagerd)
+    return pagerd.text_layout, collect(1:pagerd.num_lines)
+end
+
+"""
     _num_selected_lines(pagerd::Pager) -> Int
 
 Return the number of lines selected in the visual mode of `pagerd` without allocating, which
@@ -2597,9 +2566,7 @@ again afterwards, and the screen is repainted.
 - `pagerd::Pager`: Pager state whose text is edited.
 """
 function _edit!(pagerd::Pager)
-    # The selection is made of source lines, whereas the whole text is the visible rows.
-    layout = pagerd.visual_mode ? pagerd.source_layout : pagerd.text_layout
-    ids = pagerd.visual_mode ? _selected_line_ids(pagerd) : 1:pagerd.num_lines
+    layout, ids = _selected_text(pagerd)
 
     if isempty(ids)
         _set_message!(pagerd, "Nothing to edit"; kind = :error)
@@ -2691,9 +2658,7 @@ function _save!(pagerd::Pager)
     path = expanduser(strip(keep_decorations ? cmd_input[2:end] : cmd_input))
     isempty(path) && return nothing
 
-    # The selection is made of source lines, whereas the whole text is the visible rows.
-    layout = pagerd.visual_mode ? pagerd.source_layout : pagerd.text_layout
-    ids = pagerd.visual_mode ? _selected_line_ids(pagerd) : 1:pagerd.num_lines
+    layout, ids = _selected_text(pagerd)
 
     if isempty(ids)
         _set_message!(pagerd, "Nothing to save"; kind = :error)
