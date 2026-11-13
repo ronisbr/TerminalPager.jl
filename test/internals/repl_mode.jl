@@ -242,3 +242,42 @@ end
         () -> @stdout_to_pager error("boom") auto = true
     )
 end
+
+struct _BrokenShow end
+Base.show(::IO, ::MIME"text/plain", ::_BrokenShow) = error("The value cannot be shown.")
+
+@testset "Output of a Command Whose Value Cannot Be Shown" begin
+    term = REPL.Terminals.TTYTerminal("", IOBuffer(), IOBuffer(), IOBuffer())
+    repl = REPL.LineEditREPL(term, true)
+    repl.interface = REPL.setup_interface(repl)
+    backend = REPL.REPLBackend()
+    repl.backendref = REPL.REPLBackendRef(backend)
+    backend_task = @async REPL.start_repl_backend(backend)
+
+    old_warning = TerminalPager.PRINTED_REPL_WARNING[]
+    TerminalPager.PRINTED_REPL_WARNING[] = true
+
+    try
+        # Everything the command printed before the error must not be lost.
+        output = _capture_stdout() do
+            TerminalPager._tp_mode_do_cmd(
+                repl, "println(\"important output\")\nMain._BrokenShow()"
+            )
+        end
+
+        @test output == "important output\n"
+        @test occursin("The value cannot be shown.", String(take!(term.err_stream)))
+
+        # The output of a command that works is still shown.
+        output = _capture_stdout() do
+            TerminalPager._tp_mode_do_cmd(repl, "println(\"first\")\n1 + 1")
+        end
+
+        @test output == "first\n2\n"
+        @test isempty(String(take!(term.err_stream)))
+    finally
+        TerminalPager.PRINTED_REPL_WARNING[] = old_warning
+        put!(backend.repl_channel, (nothing, -1))
+        empty!(TerminalPager._PAGER_HISTORY)
+    end
+end

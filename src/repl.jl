@@ -436,6 +436,9 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     old_stdout = stdout
     io = nothing
 
+    # Buffer that replaces `stdout` while the command runs.
+    buf = IOBuffer()
+
     try
         # Create a buffer that will replace `stdout`. Notice that we add a context key
         # called `bypass_pager` with value `true`. All the commands we call in this mode
@@ -444,7 +447,6 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # user presses CTRL-D. For more information, see:
         #
         #   https://github.com/ronisbr/TerminalPager.jl/issues/40
-        buf = IOBuffer()
         io = IOContext(
             IOContext(buf, stdout),
             :bypass_pager => true,
@@ -542,6 +544,10 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
             copy_to_clipboard && _CLIPBOARD[](remove_decorations(str))
         end
     catch err
+        # The output captured so far must be shown first, otherwise everything the command
+        # printed before the error is lost. This happens, for example, if the value of the
+        # command cannot be shown.
+        print(old_stdout, String(take!(buf)))
         Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())
 
     finally
