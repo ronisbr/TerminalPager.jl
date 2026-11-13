@@ -53,6 +53,26 @@
     @test_throws ArgumentError TerminalPager._validate_preference("pager_mode", "VI")
 end
 
+@testset "Key Bindings After Dropping All Preferences" begin
+    # The key bindings depend on the preference `"pager_mode"`. Hence, they must be rebuilt
+    # with the default mode when all the preferences are dropped.
+    eot = ("<eot>", false, false, false)
+
+    try
+        TerminalPager.set_preference!("pager_mode", "vi")
+        TerminalPager.reset_keybindings()
+        @test TerminalPager._KEYBINDINGS[eot] === :halfpagedown
+
+        TerminalPager.drop_all_preferences!()
+        @test TerminalPager._get_preference("pager_mode") == "default"
+        @test TerminalPager._KEYBINDINGS[eot] === :quit_eot
+        @test TerminalPager._KEYBINDINGS == TerminalPager._DEFAULT_KEYBINDINGS
+    finally
+        TerminalPager.drop_preference!("pager_mode")
+        TerminalPager.reset_keybindings()
+    end
+end
+
 @testset "Invalid Stored Preferences" begin
     # A stored value that is not valid must not throw when it is read, because it is read
     # while the package is loaded. The default value is used instead, with a warning.

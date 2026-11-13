@@ -76,11 +76,17 @@ function drop_all_preferences!()
         resetfaces!(Symbol(_FACE_PREFIX, name))
     end
 
+    # The cache must be dropped before the key bindings are rebuilt, because they depend on
+    # the preference `"pager_mode"`. Otherwise, the bindings of a mode that was just
+    # dropped would be applied again.
+    _invalidate_preference_cache!()
+
     # The persisted key bindings are dropped and the session bindings are rebuilt without
     # them.
     @delete_preferences!(_KEYBINDINGS_PREFERENCE)
     reset_keybindings()
 
+    # Like the other functions that change the preferences, this one leaves the cache empty.
     _invalidate_preference_cache!()
 
     return nothing
