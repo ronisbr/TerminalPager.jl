@@ -26,29 +26,12 @@ reports an error.
 """
 function _filter!(pagerd::Pager)
     saved = _filter_state(pagerd)
-    incremental = length(pagerd.source_layout) <= _INCREMENTAL_SEARCH_MAX_LINES
-    previewed = Ref("")
-    previewed_literal = Ref(pagerd.literal_search)
 
-    on_change = if incremental
-        pattern -> begin
-            previewed[] = pattern
-            previewed_literal[] = pagerd.literal_search
-            _preview_filter!(pagerd, pattern, saved)
-        end
-    else
-        _ -> pagerd.literal_search ? _LITERAL_TAG : ""
+    cmd_input, previewed = _prompt_pattern!(
+        pagerd, length(pagerd.source_layout), "&", _FILTER_HISTORY
+    ) do pattern
+        _preview_filter!(pagerd, pattern, saved)
     end
-
-    on_key = k -> _toggle_literal_search!(pagerd, k)
-
-    cmd_input = _read_cmd!(
-        pagerd;
-        prefix = "&",
-        history = _FILTER_HISTORY,
-        on_change = on_change,
-        on_key = on_key,
-    )
 
     if isnothing(cmd_input)
         _restore_filter_state!(pagerd, saved)
@@ -67,11 +50,7 @@ function _filter!(pagerd::Pager)
 
             # The preview already applied the confirmed pattern, unless the literal mode was
             # toggled after it.
-            if !(
-                incremental &&
-                (previewed[] == cmd_input) &&
-                (previewed_literal[] == pagerd.literal_search)
-            )
+            if !previewed
                 _restore_filter_state!(pagerd, saved)
                 _apply_filter!(pagerd, regex, inverted, cmd_input)
             end
@@ -143,7 +122,7 @@ function _filter_rows(layout::ViewLayout, regex::Regex, inverted::Bool, kept_row
 end
 
 """
-    _filter_state(pagerd::Pager) -> NamedTuple
+    _filter_state(pagerd::Pager) -> FilterState
 
 Return the filter, the layout, the viewport, and the search state of `pagerd`, so that they
 can be restored.
@@ -153,26 +132,26 @@ can be restored.
 - `pagerd::Pager`: Pager state to record.
 """
 function _filter_state(pagerd::Pager)
-    return (
-        filter_regex = pagerd.filter_regex,
-        filter_inverted = pagerd.filter_inverted,
-        filter_pattern = pagerd.filter_pattern,
-        text_layout = pagerd.text_layout,
-        row_to_line = pagerd.row_to_line,
-        line_to_row = pagerd.line_to_row,
-        num_lines = pagerd.num_lines,
-        text_width = pagerd.text_width,
-        start_row = pagerd.start_row,
-        start_column = pagerd.start_column,
-        visual_mode_line = pagerd.visual_mode_line,
-        search_matches = pagerd.search_matches,
-        ordered_search_matches = pagerd.ordered_search_matches,
-        active_search_match_id = pagerd.active_search_match_id,
+    return FilterState(
+        pagerd.filter_regex,
+        pagerd.filter_inverted,
+        pagerd.filter_pattern,
+        pagerd.text_layout,
+        pagerd.row_to_line,
+        pagerd.line_to_row,
+        pagerd.num_lines,
+        pagerd.text_width,
+        pagerd.start_row,
+        pagerd.start_column,
+        pagerd.visual_mode_line,
+        pagerd.search_matches,
+        pagerd.ordered_search_matches,
+        pagerd.active_search_match_id,
     )
 end
 
 """
-    _restore_filter_state!(pagerd::Pager, saved::NamedTuple) -> Nothing
+    _restore_filter_state!(pagerd::Pager, saved::FilterState) -> Nothing
 
 Restore in `pagerd` the state recorded in `saved` by [`_filter_state`](@ref), and request a
 full repaint.
@@ -180,9 +159,9 @@ full repaint.
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
-- `saved::NamedTuple`: State returned by [`_filter_state`](@ref).
+- `saved::FilterState`: State returned by [`_filter_state`](@ref).
 """
-function _restore_filter_state!(pagerd::Pager, saved::NamedTuple)
+function _restore_filter_state!(pagerd::Pager, saved::FilterState)
     pagerd.filter_regex = saved.filter_regex
     pagerd.filter_inverted = saved.filter_inverted
     pagerd.filter_pattern = saved.filter_pattern
@@ -242,7 +221,7 @@ function _clear_filter!(pagerd::Pager)
 end
 
 """
-    _preview_filter!(pagerd::Pager, pattern::String, saved::NamedTuple) -> String
+    _preview_filter!(pagerd::Pager, pattern::String, saved::FilterState) -> String
 
 Show the lines selected by `pattern` while it is typed and return the status shown in the
 prompt. The filter always starts from the state recorded in `saved`, so that the preview
@@ -252,9 +231,9 @@ does not drift while the pattern is edited. An empty or invalid pattern restores
 
 - `pagerd::Pager`: Pager state to update.
 - `pattern::String`: Pattern typed so far.
-- `saved::NamedTuple`: State returned by [`_filter_state`](@ref) before the prompt.
+- `saved::FilterState`: State returned by [`_filter_state`](@ref) before the prompt.
 """
-function _preview_filter!(pagerd::Pager, pattern::String, saved::NamedTuple)
+function _preview_filter!(pagerd::Pager, pattern::String, saved::FilterState)
     literal = pagerd.literal_search
     regex_pattern, inverted = _parse_filter(pattern)
     regex = isempty(regex_pattern) ? nothing : _try_regex(regex_pattern; literal = literal)
@@ -268,11 +247,7 @@ function _preview_filter!(pagerd::Pager, pattern::String, saved::NamedTuple)
         "$(pagerd.num_lines) of $(length(pagerd.source_layout)) lines"
     end
 
-    if literal
-        status = isempty(status) ? _LITERAL_TAG : _LITERAL_TAG * " " * status
-    end
-
     _paint_view!(pagerd)
 
-    return status
+    return _literal_status(status, literal)
 end

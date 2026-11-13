@@ -270,6 +270,76 @@ struct SearchMatch
 end
 
 """
+    struct SearchState
+
+Store what a search changes in a pager session, so that it can be restored when the search
+prompt is cancelled or when its pattern is not valid.
+
+# Fields
+
+- `search_matches::SearchMatches`: Search matches grouped by row.
+- `ordered_search_matches::Vector{SearchMatch}`: Matches in navigation order.
+- `active_search_match_id::Int`: Active match index in navigation order.
+- `search_columns::UnitRange{Int}`: Printable columns in which a match must start.
+- `search_pattern::String`: Input of the active search.
+- `search_regex::Union{Nothing, Regex}`: Regular expression of the active search.
+- `start_row::Int`: First visible row.
+- `start_column::Int`: First visible printable column.
+- `mode::Symbol`: Pager mode.
+"""
+struct SearchState
+    search_matches::SearchMatches
+    ordered_search_matches::Vector{SearchMatch}
+    active_search_match_id::Int
+    search_columns::UnitRange{Int}
+    search_pattern::String
+    search_regex::Union{Nothing, Regex}
+    start_row::Int
+    start_column::Int
+    mode::Symbol
+end
+
+"""
+    struct FilterState
+
+Store what a filter changes in a pager session, so that it can be restored when the filter
+prompt is cancelled or when its pattern is not valid.
+
+# Fields
+
+- `filter_regex::Union{Nothing, Regex}`: Regular expression of the active filter.
+- `filter_inverted::Bool`: Whether the filter hides the matching lines.
+- `filter_pattern::String`: Input of the active filter.
+- `text_layout::ViewLayout`: Layout of the rows shown by the pager.
+- `row_to_line::Union{Nothing, Vector{Int}}`: Source line of each row.
+- `line_to_row::Union{Nothing, Vector{Int}}`: Row of each source line.
+- `num_lines::Int`: Number of rows.
+- `text_width::Int`: Printable width of the widest row, or a negative number.
+- `start_row::Int`: First visible row.
+- `start_column::Int`: First visible printable column.
+- `visual_mode_line::Int`: Active visual line relative to the viewport.
+- `search_matches::SearchMatches`: Search matches grouped by row.
+- `ordered_search_matches::Vector{SearchMatch}`: Matches in navigation order.
+- `active_search_match_id::Int`: Active match index in navigation order.
+"""
+struct FilterState
+    filter_regex::Union{Nothing, Regex}
+    filter_inverted::Bool
+    filter_pattern::String
+    text_layout::ViewLayout
+    row_to_line::Union{Nothing, Vector{Int}}
+    line_to_row::Union{Nothing, Vector{Int}}
+    num_lines::Int
+    text_width::Int
+    start_row::Int
+    start_column::Int
+    visual_mode_line::Int
+    search_matches::SearchMatches
+    ordered_search_matches::Vector{SearchMatch}
+    active_search_match_id::Int
+end
+
+"""
     mutable struct TerminalModes
 
 Record the terminal modes a pager session enabled, so that they can be left and entered
