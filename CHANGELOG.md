@@ -37,6 +37,10 @@ Version 0.9.0
 - ![Feature][badge-feature] `Alt+l` at the search prompt toggles the literal mode, shown as
   `[lit]` and kept for the session, in which the pattern is searched as typed instead of as
   a regular expression.
+- ![Feature][badge-feature] The search can be restricted to a range of printable columns: a
+  pattern like `@12:20 14` keeps only the matches starting in the columns 12 to 20, and
+  `@12 14` or `@:20 14` leave one end open. The status line shows the range next to the
+  matches. (Issue [#21][gh-issue-21])
 
 Version 0.8.0
 -------------
@@ -567,6 +571,7 @@ Version 0.0.1
 [gh-issue-15]: https://github.com/ronisbr/TerminalPager.jl/issues/15
 [gh-issue-16]: https://github.com/ronisbr/TerminalPager.jl/issues/16
 [gh-issue-17]: https://github.com/ronisbr/TerminalPager.jl/issues/17
+[gh-issue-21]: https://github.com/ronisbr/TerminalPager.jl/issues/21
 [gh-issue-25]: https://github.com/ronisbr/TerminalPager.jl/issues/25
 [gh-issue-29]: https://github.com/ronisbr/TerminalPager.jl/issues/29
 [gh-issue-32]: https://github.com/ronisbr/TerminalPager.jl/issues/32

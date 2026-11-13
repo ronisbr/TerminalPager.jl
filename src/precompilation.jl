@@ -147,6 +147,8 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, ":\$\n")
             # Literal search toggled on and off at the prompt.
             write(stdin_wr, "/\el0.1986\el\n")
+            # Search restricted to a range of columns.
+            write(stdin_wr, "/@1:5 0.1986\n")
             # Search.
             write(stdin_wr, "/0.1986\n")
             # Next search.

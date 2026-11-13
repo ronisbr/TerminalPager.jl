@@ -86,6 +86,22 @@ end
     empty!(pagerd.ordered_search_matches)
     pagerd.active_search_match_id = 0
     @test startswith(_status_bar_text(pagerd, output), "SEARCH  no match ")
+
+    # A search restricted to a range of columns shows the range before the matches.
+    pagerd.search_columns = 12:20
+    @test startswith(_status_bar_text(pagerd, output), "SEARCH  @12:20  no match ")
+    pagerd.ordered_search_matches = [TerminalPager.SearchMatch(i, 1, 1, 1) for i in 1:5]
+    pagerd.active_search_match_id = 2
+    text = _status_bar_text(pagerd, output)
+    @test text == "SEARCH  @12:20  match 2/5" * " "^4 * "n:next  N:prev  Esc:clear   45%"
+    @test textwidth(text) == 60
+    pagerd.search_columns = 12:typemax(Int)
+    @test startswith(_status_bar_text(pagerd, output), "SEARCH  @12:  match 2/5")
+    pagerd.search_columns = 1:20
+    @test startswith(_status_bar_text(pagerd, output), "SEARCH  @:20  match 2/5")
+    pagerd.search_columns = 1:typemax(Int)
+    empty!(pagerd.ordered_search_matches)
+    pagerd.active_search_match_id = 0
     pagerd.mode = :view
 
     # The visual mode shows the number of selected lines and its own hints.

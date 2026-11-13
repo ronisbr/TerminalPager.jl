@@ -239,6 +239,8 @@ Store the mutable state for one pager session.
 - `search_matches::SearchMatches`: Search matches grouped by source line.
 - `ordered_search_matches::Vector{SearchMatch}`: Matches in navigation order.
 - `active_search_match_id::Int`: Active match index in navigation order.
+- `search_columns::UnitRange{Int}`: Printable columns in which a match must start, or
+    `1:typemax(Int)` when the search is not restricted.
 - `redraw::Bool`: Whether the viewport needs to be redrawn.
 - `message::String`: Message shown on the command line until the next keystroke, or an
     empty string.
@@ -291,6 +293,7 @@ Base.@kwdef mutable struct Pager
     search_matches::SearchMatches = SearchMatches()
     ordered_search_matches::Vector{SearchMatch} = SearchMatch[]
     active_search_match_id::Int = 0
+    search_columns::UnitRange{Int} = 1:typemax(Int)
     redraw::Bool = true
     message::String = ""
     message_kind::Symbol = :info

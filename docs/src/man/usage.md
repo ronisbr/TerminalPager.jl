@@ -44,7 +44,10 @@ case-insensitive unless the pattern has an uppercase letter. The up and down key
 prompt recall the previous patterns of the session. `Alt+l` at the prompt toggles the literal
 mode, shown as `[lit]` and kept for the session, in which the pattern is searched as typed,
 so that `a[1]` finds `a[1]` and not `a1`. A regular expression can also quote a part of the
-pattern with `\Q` and `\E`.
+pattern with `\Q` and `\E`. A pattern like `@12:20 14` matches only in the printable
+columns 12 to 20, which is handy to search one column of a table; `@12 14` and `@:20 14`
+leave one end open, and the column ruler (`R`) helps picking the columns. The status line
+shows the range next to the matches.
 
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
 move. `m` marks the visual line, and `y` copies the visual line and the marked lines to the

@@ -401,12 +401,15 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         display_config.mode_search
     end
 
-    # Details of the mode: "r×c", "t", "n selected", "match i/n", or "no match".
+    # Details of the mode: "r×c", "t", "n selected", "match i/n", or "no match". The search
+    # restricted to a range of columns shows the range, like "@12:20", before the matches.
     selection_rows = pagerd.freeze_selection_rows
     selection_columns = pagerd.freeze_selection_columns
     num_selected = length(pagerd.visual_mode_selected_lines)
     num_matches = length(pagerd.ordered_search_matches)
     match_id = pagerd.active_search_match_id
+    search_columns = pagerd.search_columns
+    w_columns = in_search ? _column_range_width(search_columns) : 0
     w_detail = if in_freeze
         ndigits(selection_rows) + 1 + ndigits(selection_columns)
     elseif in_titles
@@ -414,7 +417,8 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     elseif in_visual
         ndigits(num_selected) + 9
     elseif in_search
-        num_matches > 0 ? 7 + ndigits(match_id) + ndigits(num_matches) : _NO_MATCH_WIDTH
+        (w_columns > 0 ? w_columns + _ITEM_GAP : 0) +
+        (num_matches > 0 ? 7 + ndigits(match_id) + ndigits(num_matches) : _NO_MATCH_WIDTH)
     else
         0
     end
@@ -507,13 +511,20 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         elseif in_visual
             _write_decimal(out, num_selected)
             write(out, " selected")
-        elseif num_matches > 0
-            write(out, "match ")
-            _write_decimal(out, match_id)
-            write(out, UInt8('/'))
-            _write_decimal(out, num_matches)
         else
-            write(out, _NO_MATCH)
+            if w_columns > 0
+                _write_column_range(out, search_columns)
+                _write_blanks(out, _ITEM_GAP)
+            end
+
+            if num_matches > 0
+                write(out, "match ")
+                _write_decimal(out, match_id)
+                write(out, UInt8('/'))
+                _write_decimal(out, num_matches)
+            else
+                write(out, _NO_MATCH)
+            end
         end
     end
 
@@ -568,6 +579,48 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         out, position_style, start_row, num_lines, at_top, at_bottom, percentage
     )
 
+    return nothing
+end
+
+"""
+    _column_range_width(columns::UnitRange{Int}) -> Int
+
+Return the width of the search column range tag written by [`_write_column_range`](@ref),
+which is zero when the search is not restricted.
+
+# Arguments
+
+- `columns::UnitRange{Int}`: Printable columns in which a match must start.
+"""
+function _column_range_width(columns::UnitRange{Int})
+    first_column = first(columns)
+    last_column = last(columns)
+    ((first_column <= 1) && (last_column == typemax(Int))) && return 0
+
+    # `@`, the first column unless it is the first one, `:`, and the last column unless the
+    # range is open.
+    return 2 + (first_column > 1 ? ndigits(first_column) : 0) +
+           (last_column < typemax(Int) ? ndigits(last_column) : 0)
+end
+
+"""
+    _write_column_range(io::IO, columns::UnitRange{Int}) -> Nothing
+
+Write the search column range tag to `io`: `@a:b`, `@a:` for an open end, or `@:b` for a
+range starting at the first column.
+
+# Arguments
+
+- `io::IO`: Output stream to update.
+- `columns::UnitRange{Int}`: Printable columns in which a match must start.
+"""
+function _write_column_range(io::IO, columns::UnitRange{Int})
+    first_column = first(columns)
+    last_column = last(columns)
+    write(io, UInt8('@'))
+    (first_column > 1) && _write_decimal(io, first_column)
+    write(io, UInt8(':'))
+    (last_column < typemax(Int)) && _write_decimal(io, last_column)
     return nothing
 end
 

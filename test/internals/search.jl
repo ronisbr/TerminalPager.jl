@@ -101,6 +101,83 @@ end
     empty!(TerminalPager._SEARCH_HISTORY)
 end
 
+@testset "Column Restricted Search" begin
+    unrestricted = TerminalPager._UNRESTRICTED_COLUMNS
+
+    # The range is written before the pattern; a missing bound is open.
+    @test TerminalPager._parse_search_input("@12:20 x y") == ("x y", 12:20)
+    @test TerminalPager._parse_search_input("@12 x") == ("x", 12:typemax(Int))
+    @test TerminalPager._parse_search_input("@12: x") == ("x", 12:typemax(Int))
+    @test TerminalPager._parse_search_input("@:20 x") == ("x", 1:20)
+    @test TerminalPager._parse_search_input("abc") == ("abc", unrestricted)
+    @test TerminalPager._parse_search_input("@ x") == ("@ x", unrestricted)
+    @test TerminalPager._parse_search_input("@12:20") == ("@12:20", unrestricted)
+    @test TerminalPager._parse_search_input("@12:20 ") == ("", 12:20)
+    @test isnothing(TerminalPager._parse_search_input("@5:2 x"))
+    @test isnothing(TerminalPager._parse_search_input("@0 x"))
+
+    # Only the matches starting in the range are kept, in both the highlighting dictionary
+    # and the navigation order.
+    lines = ["a a a", "xa", "\e[31maaa\e[0m a"]
+    pagerd = _create_modal_pagerd(lines, "")
+    TerminalPager._find_matches!(pagerd, r"a"; columns = 3:4)
+    @test pagerd.search_matches == TerminalPager.SearchMatches(1 => [(3, 1)], 3 => [(3, 1)])
+    @test [(m.line, m.column) for m in pagerd.ordered_search_matches] == [(1, 3), (3, 3)]
+    @test pagerd.search_columns == 3:4
+
+    TerminalPager._find_matches!(pagerd, r"a")
+    @test sum(length, values(pagerd.search_matches)) == 8
+    @test pagerd.search_columns == unrestricted
+
+    # The modal flow applies the range, and quitting the search resets it.
+    pagerd = _create_modal_pagerd(lines, "@3:4 a\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :searching
+    @test length(pagerd.ordered_search_matches) == 2
+    @test pagerd.search_columns == 3:4
+    @test occursin("match 1/2", String(take!(pagerd.term.out_stream)))
+    pagerd.event = :quit_search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.search_columns == unrestricted
+
+    # A plain pattern resets the range, and cancelling restores the previous one.
+    pagerd = _create_modal_pagerd(lines, "@3:4 a\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    pagerd.input = TerminalPager.PagerInput(TypedInput("a\n"))
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.search_columns == unrestricted
+    @test length(pagerd.ordered_search_matches) == 8
+    pagerd.input = TerminalPager.PagerInput(TypedInput("@3:4 a\e"))
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.search_columns == unrestricted
+    @test length(pagerd.ordered_search_matches) == 8
+
+    # An invalid range is reported while typing and rejected on Enter. A range without a
+    # pattern is like an empty pattern.
+    pagerd = _create_modal_pagerd(lines, "@5:2 a\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :view
+    @test pagerd.message == "Invalid column range: @5:2 a"
+    @test occursin("invalid range", String(take!(pagerd.term.out_stream)))
+    pagerd = _create_modal_pagerd(lines, "@3:4 \n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.mode == :view
+    @test isempty(pagerd.message)
+
+    # The range is parsed before the literal quoting.
+    pagerd = _create_modal_pagerd(["a.a a.a", "aba"], "\el@3 a.a\n")
+    pagerd.event = :search
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test [(m.line, m.column) for m in pagerd.ordered_search_matches] == [(1, 5)]
+    empty!(TerminalPager._SEARCH_HISTORY)
+end
+
 @testset "Ordered Match Index Strategies" begin
     # The index is built by sorting the matched lines when they are sparse, and by walking the
     # lines when almost every one of them matches. Both must produce the same result.

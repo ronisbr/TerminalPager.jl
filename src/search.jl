@@ -42,22 +42,79 @@ function _change_active_match!(pagerd::Pager, forward::Bool = true)
     return nothing
 end
 
-"""
-    _find_matches!(pagerd::Pager, regex::Regex) -> Nothing
+# Column range of a search that is not restricted to a range of printable columns.
+const _UNRESTRICTED_COLUMNS = 1:typemax(Int)
 
-Find every match of `regex` and store the search metadata in `pagerd`.
+"""
+    _parse_search_input(str::AbstractString) ->
+        Union{Nothing, Tuple{String, UnitRange{Int}}}
+
+Split the search input `str` into the pattern and the range of printable columns in which a
+match must start. The range is written before the pattern as `@a:b `, `@a `, or `@:b `,
+where a missing bound is open. Without a range, the whole input is the pattern and the range
+is `_UNRESTRICTED_COLUMNS`. Return `nothing` if the range is invalid, that is, if it starts
+before the first column or ends before it starts.
+
+# Arguments
+
+- `str::AbstractString`: Search input typed by the user.
+"""
+function _parse_search_input(str::AbstractString)
+    m = match(r"^@(\d*)(?::(\d*))? (.*)$"s, str)
+    isnothing(m) && return String(str), _UNRESTRICTED_COLUMNS
+
+    first_str = m[1]
+    last_str = m[2]
+    (isempty(first_str) && (isnothing(last_str) || isempty(last_str))) &&
+        return String(str), _UNRESTRICTED_COLUMNS
+
+    # `parse` is qualified because **JuliaSyntax.jl** exports a function with the same name.
+    first_column = isempty(first_str) ? 1 : Base.parse(Int, first_str)
+    last_column = if isnothing(last_str) || isempty(last_str)
+        typemax(Int)
+    else
+        Base.parse(Int, last_str)
+    end
+    ((first_column < 1) || (last_column < first_column)) && return nothing
+
+    return String(m[3]), first_column:last_column
+end
+
+"""
+    _find_matches!(pagerd::Pager, regex::Regex; kwargs...) -> Nothing
+
+Find every match of `regex` and store the search metadata in `pagerd`, keeping only the
+matches that start in the printable `columns`.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
 - `regex::Regex`: Regular expression to search for.
+
+# Keywords
+
+- `columns::UnitRange{Int}`: Printable columns in which a match must start.
+    (**Default**: `_UNRESTRICTED_COLUMNS`)
 """
-function _find_matches!(pagerd::Pager, regex::Regex)
+function _find_matches!(
+    pagerd::Pager, regex::Regex; columns::UnitRange{Int} = _UNRESTRICTED_COLUMNS
+)
     search_matches = string_search_per_line(pagerd.text_layout, regex)
+
+    # The matches outside the columns are dropped from the highlighting dictionary too, so
+    # that the view and the navigation agree. The dictionary is a fresh one.
+    if columns != _UNRESTRICTED_COLUMNS
+        filter!(search_matches) do (_, line_matches)
+            filter!(m -> m[1] in columns, line_matches)
+            return !isempty(line_matches)
+        end
+    end
+
     ordered_search_matches = _ordered_search_matches(search_matches, pagerd.num_lines)
 
     pagerd.search_matches = search_matches
     pagerd.ordered_search_matches = ordered_search_matches
+    pagerd.search_columns = columns
 
     # Start the navigation just before the first match at or after the top of the current view,
     # so that the following `_change_active_match!` selects it. Otherwise, searching always
@@ -235,14 +292,22 @@ function _search!(pagerd::Pager)
         pagerd; history = _SEARCH_HISTORY, on_change = on_change, on_key = on_key
     )
 
+    parsed = isnothing(cmd_input) ? nothing : _parse_search_input(cmd_input)
+
     if isnothing(cmd_input) || isempty(cmd_input)
         _restore_search_state!(pagerd, saved)
+    elseif isnothing(parsed)
+        _restore_search_state!(pagerd, saved)
+        _set_message!(pagerd, "Invalid column range: $cmd_input"; kind = :error)
+    elseif isempty(parsed[1])
+        _restore_search_state!(pagerd, saved)
     else
-        regex = _try_regex(cmd_input; literal = pagerd.literal_search)
+        pattern, columns = parsed
+        regex = _try_regex(pattern; literal = pagerd.literal_search)
 
         if isnothing(regex)
             _restore_search_state!(pagerd, saved)
-            _set_message!(pagerd, "Invalid regex: $cmd_input"; kind = :error)
+            _set_message!(pagerd, "Invalid regex: $pattern"; kind = :error)
         else
             _push_history!(_SEARCH_HISTORY, cmd_input)
 
@@ -254,7 +319,7 @@ function _search!(pagerd::Pager)
                 (previewed_literal[] == pagerd.literal_search)
             )
                 _restore_viewport!(pagerd, saved)
-                _apply_search!(pagerd, regex)
+                _apply_search!(pagerd, regex, columns)
             end
         end
     end
@@ -278,6 +343,7 @@ function _search_state(pagerd::Pager)
         search_matches = pagerd.search_matches,
         ordered_search_matches = pagerd.ordered_search_matches,
         active_search_match_id = pagerd.active_search_match_id,
+        search_columns = pagerd.search_columns,
         start_row = pagerd.start_row,
         start_column = pagerd.start_column,
         mode = pagerd.mode,
@@ -298,6 +364,7 @@ function _restore_search_state!(pagerd::Pager, saved::NamedTuple)
     pagerd.search_matches = saved.search_matches
     pagerd.ordered_search_matches = saved.ordered_search_matches
     pagerd.active_search_match_id = saved.active_search_match_id
+    pagerd.search_columns = saved.search_columns
     pagerd.mode = saved.mode
     _restore_viewport!(pagerd, saved)
     return nothing
@@ -320,18 +387,23 @@ function _restore_viewport!(pagerd::Pager, saved::NamedTuple)
 end
 
 """
-    _apply_search!(pagerd::Pager, regex::Regex) -> Nothing
+    _apply_search!(pagerd::Pager, regex::Regex,
+        columns::UnitRange{Int} = _UNRESTRICTED_COLUMNS) -> Nothing
 
-Find the matches of `regex` in `pagerd`, activate the first one at or after the top of the
-view, move the view to it, and enter the searching mode.
+Find the matches of `regex` starting in the printable `columns` of `pagerd`, activate the
+first one at or after the top of the view, move the view to it, and enter the searching mode.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
 - `regex::Regex`: Regular expression to search for.
+- `columns::UnitRange{Int}`: Printable columns in which a match must start.
+    (**Default**: `_UNRESTRICTED_COLUMNS`)
 """
-function _apply_search!(pagerd::Pager, regex::Regex)
-    _find_matches!(pagerd, regex)
+function _apply_search!(
+    pagerd::Pager, regex::Regex, columns::UnitRange{Int} = _UNRESTRICTED_COLUMNS
+)
+    _find_matches!(pagerd, regex; columns = columns)
     _change_active_match!(pagerd, true)
     _move_view_to_match!(pagerd)
     pagerd.mode = :searching
@@ -354,14 +426,19 @@ drift while the pattern is edited. An empty or invalid pattern restores `saved`.
 """
 function _preview_search!(pagerd::Pager, pattern::String, saved::NamedTuple)
     literal = pagerd.literal_search
-    regex = isempty(pattern) ? nothing : _try_regex(pattern; literal = literal)
+    parsed = _parse_search_input(pattern)
+    regex_pattern = isnothing(parsed) ? "" : parsed[1]
+    regex = isempty(regex_pattern) ? nothing : _try_regex(regex_pattern; literal = literal)
 
-    status = if isnothing(regex)
+    status = if isnothing(parsed)
         _restore_search_state!(pagerd, saved)
-        isempty(pattern) ? "" : "invalid regex"
+        "invalid range"
+    elseif isnothing(regex)
+        _restore_search_state!(pagerd, saved)
+        isempty(regex_pattern) ? "" : "invalid regex"
     else
         _restore_viewport!(pagerd, saved)
-        _apply_search!(pagerd, regex)
+        _apply_search!(pagerd, regex, parsed[2])
         num_matches = length(pagerd.ordered_search_matches)
         match_id = pagerd.active_search_match_id
         num_matches > 0 ? "match $match_id/$num_matches" : "no match"
@@ -487,6 +564,7 @@ function _quit_search!(pagerd::Pager)
     empty!(pagerd.search_matches)
     empty!(pagerd.ordered_search_matches)
     pagerd.active_search_match_id = 0
+    pagerd.search_columns = _UNRESTRICTED_COLUMNS
     pagerd.mode = :view
     _request_redraw!(pagerd)
     return nothing
