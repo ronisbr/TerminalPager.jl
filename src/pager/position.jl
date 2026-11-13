@@ -80,10 +80,19 @@ function _restore_state!(pagerd::Pager, result::PagerResult)
         if !isnothing(parsed) && !isempty(parsed[1])
             regex = _try_regex(parsed[1]; literal = pagerd.literal_search)
 
+            # The search is applied like when it is confirmed at the prompt, except that
+            # the view is not moved to the active match, which is the first one at or after
+            # the top of the view. A regex that fails while matching is also ignored.
             if !isnothing(regex)
-                _find_matches!(pagerd, regex; columns = parsed[2])
-                pagerd.search_pattern = result.search_pattern
-                pagerd.mode = :searching
+                try
+                    _find_matches!(pagerd, regex; columns = parsed[2])
+                    _change_active_match!(pagerd, true)
+                    pagerd.search_regex = regex
+                    pagerd.search_pattern = result.search_pattern
+                    pagerd.mode = :searching
+                catch err
+                    isnothing(_regex_error(err)) && rethrow()
+                end
             end
         end
     end

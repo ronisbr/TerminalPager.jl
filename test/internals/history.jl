@@ -153,6 +153,17 @@ end
     @test pagerd.search_pattern == "line 2"
     @test length(pagerd.ordered_search_matches) == 11
 
+    # The restored search behaves like one that was typed: its active match is the first
+    # one at or after the top of the view, and it is applied again when the rows change.
+    @test pagerd.search_regex isa Regex
+    @test pagerd.active_search_match_id == 2
+    @test pagerd.ordered_search_matches[2].line == 20
+    @test isempty(pagerd.message)
+
+    TerminalPager._apply_filter!(pagerd, r"line 1$|line 20", false, "line 1\$|line 20")
+    @test pagerd.num_lines == 2
+    @test [m.line for m in pagerd.ordered_search_matches] == [2]
+
     pagerd = _create_modal_pagerd(lines, "")
     pagerd.frozen_rows = 2
     TerminalPager._restore_state!(pagerd, TerminalPager.PagerResult(String[], 1, 1, "["))
@@ -178,6 +189,31 @@ end
     @test result.start_row == 7
     @test result.search_pattern == "@1:4 line"
     @test occursin("SEARCH", String(take!(output)))
+
+    # The result has the line of the text at the top of the view, even if the session quits
+    # with a filter, so that the same line is at the top when the text is reopened.
+    input = TypedInput("&[05]\$\njjq")
+    output = IOContext(IOBuffer(), :displaysize => (5, 40), :color => false)
+    term = REPL.Terminals.TTYTerminal("", input, output, output)
+    result = TerminalPager._pager!(
+        term,
+        join(lines, '\n');
+        input = TerminalPager.PagerInput(input),
+        use_alternate_screen_buffer = false,
+    )
+    @test result.start_row == 15
+    empty!(TerminalPager._FILTER_HISTORY)
+
+    input = IOBuffer("q")
+    term = REPL.Terminals.TTYTerminal("", input, output, output)
+    reopened = TerminalPager._pager!(
+        term,
+        join(lines, '\n');
+        input = TerminalPager.PagerInput(input),
+        use_alternate_screen_buffer = false,
+        _restore = result,
+    )
+    @test reopened.start_row == 15
 end
 
 @testset "History Menu and Shortcuts" begin

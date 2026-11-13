@@ -368,7 +368,7 @@ Store what a pager session leaves when it quits.
 
 - `selection::Vector{String}`: Lines copied by the last yank of the session, without their
     decorations, or an empty vector if nothing was copied.
-- `start_row::Int`: First visible row when the session quit.
+- `start_row::Int`: Line of the text at the first visible row when the session quit.
 - `start_column::Int`: First visible printable column when the session quit.
 - `search_pattern::String`: Pattern of the active search when the session quit, or an empty
     string.

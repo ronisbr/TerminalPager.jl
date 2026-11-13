@@ -329,8 +329,13 @@ function _pager!(
         end
     end
 
+    # The first visible line is a line of the text, not a row of the view, which are not
+    # the same when a filter is active. Otherwise, the position could not be restored.
     return PagerResult(
-        pagerd.yanked, pagerd.start_row, pagerd.start_column, pagerd.search_pattern
+        pagerd.yanked,
+        _source_line(pagerd, pagerd.start_row),
+        pagerd.start_column,
+        pagerd.search_pattern,
     )
 end
 
