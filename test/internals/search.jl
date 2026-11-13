@@ -447,3 +447,54 @@ end
     @test pagerd.active_search_match_id == 2
     @test pagerd.message == "Search wrapped to the bottom"
 end
+
+@testset "Regex That Fails While Matching" begin
+    # A valid regex can still fail when it is matched, for example if it exceeds the match
+    # limit of PCRE. The error must be reported instead of ending the session.
+    lines = ["const a_fairly_long_identifier_name_in_some_code = 1;", "second line"]
+    pattern = "^(\\w+\\s?)+\$"
+
+    # The pattern is typed, so that it is previewed, and then pasted at once.
+    for input in (TypedInput(pattern * "\n"), TypedInput([pattern * "\n"]))
+        output = IOBuffer()
+        pagerd = TerminalPager.Pager(;
+            buf = IOContext(IOBuffer(), :color => false),
+            display_size = (10, 40),
+            input = TerminalPager.PagerInput(input),
+            num_lines = length(lines),
+            term = REPL.Terminals.TTYTerminal("", input, output, output),
+            text_layout = TerminalPager.ViewLayout(lines),
+        )
+
+        try
+            pagerd.event = :search
+            @test TerminalPager._pager_event_process!(pagerd)
+            @test pagerd.message == "Regex error: match limit exceeded"
+            @test pagerd.message_kind === :error
+            @test pagerd.mode === :view
+            @test isnothing(pagerd.search_regex)
+            @test isempty(pagerd.ordered_search_matches)
+            @test pagerd.search_pattern == ""
+
+            pagerd.input = TerminalPager.PagerInput(TypedInput(pattern * "\n"))
+            pagerd.term = REPL.Terminals.TTYTerminal(
+                "", pagerd.input.stream, output, output
+            )
+            pagerd.message = ""
+            pagerd.event = :filter
+            @test TerminalPager._pager_event_process!(pagerd)
+            @test pagerd.message == "Regex error: match limit exceeded"
+            @test pagerd.message_kind === :error
+            @test isnothing(pagerd.filter_regex)
+            @test pagerd.num_lines == 2
+        finally
+            empty!(TerminalPager._SEARCH_HISTORY)
+            empty!(TerminalPager._FILTER_HISTORY)
+        end
+    end
+
+    err = ErrorException("PCRE.exec error: match limit exceeded")
+    @test TerminalPager._regex_error(err) == "match limit exceeded"
+    @test isnothing(TerminalPager._regex_error(ErrorException("other")))
+    @test isnothing(TerminalPager._regex_error(ArgumentError("PCRE")))
+end

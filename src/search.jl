@@ -381,10 +381,12 @@ function _search!(pagerd::Pager)
             pagerd.last_position = (saved.start_row, saved.start_column)
 
             # The preview already applied the confirmed pattern, unless the literal mode was
-            # toggled after it.
-            if !previewed
-                _restore_viewport!(pagerd, saved)
-                _apply_search!(pagerd, regex, columns)
+            # toggled after it or the search failed, in which case the state before the
+            # prompt was restored.
+            if !previewed || (pagerd.search_regex === saved.search_regex)
+                reason = _try_search!(pagerd, regex, columns, saved)
+                isnothing(reason) ||
+                    _set_message!(pagerd, "Regex error: $reason"; kind = :error)
             end
         end
     end
@@ -481,6 +483,59 @@ function _apply_search!(
 end
 
 """
+    _regex_error(err::Any) -> Union{Nothing, String}
+
+Return why a regular expression could not be matched given the error `err` thrown by the
+match, or `nothing` if `err` is another kind of error.
+
+A regular expression that was compiled can still fail when it is matched against a text,
+for example if it backtracks more than the match limit of PCRE allows.
+
+# Arguments
+
+- `err::Any`: Error thrown while a regular expression was matched.
+"""
+function _regex_error(err)
+    ((err isa ErrorException) && startswith(err.msg, "PCRE")) || return nothing
+    return replace(err.msg, r"^PCRE\.\w+ error: " => "")
+end
+
+"""
+    _try_search!(
+        pagerd::Pager,
+        regex::Regex,
+        columns::UnitRange{Int},
+        saved::SearchState
+    ) -> Union{Nothing, String}
+
+Search for `regex` in the text of `pagerd` from the viewport in `saved`, like
+[`_apply_search!`](@ref) does, and return `nothing`. If the regular expression cannot be
+matched against the text, restore the state in `saved` and return the reason.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `regex::Regex`: Regular expression to search for.
+- `columns::UnitRange{Int}`: Printable columns in which a match must start.
+- `saved::SearchState`: State returned by [`_search_state`](@ref) before the prompt.
+"""
+function _try_search!(
+    pagerd::Pager, regex::Regex, columns::UnitRange{Int}, saved::SearchState
+)
+    try
+        _restore_viewport!(pagerd, saved)
+        _apply_search!(pagerd, regex, columns)
+    catch err
+        reason = _regex_error(err)
+        isnothing(reason) && rethrow()
+        _restore_search_state!(pagerd, saved)
+        return reason
+    end
+
+    return nothing
+end
+
+"""
     _preview_search!(pagerd::Pager, pattern::String, saved::SearchState) -> String
 
 Show the matches of `pattern` while it is typed and return the status shown in the prompt.
@@ -506,9 +561,9 @@ function _preview_search!(pagerd::Pager, pattern::String, saved::SearchState)
     elseif isnothing(regex)
         _restore_search_state!(pagerd, saved)
         isempty(regex_pattern) ? "" : "invalid regex"
+    elseif !isnothing(_try_search!(pagerd, regex, parsed[2], saved))
+        "regex error"
     else
-        _restore_viewport!(pagerd, saved)
-        _apply_search!(pagerd, regex, parsed[2])
         num_matches = length(pagerd.ordered_search_matches)
         match_id = pagerd.active_search_match_id
         num_matches > 0 ? "match $match_id/$num_matches" : "no match"

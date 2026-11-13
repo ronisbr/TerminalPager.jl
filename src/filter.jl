@@ -49,10 +49,12 @@ function _filter!(pagerd::Pager)
             _push_history!(_FILTER_HISTORY, cmd_input)
 
             # The preview already applied the confirmed pattern, unless the literal mode was
-            # toggled after it.
-            if !previewed
-                _restore_filter_state!(pagerd, saved)
-                _apply_filter!(pagerd, regex, inverted, cmd_input)
+            # toggled after it or the filter failed, in which case the state before the
+            # prompt was restored.
+            if !previewed || (pagerd.filter_regex === saved.filter_regex)
+                reason = _try_filter!(pagerd, regex, inverted, cmd_input, saved)
+                isnothing(reason) ||
+                    _set_message!(pagerd, "Regex error: $reason"; kind = :error)
             end
         end
     end
@@ -221,6 +223,44 @@ function _clear_filter!(pagerd::Pager)
 end
 
 """
+    _try_filter!(
+        pagerd::Pager,
+        regex::Regex,
+        inverted::Bool,
+        pattern::String,
+        saved::FilterState
+    ) -> Union{Nothing, String}
+
+Restore the state in `saved`, filter the lines of `pagerd` with `regex`, like
+[`_apply_filter!`](@ref) does, and return `nothing`. If the regular expression cannot be
+matched against the text, restore the state in `saved` again and return the reason.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `regex::Regex`: Regular expression of the filter.
+- `inverted::Bool`: Whether the filter hides the matching lines.
+- `pattern::String`: Input of the filter.
+- `saved::FilterState`: State returned by [`_filter_state`](@ref) before the prompt.
+"""
+function _try_filter!(
+    pagerd::Pager, regex::Regex, inverted::Bool, pattern::String, saved::FilterState
+)
+    _restore_filter_state!(pagerd, saved)
+
+    try
+        _apply_filter!(pagerd, regex, inverted, pattern)
+    catch err
+        reason = _regex_error(err)
+        isnothing(reason) && rethrow()
+        _restore_filter_state!(pagerd, saved)
+        return reason
+    end
+
+    return nothing
+end
+
+"""
     _preview_filter!(pagerd::Pager, pattern::String, saved::FilterState) -> String
 
 Show the lines selected by `pattern` while it is typed and return the status shown in the
@@ -238,12 +278,12 @@ function _preview_filter!(pagerd::Pager, pattern::String, saved::FilterState)
     regex_pattern, inverted = _parse_filter(pattern)
     regex = isempty(regex_pattern) ? nothing : _try_regex(regex_pattern; literal = literal)
 
-    _restore_filter_state!(pagerd, saved)
-
     status = if isnothing(regex)
+        _restore_filter_state!(pagerd, saved)
         isempty(regex_pattern) ? "" : "invalid regex"
+    elseif !isnothing(_try_filter!(pagerd, regex, inverted, pattern, saved))
+        "regex error"
     else
-        _apply_filter!(pagerd, regex, inverted, pattern)
         "$(pagerd.num_lines) of $(length(pagerd.source_layout)) lines"
     end
 
