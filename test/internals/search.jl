@@ -116,6 +116,10 @@ end
     @test isnothing(TerminalPager._parse_search_input("@5:2 x"))
     @test isnothing(TerminalPager._parse_search_input("@0 x"))
 
+    # A column that does not fit in an integer makes the range invalid instead of throwing.
+    @test isnothing(TerminalPager._parse_search_input("@99999999999999999999 x"))
+    @test isnothing(TerminalPager._parse_search_input("@1:99999999999999999999 x"))
+
     # Only the matches starting in the range are kept, in both the highlighting dictionary
     # and the navigation order.
     lines = ["a a a", "xa", "\e[31maaa\e[0m a"]

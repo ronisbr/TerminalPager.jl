@@ -103,7 +103,11 @@ function _filter_rows(layout::ViewLayout, regex::Regex, inverted::Bool, kept_row
     num_lines = length(layout)
     rows = Int[]
 
-    for l in 1:min(kept_rows, num_lines)
+    # The number of kept rows is selected by the user, so that it can be larger than the
+    # number of lines.
+    kept_rows = clamp(kept_rows, 0, num_lines)
+
+    for l in 1:kept_rows
         push!(rows, l)
     end
 

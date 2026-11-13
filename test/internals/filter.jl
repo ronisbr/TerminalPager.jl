@@ -231,6 +231,19 @@ end
     empty!(TerminalPager._LAST_YANK)
 end
 
+@testset "Filter With Huge Frozen Rows" begin
+    # The numbers of frozen and title rows are selected by the user. A value larger than
+    # the number of lines must not overflow when the rows of the filter are computed.
+    layout = TerminalPager.ViewLayout(["a1", "b", "a2"])
+    @test TerminalPager._filter_rows(layout, r"a", false, typemax(Int)) == [1, 2, 3]
+    @test TerminalPager._filter_rows(layout, r"a", false, -5) == [1, 3]
+
+    pagerd = _create_modal_pagerd(["a1", "b", "a2"], "")
+    pagerd.frozen_rows = typemax(Int)
+    TerminalPager._apply_filter!(pagerd, r"a", false, "a")
+    @test pagerd.num_lines == 3
+end
+
 @testset "Filter Status Line" begin
     pagerd, output = _create_status_pagerd(["line $i" for i in 1:20])
     pagerd.features = [:help]

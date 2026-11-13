@@ -25,10 +25,12 @@ function _goto_line!(pagerd::Pager)
         _remember_position!(pagerd)
         num_lines = pagerd.num_lines
 
+        # The offset and the percentage are typed by the user, so that they are limited to
+        # the values that can change the result. Otherwise, a very large one overflows.
         line = if kind === :relative
-            pagerd.start_row + value
+            pagerd.start_row + clamp(value, -num_lines, num_lines)
         elseif kind === :percent
-            round(Int, num_lines * value / 100)
+            round(Int, num_lines * clamp(value, 0, 100) / 100)
         elseif kind === :end
             num_lines - _view_rows(pagerd) + 1
         elseif !isnothing(pagerd.row_to_line)

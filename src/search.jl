@@ -69,12 +69,15 @@ function _parse_search_input(str::AbstractString)
         return String(str), _UNRESTRICTED_COLUMNS
 
     # `parse` is qualified because **JuliaSyntax.jl** exports a function with the same name.
-    first_column = isempty(first_str) ? 1 : Base.parse(Int, first_str)
+    # A number that does not fit in an integer makes the range invalid. Notice that
+    # `tryparse` must be used because the regex accepts any number of digits.
+    first_column = isempty(first_str) ? 1 : tryparse(Int, first_str)
     last_column = if isnothing(last_str) || isempty(last_str)
         typemax(Int)
     else
-        Base.parse(Int, last_str)
+        tryparse(Int, last_str)
     end
+    (isnothing(first_column) || isnothing(last_column)) && return nothing
     ((first_column < 1) || (last_column < first_column)) && return nothing
 
     return String(m[3]), first_column:last_column
