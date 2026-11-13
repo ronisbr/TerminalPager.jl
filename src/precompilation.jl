@@ -57,6 +57,25 @@ const _PRECOMPILE_MARKDOWN = """
     [^1]: Footnote text.
     """
 
+"""
+    _start_workload_session(str::String, keywords::NamedTuple) -> Task
+
+Start a pager session for `str` with the options in `keywords` in a new task, which the
+precompilation workload drives by writing the keystrokes to the standard input.
+
+All the sessions of the workload are started by this function so that a single task
+function is compiled and stored for them, instead of one for each session.
+
+# Arguments
+
+- `str::String`: Text to display.
+- `keywords::NamedTuple`: Keywords of the session.
+"""
+function _start_workload_session(str::String, @nospecialize(keywords::NamedTuple))
+    options = _session_options(keywords)
+    return @async _pager(str, options)
+end
+
 # The workload evaluates the help expression returned by `REPL.helpmode`, which assigns a
 # global. Evaluating it into `Main`, or into any module created while precompiling, is not
 # allowed, whereas this submodule belongs to the package and is open.
@@ -85,17 +104,52 @@ PrecompileTools.@setup_workload begin
             )
             mock_repl.interface = REPL.setup_interface(mock_repl)
             _init_pager_repl_mode(mock_repl)
-            _register_help_shortcuts(mock_repl)
-            _register_history_shortcuts(mock_repl)
-            _register_pipe_shortcuts(mock_repl)
+
+            # The shortcuts are registered by tasks, which must finish before the keys are
+            # looked up below.
+            wait(_register_help_shortcuts(mock_repl))
+            wait(_register_history_shortcuts(mock_repl))
+            wait(_register_pipe_shortcuts(mock_repl))
             TerminalPager._replace_help_mode!(mock_repl)
 
+            # A key bound to a function is called through a closure that **REPL.jl** creates
+            # for the type of the function when the key is pressed. Those closures are
+            # compiled here for the keys of this package, without running them: `|` and `?`
+            # at the beginning of the line, F1, Alt+h, Alt+l, Alt+L, and Alt+|.
+            mock_modes = mock_repl.interface.modes
+
+            for (mode, keys) in (
+                (mock_modes[1], ("|", "\eOP", "\eh", "\el", "\eL", "\e|")),
+                (mock_modes[end], ("?", "\eOP", "\eh", "\el", "\eL", "\e|")),
+            )
+                for key in keys
+                    binding = LineEdit.match_input(mode.keymap_dict, nothing, IOBuffer(key))
+                    precompile(binding, (Any, Any))
+                end
+            end
+
             # The public entry point prints the text when the standard streams are not
-            # terminals, which is the case here. Hence, the workload renders the object
-            # like `pager` does and drives the session directly.
-            a = vcat(reshape(fill(0.1986, 100), 1, :), zeros(100, 100))
-            str = _render_object(a)
-            t = @async _pager(str; use_alternate_screen_buffer = false)
+            # terminals, which is the case here. It is called anyway to compile the code
+            # that renders an object and merges the options of its recipe with the
+            # keywords, for the calls without keywords and for the ones of the `pager>`
+            # mode. Then, the workload renders the object like `pager` does and drives the
+            # session directly.
+            a = [0.1986 0.0; 0.0 0.0]
+            pager(a)
+            pager(a; auto = true)
+            pager("text")
+            pager("text"; auto = true)
+            a |> pager
+            _repl_mode_options(a, "2×2 Matrix{Float64}:\n 0.0  0.0\n 0.0  0.0", true)
+            _repl_mode_options(nothing, "", false)
+            _render_object(a)
+
+            # Text of the sessions, which is larger than the display in both directions.
+            # Notice that it is not obtained from a large array because building one would
+            # compile and store code that is used only here.
+            str = repeat(repeat(" 0.1986  0.0   ", 60) * "\n", 100)
+
+            t = _start_workload_session(str, (; use_alternate_screen_buffer = false))
 
             # Ruler, and the column ruler on and off.
             write(stdin_wr, "r")
@@ -173,21 +227,23 @@ PrecompileTools.@setup_workload begin
             wait(t)
 
             # Pager with the alternate screen buffer, which is the default.
-            t = @async _pager(str)
+            t = _start_workload_session(str, (;))
             write(stdin_wr, "q")
             wait(t)
 
             # Pager returning the selection copied by Enter in the visual mode.
-            t = @async _pager(str; return_selection = true)
+            t = _start_workload_session(str, (; return_selection = true))
             write(stdin_wr, "vM\n")
             wait(t)
 
             # Pager restoring the viewport and the search of a previous session, which is
             # what reopening an entry of the history does.
-            t = @async _pager(
-                str;
-                use_alternate_screen_buffer = false,
-                _restore = PagerResult(String[], 5, 1, "0.1986"),
+            t = _start_workload_session(
+                str,
+                (;
+                    use_alternate_screen_buffer = false,
+                    _restore = PagerResult(String[], 5, 1, "0.1986"),
+                ),
             )
             write(stdin_wr, "q")
             wait(t)
@@ -204,7 +260,7 @@ PrecompileTools.@setup_workload begin
 
             # Pager with auto mode, which exercises the `printable_textwidth` code path.
             # This is important because the REPL mode always uses `auto = true`.
-            t = @async _pager(str; auto = true)
+            t = _start_workload_session(str, (; auto = true))
             write(stdin_wr, "q")
             wait(t)
 
@@ -335,6 +391,28 @@ precompile(_create_input_waiter, (Base.TTY, Base.TTY))
 precompile(_run_input_waiter_reader, (InputWaiter, Base.TTY))
 precompile(_close_input_waiter!, (PagerInput,))
 
+# The session of the workload does not write to a terminal.
+precompile(_write_all, (Base.TTY, typeof(IOBuffer().data), Int))
+precompile(bytesavailable, (Base.TTY,))
+
 # The workload only registers the REPL hook. Running the hook would not help, because it
 # skips its body in the non-interactive precompilation process.
 precompile(_init_repl_integrations, (REPL.LineEditREPL,))
+
+# The callbacks of the prompts and of the key bindings need a running REPL, which the
+# workload does not have. Hence, they are compiled here for the types the REPL calls them
+# with.
+precompile(Tuple{PromptOnDone, LineEdit.MIState, IOBuffer, Bool})
+precompile(Tuple{PromptSwitchKey, LineEdit.MIState, REPL.LineEditREPL, String})
+precompile(Tuple{PromptSwitchKey, LineEdit.MIState, REPL.LineEditREPL, Vararg{Any}})
+precompile(_tp_mode_do_cmd, (REPL.LineEditREPL, String))
+precompile(_tp_help_mode_do_cmd, (REPL.LineEditREPL, String))
+precompile(_paged_help_do_cmd, (REPL.LineEditREPL, String, Module))
+precompile(_display_value!, (IOContext{IOBuffer}, Any))
+precompile(_tp_mode_prompt, ())
+precompile(_tp_help_mode_prompt, ())
+
+for shortcut in
+    (_show_pager_help, _append_pager_pipe, _reopen_last_output, _choose_history_entry)
+    precompile(shortcut, (LineEdit.MIState, REPL.LineEditREPL, String))
+end
