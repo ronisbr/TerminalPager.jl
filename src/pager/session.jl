@@ -101,7 +101,7 @@ function _pager(
         _push_pager_history!(str, history_options)
     end
 
-    text_layout = options._layout_factory(lines)
+    text_layout = options._layout_factory(_drop_trailing_empty_line!(lines))
     display_config = options._display_config_loader()
     input = options._input_factory(stdin)
 
@@ -219,7 +219,7 @@ function _pager!(
     title_rows = max(options.title_rows, 0)
 
     session_layout = if isnothing(text_layout)
-        options._layout_factory(source_lines)
+        options._layout_factory(_drop_trailing_empty_line!(source_lines))
     else
         text_layout
     end
@@ -550,6 +550,25 @@ function _pager_content_fits(layout::ViewLayout, display_size::Tuple{Int, Int})
     # The layout already measured every line while it was prepared, so there is no need to
     # scan the text again.
     return all(width -> width <= display_size[2], layout.printable_widths)
+end
+
+"""
+    _drop_trailing_empty_line!(lines::Vector{<:AbstractString}) -> Vector{<:AbstractString}
+
+Remove the last element of `lines`, the lines of a text split at the newlines, if it is the
+empty string after the newline that ends the text, and return `lines`.
+
+A text that ends with a newline has no line after it. Otherwise, the pager would show, count,
+copy, and save an empty line that the text does not have. A text with a single empty line is
+kept as it is.
+
+# Arguments
+
+- `lines::Vector{<:AbstractString}`: Lines of the text.
+"""
+function _drop_trailing_empty_line!(lines::Vector{<:AbstractString})
+    ((length(lines) > 1) && isempty(lines[end])) && pop!(lines)
+    return lines
 end
 
 """

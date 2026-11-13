@@ -65,3 +65,43 @@ end
     frame_cache = pagerd.frame_cache
     @test TerminalPager._scan_frame_rows!(frame_cache, UInt8['a', '\n', 'b'], 3, 0) == 0
 end
+
+@testset "Text Ending With a Newline" begin
+    # A text that ends with a newline has no line after it.
+    drop = TerminalPager._drop_trailing_empty_line!
+    @test drop(split("alpha\nbeta\n", '\n')) == ["alpha", "beta"]
+    @test drop(split("alpha\nbeta", '\n')) == ["alpha", "beta"]
+    @test drop(split("alpha\n\n", '\n')) == ["alpha", ""]
+    @test drop(split("\n", '\n')) == [""]
+    @test drop(split("", '\n')) == [""]
+
+    # The session shows and counts only the lines of the text.
+    for (text, num_lines) in (("alpha\nbeta\n", 2), ("alpha\nbeta", 2), ("alpha\n\n", 2))
+        input = TypedInput("=q")
+        output = IOContext(IOBuffer(), :displaysize => (10, 60), :color => false)
+        term = REPL.Terminals.TTYTerminal("", input, output, output)
+        TerminalPager._pager!(
+            term,
+            text;
+            input = TerminalPager.PagerInput(input),
+            show_ruler = true,
+            use_alternate_screen_buffer = false,
+        )
+
+        written = String(take!(output.io))
+        @test occursin("Lines 1-$num_lines of $num_lines", written)
+        @test !occursin(" $(num_lines + 1) │", written)
+    end
+
+    # The session started with the options also drops the line.
+    layouts = Any[]
+    options = TerminalPager._session_options((;
+        _layout_factory = lines -> (push!(layouts, collect(lines)); nothing),
+        _display_config_loader = () -> nothing,
+        _input_factory = stream -> nothing,
+        _terminal_factory = () -> nothing,
+        _raw_runner = (f, terminal) -> nothing,
+    ))
+    TerminalPager._pager("one\ntwo\n", options)
+    @test layouts == [["one", "two"]]
+end
