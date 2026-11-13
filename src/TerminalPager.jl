@@ -20,9 +20,9 @@ using StyledStrings: Face, SimpleColor, addface!, getface, loadface!, resetfaces
 # Only the string utilities are used. The view is rendered by this package, so the module is
 # imported instead of used, and the names are listed, to make sure nothing else is reached.
 import StringManipulation
-using StringManipulation: Decoration, get_decorations, highlight_search, left_crop,
-    parse_decoration, printable_textwidth, remove_decorations, replace_default_background,
-    split_string, string_search_per_line, update_decoration
+using StringManipulation: Decoration, drop_inactive_properties, get_decorations,
+    highlight_search, left_crop, parse_decoration, printable_textwidth, remove_decorations,
+    replace_default_background, split_string, string_search_per_line, update_decoration
 
 # The performance of TerminalPager.jl does not improve with many compiler optimizations.
 # Hence, we disable them to improve compile time.
@@ -46,6 +46,11 @@ const CSI = "\x1b["
 
 # SGR sequence resetting every text attribute. The other sequences come from the faces.
 const _SGR_RESET = "$(CSI)0m"
+
+# Sequences that open a hyperlink (OSC 8), before and after its URL, and that close it.
+const _HYPERLINK_OPEN = "\e]8;;"
+const _HYPERLINK_END = "\e\\"
+const _HYPERLINK_CLOSE = _HYPERLINK_OPEN * _HYPERLINK_END
 
 ############################################################################################
 #                                         Includes                                         #

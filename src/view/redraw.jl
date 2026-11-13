@@ -241,7 +241,7 @@ function _redraw!(pagerd::Pager)
         else
             _move_cursor(out, i, 1)
 
-            # `_textview` always leaves the SGR state at its default, but we reset it anyway.
+            # Every row ends with the SGR state at its default, but we reset it anyway.
             # Otherwise, a row painted out of order could erase to the end of the line with a
             # colored background.
             write(out, _SGR_RESET)

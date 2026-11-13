@@ -423,3 +423,54 @@ end
     text = render(; num_rows = 2, search_matches = matches, active_match = (2, 1))
     @test text == "line 1\n\e[30;43mline 2\e[0m"
 end
+
+@testset "Decorations Spanning Lines" begin
+    lines = ["plain 1", "\e[31mred 2", "red 3", "red 4\e[0m", "plain 5"]
+    layout = TerminalPager.ViewLayout(lines)
+
+    # Render one row of the layout with the options in the keywords.
+    function render(row; kwargs...)
+        options = TerminalPager.ViewOptions(; first_row = row, num_rows = 1, kwargs...)
+        return first(TerminalPager._textview(layout, options))
+    end
+
+    # A row must not depend on the rows written before it. Hence, the decoration that
+    # begins in a previous line is written at the beginning of the row, and the one still
+    # in effect at its end is closed.
+    @test layout.ends_decorated == [false, true, true, false, false]
+    @test render(1) == "plain 1"
+    @test render(2) == "\e[31mred 2\e[0m"
+    @test render(3) == "\e[31mred 3\e[0m"
+    @test render(4) == "\e[31mred 4\e[0m"
+    @test render(5) == "plain 5"
+
+    # The frozen and the scrolled parts of a row are decorated on their own.
+    @test render(3; frozen_columns = 2) == "\e[31mre\e[0m\e[31md 3\e[0m"
+    @test render(2; frozen_columns = 2, first_column = 4) == "\e[31mre\e[0m\e[31m 2\e[0m"
+
+    # The decoration is restored after a search match, and the background of a visual row
+    # replaces only the default one.
+    matches = TerminalPager.string_search_per_line(lines, r"d")
+    @test render(3; search_matches = matches) ==
+        "\e[31mre\e[7md\e[0m\e[31m 3\e[0m"
+    @test render(3; visual_rows = [3], num_columns = 6) ==
+        "\e[44m\e[31mred 3 \e[49m\e[0m"
+
+    # The same holds for the rows selected by a filter.
+    filtered = TerminalPager.ViewLayout(layout, [3, 5])
+    options = TerminalPager.ViewOptions()
+    @test first(TerminalPager._textview(filtered, options)) == "\e[31mred 3\e[0m\nplain 5"
+
+    # An attribute that was turned off is not a decoration in effect.
+    layout = TerminalPager.ViewLayout(["\e[1mbold\e[22m", "next", "\e[32mgreen\e[39m", "x"])
+    @test !any(layout.ends_decorated)
+    @test render(2) == "next"
+    @test render(4) == "x"
+
+    # A hyperlink that spans lines is closed at the end of each row and opened again.
+    layout = TerminalPager.ViewLayout(["\e]8;;u\e\\link", "more\e]8;;\e\\ x", "y"])
+    @test layout.ends_decorated == [true, false, false]
+    @test render(1) == "\e]8;;u\e\\link\e]8;;\e\\\e[0m"
+    @test render(2) == "\e]8;;u\e\\more\e]8;;\e\\ x"
+    @test render(3) == "y"
+end

@@ -26,6 +26,10 @@ first column, the line-number ruler is written before each row, the search match
 highlighted, and the visual rows get a background. The rows are separated by `'\\n'`,
 without one after the last row, and the frozen rows end with a reset of the attributes.
 
+Each row is written so that it does not depend on the rows before it: a decoration that
+begins in a previous line is written again at the beginning of the row, and a decoration
+still in effect at its end is closed.
+
 # Extended help
 
 ## Throws
@@ -291,6 +295,12 @@ function _draw_line!(
     matches = isnothing(search_matches) ? nothing : get(search_matches, line, nothing)
     background = scrolled_row ? _visual_background(options, line) : nothing
 
+    # A decoration that begins in a previous line is written again at the beginning of each
+    # part of the row, and what is still in effect after the line is closed at its end.
+    # Both are empty for almost every row.
+    carried = _carried_decoration(layout.decorations[line])
+    terminator = _row_terminator(layout, line)
+
     # The visible parts are copied into strings only when they must be transformed. The
     # plain rows, which are most of them, are written directly.
     transform = !isnothing(background) || !isnothing(matches)
@@ -301,12 +311,13 @@ function _draw_line!(
         frozen_width = min(frozen_columns, width)
 
         if plain && !transform
+            write(buf, carried)
             (frozen_width > 0) && write(buf, SubString(str, 1, frozen_width))
         else
             left = if plain
-                String(SubString(str, 1, frozen_width))
+                string(carried, SubString(str, 1, frozen_width))
             else
-                first(split_string(str, frozen_columns))
+                string(carried, first(split_string(str, frozen_columns)))
             end
 
             # A visual row fills the frozen columns, so that the background covers them.
@@ -335,11 +346,13 @@ function _draw_line!(
         visible = SubString(str, first_visible, first_visible + visible_width - 1)
 
         if !transform
+            write(buf, carried)
             write(buf, visible)
+            write(buf, terminator)
             return cropped_chars
         end
 
-        part = String(visible)
+        part = string(carried, visible)
     else
         # The decorations of the cropped left part are collapsed into one sequence, so that
         # the visible part starts with the right attributes.
@@ -360,7 +373,7 @@ function _draw_line!(
             cropped_chars = printable_textwidth(right)
         end
 
-        part = string(left_ansi, part, right_ansi)
+        part = string(carried, left_ansi, part, right_ansi)
     end
 
     # A visual row fills the view, so that the background covers it. An unbounded view has
@@ -373,6 +386,7 @@ function _draw_line!(
     part = _highlight(part, options, line, matches, start_column, start_column, max_column)
 
     write(buf, part)
+    write(buf, terminator)
 
     return cropped_chars
 end
