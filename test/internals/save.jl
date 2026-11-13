@@ -104,3 +104,26 @@
     @test TerminalPager._assemble_yank_text(lines, [2]; keep_decorations = true) ==
         ("\e[31mred\e[0m\n", 1)
 end
+
+@testset "Save Errors" begin
+    # A path that cannot be expanded or accessed is reported instead of throwing.
+    for path in ("~no_such_user_of_terminal_pager/out.txt", "/" * "x"^300 * "/out.txt")
+        pagerd = _create_modal_pagerd(["a", "b"], path * "\n")
+        pagerd.event = :save
+        @test TerminalPager._pager_event_process!(pagerd)
+        @test startswith(pagerd.message, "Could not save: ")
+        @test pagerd.message_kind === :error
+    end
+
+    try
+        mktempdir() do dir
+            pagerd = _create_modal_pagerd(["a"], joinpath(dir, "missing", "out.txt") * "\n")
+            pagerd.event = :save
+            @test TerminalPager._pager_event_process!(pagerd)
+            @test startswith(pagerd.message, "Could not save: ")
+            @test pagerd.message_kind === :error
+        end
+    finally
+        empty!(TerminalPager._SAVE_HISTORY)
+    end
+end

@@ -278,7 +278,7 @@ function _save!(pagerd::Pager)
     isnothing(cmd_input) && return nothing
 
     keep_decorations = startswith(cmd_input, '!')
-    path = expanduser(strip(keep_decorations ? cmd_input[2:end] : cmd_input))
+    path = String(strip(keep_decorations ? cmd_input[2:end] : cmd_input))
     isempty(path) && return nothing
 
     layout, ids = _selected_text(pagerd)
@@ -288,7 +288,21 @@ function _save!(pagerd::Pager)
         return nothing
     end
 
-    if ispath(path)
+    # The errors of the path and of the file system, like the home directory of another
+    # user, a missing directory, or a denied permission, are reported on the status line
+    # instead of tearing down the pager. Notice that expanding the path and verifying if it
+    # exists can also throw.
+    path_exists = false
+
+    try
+        path = expanduser(path)
+        path_exists = ispath(path)
+    catch err
+        _report_save_error!(pagerd, err)
+        return nothing
+    end
+
+    if path_exists
         answer = _prompt_key!(pagerd, "Overwrite $path? (y/n)")
 
         if answer != 'y'
@@ -301,13 +315,10 @@ function _save!(pagerd::Pager)
         layout, ids; keep_decorations = keep_decorations
     )
 
-    # The errors of the file system, like a missing directory or a denied permission, are
-    # reported on the status line instead of tearing down the pager.
     try
         write(path, text)
     catch err
-        err isa SystemError || rethrow()
-        _set_message!(pagerd, "Could not save: $(Libc.strerror(err.errnum))"; kind = :error)
+        _report_save_error!(pagerd, err)
         return nothing
     end
 
@@ -317,6 +328,33 @@ function _save!(pagerd::Pager)
     else
         _set_message!(pagerd, "1 line saved to $path")
     end
+
+    return nothing
+end
+
+"""
+    _report_save_error!(pagerd::Pager, err::Any) -> Nothing
+
+Show on the status line of `pagerd` why the text could not be saved, given the error `err`
+thrown while the path was expanded or accessed. Any other kind of error is thrown again.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `err::Any`: Error thrown by the save command.
+"""
+function _report_save_error!(pagerd::Pager, err)
+    reason = if err isa SystemError
+        Libc.strerror(err.errnum)
+    elseif err isa Base.IOError
+        Base.struverror(err.code)
+    elseif err isa ArgumentError
+        err.msg
+    else
+        rethrow(err)
+    end
+
+    _set_message!(pagerd, "Could not save: $reason"; kind = :error)
 
     return nothing
 end
