@@ -159,10 +159,38 @@ function _get_preference(pref::String)
     cached = get(_PREFERENCE_CACHE, pref, nothing)
     isnothing(cached) || return cached
 
-    value = _validate_preference(pref, @load_preference(pref, _AVAILABLE_PREFERENCES[pref]))
+    value = _stored_preference(pref, @load_preference(pref, _AVAILABLE_PREFERENCES[pref]))
     _PREFERENCE_CACHE[pref] = value
 
     return value
+end
+
+"""
+    _stored_preference(pref::String, stored::Any) -> Union{Bool, Int, String}
+
+Return the value of the preference `pref` given the value `stored` for it, which is the
+default value of the preference if `stored` is not valid. In this case, a warning is shown.
+
+A preference that was stored by a previous version, or edited by hand, can have a value
+that is not valid anymore. It must not throw when it is read, because the preferences are
+read while the package is loaded, and a package that cannot be loaded cannot fix them.
+
+# Arguments
+
+- `pref::String`: Preference name.
+- `stored::Any`: Value stored for the preference.
+"""
+function _stored_preference(pref::String, stored)
+    try
+        return _validate_preference(pref, stored)
+    catch err
+        err isa ArgumentError || rethrow()
+
+        default = _AVAILABLE_PREFERENCES[pref]
+        @warn "$(err.msg) The default value, $(repr(default)), is used instead."
+
+        return default
+    end
 end
 
 """

@@ -53,6 +53,19 @@
     @test_throws ArgumentError TerminalPager._validate_preference("pager_mode", "VI")
 end
 
+@testset "Invalid Stored Preferences" begin
+    # A stored value that is not valid must not throw when it is read, because it is read
+    # while the package is loaded. The default value is used instead, with a warning.
+    stored = TerminalPager._stored_preference
+    @test_logs (:warn, r"must be \"default\" or \"vi\".*The default value") begin
+        @test stored("pager_mode", "vim") == "default"
+    end
+    @test_logs (:warn, r"must be at least 1") @test stored("history_size", 0) == 5
+    @test_logs (:warn, r"must be a Bool") @test stored("mouse", "yes") == true
+    @test_logs @test stored("pager_mode", "vi") == "vi"
+    @test_logs @test stored("history_size", 7) == 7
+end
+
 @testset "Key Binding Generation" begin
     initial = TerminalPager._KEYBINDINGS_GENERATION[]
 
