@@ -422,6 +422,27 @@ function _clamp_viewport!(p::Pager)
     max_row = max(min_row, p.num_lines - view_rows + 1)
     p.start_row = clamp(p.start_row, min_row, max_row)
 
+    _clamp_start_column!(p)
+
+    return nothing
+end
+
+"""
+    _clamp_start_column!(p::Pager) -> Nothing
+
+Keep the first visible column of `p` between the first column that scrolls and the one that
+shows the end of the widest line at the right edge of the view, so that the view neither
+enters the frozen columns nor ends past the text. Nothing happens if the view has no
+columns.
+
+# Arguments
+
+- `p::Pager`: Pager state to update.
+"""
+function _clamp_start_column!(p::Pager)
+    cols = _get_pager_display_size(p)[2]
+    cols <= 0 && return nothing
+
     min_col = _first_scrollable_column(p)
     view_cols = cols - p.frozen_columns - _shown_ruler_width(p)
     max_col = max(min_col, _text_width(p) - view_cols + 1)

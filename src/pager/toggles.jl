@@ -8,7 +8,7 @@
     _toggle_ruler!(pagerd::Pager) -> Nothing
 
 Show or hide the line number ruler of `pagerd` and request a redraw. Hiding it scrolls the
-view left if the text cropped at the right edge does not fill the reclaimed columns.
+view left if the end of the widest line does not fill the reclaimed columns.
 
 # Arguments
 
@@ -17,23 +17,11 @@ view left if the text cropped at the right edge does not fill the reclaimed colu
 function _toggle_ruler!(pagerd::Pager)
     pagerd.show_ruler = !pagerd.show_ruler
 
-    # If the ruler is hidden, we must verify if the screen is near the right edge to fix the
-    # `start_column`.
-    if !pagerd.show_ruler
-        ruler_spacing = _ruler_width(pagerd)
-
-        if pagerd.cropped_columns ≤ ruler_spacing
-            # Hiding the ruler reclaims `ruler_spacing` columns, of which `cropped_columns`
-            # are filled by the text that was cropped at the right edge. Scrolling left by
-            # the difference fills the rest. Scrolling by the full ruler width cropped that
-            # text again. Notice that the reclaimed columns must not push the view into the
-            # frozen region.
-            pagerd.start_column = max(
-                pagerd.start_column - (ruler_spacing - pagerd.cropped_columns),
-                _first_scrollable_column(pagerd),
-            )
-        end
-    end
+    # Hiding the ruler gives its columns to the text. If the view is at the end of the
+    # widest line, it is scrolled left so that those columns are filled, without entering
+    # the frozen columns. Notice that this must be decided with the width of the text, not
+    # with the columns cropped in the last frame, which only considers the visible rows.
+    pagerd.show_ruler || _clamp_start_column!(pagerd)
 
     _request_redraw!(pagerd)
 
@@ -74,11 +62,9 @@ by one column if the text is scrolled to its right end.
 function _toggle_scrollbar!(pagerd::Pager)
     pagerd.show_scrollbar = !pagerd.show_scrollbar
 
-    # Hiding the scrollbar reclaims one column that the cropped text can use. Like the
-    # ruler, the reclaimed column must not push the view into the frozen region.
-    if !pagerd.show_scrollbar && (pagerd.cropped_columns == 0)
-        pagerd.start_column = max(pagerd.start_column - 1, _first_scrollable_column(pagerd))
-    end
+    # Hiding the scrollbar gives its column to the text. Like the ruler, the view is
+    # scrolled left if it is at the end of the widest line.
+    pagerd.show_scrollbar || _clamp_start_column!(pagerd)
 
     _request_redraw!(pagerd)
 

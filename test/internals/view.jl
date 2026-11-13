@@ -202,6 +202,15 @@ end
     @test TerminalPager._pager_event_process!(pagerd)
     @test !pagerd.show_scrollbar
     @test pagerd.start_column == 6
+
+    # Far from the end of the line, the view is not moved, even if the last frame cropped
+    # nothing.
+    pagerd.show_scrollbar = true
+    pagerd.start_column = 3
+    pagerd.cropped_columns = 0
+    pagerd.event = :toggle_scrollbar
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.start_column == 3
 end
 
 @testset "Negative Frozen Rows and Columns" begin

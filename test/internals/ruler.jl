@@ -9,10 +9,10 @@
     pagerd = _create_modal_pagerd(lines, "")
     pagerd.display_size = (10, 40)
 
-    # At the right edge, hiding the ruler must scroll left by the full ruler width, which
-    # is four columns for a one-line text.
+    # The text has 100 columns and the view has 40. With the ruler, which has four columns
+    # for a one-line text, the view shows the end of the line when it starts at column 65.
+    # Hiding the ruler must scroll left by its full width.
     pagerd.show_ruler = true
-    pagerd.cropped_columns = 0
     pagerd.start_column = 65
     pagerd.event = :toggle_ruler
 
@@ -20,25 +20,49 @@
     @test pagerd.show_ruler == false
     @test pagerd.start_column == 61
 
-    # With text still cropped at the right edge, only the difference may be reclaimed.
+    # With two columns still cropped at the right edge, only the difference is reclaimed.
     # Scrolling by the full ruler width cropped that text again.
     pagerd.show_ruler = true
-    pagerd.cropped_columns = 2
     pagerd.start_column = 63
     pagerd.event = :toggle_ruler
 
     @test TerminalPager._pager_event_process!(pagerd) != false
     @test pagerd.start_column == 61
 
-    # The shift must not push the view into the frozen columns.
+    # Far from the end of the line, the view is not moved. The columns cropped in the last
+    # frame must not be used for this decision: they only consider the visible rows, so
+    # that toggling the ruler moved the view when the visible lines were short.
     pagerd.show_ruler = true
-    pagerd.frozen_columns = 8
     pagerd.cropped_columns = 0
-    pagerd.start_column = 10
+    pagerd.start_column = 31
     pagerd.event = :toggle_ruler
 
     @test TerminalPager._pager_event_process!(pagerd) != false
-    @test pagerd.start_column == 9
+    @test pagerd.start_column == 31
+
+    pagerd.event = :toggle_ruler
+    @test TerminalPager._pager_event_process!(pagerd) != false
+    @test pagerd.show_ruler
+    @test pagerd.start_column == 31
+
+    # The shift must not push the view into the frozen columns.
+    short = _create_modal_pagerd([repeat("x", 12)], "")
+    short.show_ruler = true
+    short.frozen_columns = 8
+    short.start_column = 9
+    short.event = :toggle_ruler
+
+    @test TerminalPager._pager_event_process!(short) != false
+    @test short.start_column == 9
+
+    # With frozen columns, the view at the end of the line is scrolled by the ruler width.
+    pagerd.show_ruler = true
+    pagerd.frozen_columns = 8
+    pagerd.start_column = 73
+    pagerd.event = :toggle_ruler
+
+    @test TerminalPager._pager_event_process!(pagerd) != false
+    @test pagerd.start_column == 69
 end
 
 @testset "Ruler Ends With a Foot on the Last Frozen Row" begin
