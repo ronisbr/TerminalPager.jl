@@ -416,6 +416,21 @@ key_fields(key) = (key.value, key.alt, key.ctrl, key.shift)
     @test key.value == "<undefined>"
     @test consumed == 2
     @test first(TerminalPager._decode_keystroke(UInt8[0x1b, 0xe2])) == :incomplete
+
+    # A byte that begins a multi-byte character is not valid if the byte after it is not a
+    # continuation byte. It must be reported at once, so that the key after it is not held
+    # back until another key is pressed.
+    for bytes in
+        (UInt8[0xe2, UInt8('q')], UInt8[0xe2, 0x80, UInt8('q')], UInt8[0xf0, 0x9f, 0x41])
+        status, key, consumed = TerminalPager._decode_keystroke(bytes)
+        @test status === :complete
+        @test key.value == "<undefined>"
+        @test consumed == 1
+    end
+
+    @test first(TerminalPager._decode_keystroke(UInt8[0xe2])) == :incomplete
+    @test first(TerminalPager._decode_keystroke(UInt8[0xe2, 0x80])) == :incomplete
+    @test TerminalPager._decode_keystroke(UInt8[0xe2, 0x80, 0x94])[2].value == "—"
 end
 
 @testset "Controlled Shared Input" begin

@@ -329,6 +329,16 @@ function _decode_scalar(prefix::Vector{UInt8}, offset::Int)
         return _undefined_key(1)
     end
 
+    # The bytes after the first one must be continuation bytes. If one that already arrived
+    # is not, the sequence is not valid no matter what arrives next. Hence, we must not
+    # wait for more bytes, which would hold back the key after the invalid byte until
+    # another one is pressed.
+    last_available = min(offset + num_bytes - 1, length(prefix))
+
+    for i in (offset + 1):last_available
+        (0x80 <= prefix[i] <= 0xbf) || return _undefined_key(1)
+    end
+
     length(prefix) - offset + 1 < num_bytes && return _DECODE_INCOMPLETE
     _valid_utf8(prefix, offset, num_bytes) || return _undefined_key(1)
 
