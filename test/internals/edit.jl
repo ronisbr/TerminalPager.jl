@@ -16,7 +16,8 @@
         TerminalPager._EDITOR[] = recorder
 
         # The whole text is written without the decorations, the editor opens at the top
-        # row, the terminal modes are left and entered again, and the file is removed.
+        # row, and the terminal modes are left and entered again. The file is kept until
+        # the session ends, because many editors return before they open it.
         pagerd = _create_modal_pagerd(lines, "")
         modes = pagerd.terminal_modes
         modes.cursor_key_mode = true
@@ -31,7 +32,11 @@
         @test length(calls) == 1
         @test calls[1][2] == "first\nred\nthird\nfourth\n"
         @test calls[1][3] == 3
+        @test isfile(calls[1][1])
+        @test pagerd.temporary_files == [calls[1][1]]
+        TerminalPager._remove_temporary_files!(pagerd)
         @test !isfile(calls[1][1])
+        @test isempty(pagerd.temporary_files)
         @test !pagerd.frame_cache.valid
         @test pagerd.redraw
         @test isempty(pagerd.message)
@@ -113,4 +118,41 @@ end
     # The raw mode is not touched on a terminal reading from a buffer.
     term = REPL.Terminals.TTYTerminal("", IOBuffer(), io, io)
     @test isnothing(TerminalPager._set_raw_mode!(term, true))
+end
+
+@testset "File of the Editor Removed With the Session" begin
+    paths = String[]
+    kept = Bool[]
+    old_editor = TerminalPager._EDITOR[]
+
+    try
+        # This editor returns right away, like the ones that open a window. Each time it is
+        # called, it records whether the files of the previous calls still exist.
+        TerminalPager._EDITOR[] = (path, line) -> begin
+            push!(paths, path)
+            push!(kept, all(isfile, paths))
+            return nothing
+        end
+
+        input = TypedInput("ejeq")
+        output = IOContext(IOBuffer(), :displaysize => (10, 40), :color => false)
+        term = REPL.Terminals.TTYTerminal("", input, output, output)
+
+        TerminalPager._pager!(
+            term,
+            "first\nsecond\nthird";
+            input = TerminalPager.PagerInput(input),
+            use_alternate_screen_buffer = false,
+        )
+
+        # The files are kept after the editor returns, and they are removed when the
+        # session ends.
+        @test length(paths) == 2
+        @test paths[1] != paths[2]
+        @test kept == [true, true]
+        @test !any(isfile, paths)
+    finally
+        TerminalPager._EDITOR[] = old_editor
+        foreach(path -> rm(path; force = true), paths)
+    end
 end

@@ -505,6 +505,8 @@ anchor, and the bookmarks store source lines, so that they survive a change of t
     of `visual_lines`.
 - `frame_cache::FrameCache`: State supporting the incremental redraw.
 - `terminal_modes::TerminalModes`: Terminal modes enabled by the session.
+- `temporary_files::Vector{String}`: Files created by the session, like the ones opened in
+    the editor, which are removed when the session ends.
 """
 Base.@kwdef mutable struct Pager
     term::REPL.Terminals.TTYTerminal
@@ -563,6 +565,7 @@ Base.@kwdef mutable struct Pager
     visual_line_backgrounds::Vector{String} = String[]
     frame_cache::FrameCache = FrameCache()
     terminal_modes::TerminalModes = TerminalModes()
+    temporary_files::Vector{String} = String[]
 end
 
 """

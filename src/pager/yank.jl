@@ -193,9 +193,9 @@ const _CLIPBOARD = Ref{Any}(InteractiveUtils.clipboard)
 
 Open the lines selected in the visual mode of `pagerd`, or the whole text outside it, in the
 editor of `InteractiveUtils.edit` at the visual line or the first visible row. The text is
-written without the decorations to a temporary file, which is deleted when the editor
-returns. The terminal modes and the raw mode are left while the editor runs and entered
-again afterwards, and the screen is repainted.
+written without the decorations to a temporary file, which is deleted when the session
+ends. The terminal modes and the raw mode are left while the editor runs and entered again
+afterwards, and the screen is repainted.
 
 # Arguments
 
@@ -218,8 +218,11 @@ function _edit!(pagerd::Pager)
         pagerd.start_row
     end
 
+    # The file is removed when the session ends, not when the editor returns. Many editors
+    # return right away and open the file afterwards, like the ones with a window.
     path = tempname() * ".txt"
     write(path, text)
+    push!(pagerd.temporary_files, path)
 
     modes = pagerd.terminal_modes
     term = pagerd.term
@@ -245,7 +248,6 @@ function _edit!(pagerd::Pager)
             hide_cursor = modes.cursor_hidden,
             mouse = modes.mouse,
         )
-        rm(path; force = true)
 
         # The editor painted over the screen, so nothing of the frame is known anymore.
         _invalidate_frame!(pagerd)

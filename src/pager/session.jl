@@ -326,6 +326,9 @@ function _pager!(
             # The waiter is closed even if the restoration throws, so that its timer and its
             # reader task do not outlive the session.
             owns_waiter && _close_input_waiter!(session_input)
+
+            # The files created by the session are not needed anymore.
+            (@isdefined pagerd) && _remove_temporary_files!(pagerd)
         end
     end
 
@@ -337,6 +340,31 @@ function _pager!(
         pagerd.start_column,
         pagerd.search_pattern,
     )
+end
+
+"""
+    _remove_temporary_files!(pagerd::Pager) -> Nothing
+
+Remove the files created by the session of `pagerd`, like the ones opened in the editor. A
+file that cannot be removed is left where it is.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _remove_temporary_files!(pagerd::Pager)
+    for path in pagerd.temporary_files
+        # The file is in the temporary directory, so that it is not worth an error.
+        try
+            rm(path; force = true)
+        catch err
+            err isa Base.IOError || rethrow()
+        end
+    end
+
+    empty!(pagerd.temporary_files)
+
+    return nothing
 end
 
 """
