@@ -375,25 +375,10 @@ function __init__()
     _apply_mode_keybindings!()
     _load_keybindings!()
 
+    # The integrations with the REPL are initialized now if it is already running, or when
+    # it starts otherwise.
     if isdefined(Base, :active_repl)
-        repl = Base.active_repl
-
-        # Non-line-edit REPLs, such as the basic REPL used on a dumb terminal, have no
-        # keymap interface. Initializing the pager mode there broke package loading, and
-        # the shortcut registration leaked a task that never terminates.
-        if isinteractive() && repl isa REPL.LineEditREPL
-            # The package can be loaded from another `atreplinit` hook, in which case the
-            # REPL is active but its interface is not set up yet.
-            if isdefined(repl, :interface)
-                _init_pager_repl_mode(repl)
-            else
-                _init_pager_repl_mode_when_ready(repl)
-            end
-
-            _register_help_shortcuts(repl)
-            _register_history_shortcuts(repl)
-            _register_pipe_shortcuts(repl)
-        end
+        _init_repl_integrations(Base.active_repl)
     else
         atreplinit(_init_repl_integrations)
     end
@@ -404,25 +389,33 @@ end
 """
     _init_repl_integrations(repl::Any) -> Nothing
 
-Initialize the pager REPL mode and the help shortcuts in `repl` once its interface is set
-up, if the session is interactive and `repl` is a line-edit REPL.
+Initialize the pager REPL mode and the shortcuts in `repl`, if the session is interactive
+and `repl` is a line-edit REPL.
+
+Non-line-edit REPLs, such as the basic REPL used on a dumb terminal, have no keymap
+interface. Initializing the pager mode there broke package loading, and the shortcut
+registration leaked a task that never terminates.
 
 # Arguments
 
-- `repl::Any`: REPL passed to the `atreplinit` hooks.
+- `repl::Any`: Active REPL, or the one passed to the `atreplinit` hooks.
 """
 function _init_repl_integrations(repl)
-    if isinteractive() && repl isa REPL.LineEditREPL
-        # Do not call `REPL.setup_interface` here. It will be called later by
-        # `run_frontend`, which respects user options such as
-        # `auto_insert_closing_bracket`. Calling it early would bypass any options set by
-        # other `atreplinit` hooks.
-        _init_pager_repl_mode_when_ready(repl)
+    (isinteractive() && repl isa REPL.LineEditREPL) || return nothing
 
-        _register_help_shortcuts(repl)
-        _register_history_shortcuts(repl)
-        _register_pipe_shortcuts(repl)
+    # The interface of the REPL is not set up yet when the package is loaded from an
+    # `atreplinit` hook. We must not call `REPL.setup_interface` here: it is called later
+    # by `run_frontend`, which respects user options such as `auto_insert_closing_bracket`,
+    # and calling it early would bypass any options set by other `atreplinit` hooks.
+    if isdefined(repl, :interface)
+        _init_pager_repl_mode(repl)
+    else
+        _init_pager_repl_mode_when_ready(repl)
     end
+
+    _register_help_shortcuts(repl)
+    _register_history_shortcuts(repl)
+    _register_pipe_shortcuts(repl)
 
     return nothing
 end

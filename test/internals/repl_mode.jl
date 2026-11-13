@@ -95,9 +95,9 @@ end
     original = help_mode.on_done
 
     @test TerminalPager._replace_help_mode!(repl)
-    @test help_mode.on_done isa TerminalPager.PagedHelpOnDone
+    @test TerminalPager._pages_help(help_mode)
     @test help_mode.on_done.original === original
-    @test help_mode.on_done.main === first(repl.interface.modes)
+    @test help_mode.on_done.next === first(repl.interface.modes)
     wrapped = help_mode.on_done
     @test TerminalPager._replace_help_mode!(repl)
     @test help_mode.on_done === wrapped
@@ -111,7 +111,7 @@ end
     repl = REPL.LineEditREPL(term, true)
     repl.interface = REPL.setup_interface(repl)
     TerminalPager._init_pager_repl_mode(repl; replace_help_mode = true)
-    @test TerminalPager._find_help_mode(repl).on_done isa TerminalPager.PagedHelpOnDone
+    @test TerminalPager._pages_help(TerminalPager._find_help_mode(repl))
 
     # A REPL without the help prompt is left alone.
     @test isnothing(TerminalPager._find_help_mode((; interface = (; modes = Any[]))))

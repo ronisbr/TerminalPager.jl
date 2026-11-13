@@ -35,12 +35,144 @@ function _warn_repl_mode_noninteractive!(interactive::Bool = isinteractive())
 end
 
 """
+    struct PromptOnDone <: Function
+
+Callback `on_done` of the prompts of this package, which runs the command typed by the user
+when it is confirmed. It is a `Function`, because the field of the prompt is typed so.
+
+The answers of the regular help mode never pass through `stdout`: they go to the REPL
+display. Hence, when the callback replaces the one of the regular `help?>` prompt, it
+evaluates the help itself, like the `pager?>` prompt does, and pages the result when it
+does not fit the display. The original callback is kept, so that it can be restored.
+
+# Fields
+
+- `repl::Any`: REPL that owns the prompt.
+- `next::LineEdit.Prompt`: Prompt selected after the command if the prompt is not sticky.
+- `kind::Symbol`: Kind of the prompt, which selects how the command is run: `:pager` for the
+    `pager>` prompt, `:pager_help` for the `pager?>` prompt, and `:paged_help` for the
+    regular `help?>` prompt.
+- `original::Any`: Original `on_done` callback of a replaced prompt, or `nothing`.
+"""
+struct PromptOnDone <: Function
+    repl::Any
+    next::LineEdit.Prompt
+    kind::Symbol
+    original::Any
+end
+
+function (h::PromptOnDone)(s, buf, ok)
+    # Without this, aborting the prompt with CTRL-D still evaluated the empty input, which
+    # paged the Julia help welcome text instead of leaving the help modes.
+    ok || return REPL.transition(s, :abort)
+
+    # Take the input command.
+    input = String(take!(buf))
+    REPL.reset(h.repl)
+
+    if h.kind === :pager
+        _tp_mode_do_cmd(h.repl, input)
+    elseif h.kind === :pager_help
+        _tp_help_mode_do_cmd(h.repl, input)
+    else
+        _paged_help_do_cmd(h.repl, input, s.active_module)
+    end
+
+    REPL.prepare_next(h.repl)
+    REPL.reset_state(s)
+
+    return s.current_mode.sticky ? true : REPL.transition(s, h.next)
+end
+
+"""
+    struct PromptSwitchKey <: Function
+
+Key binding that switches to the prompt `mode` if `key` is typed at the beginning of the
+line, and inserts `key` otherwise. It is a `Function`, because the key maps of **REPL.jl**
+only call the objects of this type.
+
+# Fields
+
+- `mode::LineEdit.Prompt`: Prompt selected by the key.
+- `key::Char`: Key that selects the prompt.
+"""
+struct PromptSwitchKey <: Function
+    mode::LineEdit.Prompt
+    key::Char
+end
+
+function (k::PromptSwitchKey)(s, args...)
+    if isempty(s) || (position(LineEdit.buffer(s)) == 0)
+        buf = copy(LineEdit.buffer(s))
+        LineEdit.transition(s, k.mode) do
+            LineEdit.state(s, k.mode).input_buffer = buf
+        end
+    else
+        LineEdit.edit_insert(s, k.key)
+    end
+end
+
+"""
+    _create_prompt(
+        repl::REPL.AbstractREPL,
+        main::LineEdit.Prompt,
+        prompt::Function,
+        color::Symbol,
+        name::Symbol;
+        sticky::Bool
+    ) -> LineEdit.Prompt
+
+Create a prompt of `repl` that shows the string returned by `prompt` with `color`, uses the
+completion provider of the `main` Julia prompt, and shares its history, in which the prompt
+is registered as `name`.
+
+# Arguments
+
+- `repl::REPL.AbstractREPL`: Active REPL that owns the new prompt.
+- `main::LineEdit.Prompt`: Main Julia prompt, whose history is shared.
+- `prompt::Function`: Function that returns the string of the prompt.
+- `color::Symbol`: Color of the prompt, a key of `Base.text_colors`.
+- `name::Symbol`: Name of the prompt in the history.
+
+# Keywords
+
+- `sticky::Bool`: Whether the prompt is kept after a command.
+"""
+function _create_prompt(
+    repl::REPL.AbstractREPL,
+    main::LineEdit.Prompt,
+    prompt::Function,
+    color::Symbol,
+    name::Symbol;
+    sticky::Bool,
+)
+    # In this case, we will use the same completion provider as the julia prompt.
+    mode = LineEdit.Prompt(
+        prompt;
+        complete = REPL.REPLCompletionProvider(),
+        prompt_prefix = repl.options.hascolor ? Base.text_colors[color] : "",
+        prompt_suffix = "",
+        sticky = sticky,
+    )
+
+    mode.repl = repl
+
+    # Let the command history be equal to the julia prompt.
+    hp = main.hist
+    hp.mode_mapping[name] = mode
+    mode.hist = hp
+
+    return mode
+end
+
+"""
     _create_pager_repl_mode(
         repl::REPL.AbstractREPL,
         main::LineEdit.Prompt
     ) -> LineEdit.Prompt
 
-Create the pager REPL mode for the active `repl` and its main prompt.
+Create the pager REPL mode for the active `repl` and its main prompt, together with its sub
+mode, the pager help, which is selected by `?` at the beginning of the line.
 
 # Arguments
 
@@ -48,125 +180,28 @@ Create the pager REPL mode for the active `repl` and its main prompt.
 - `main::LineEdit.Prompt`: Main Julia prompt used for history and keymaps.
 """
 function _create_pager_repl_mode(repl::REPL.AbstractREPL, main::LineEdit.Prompt)
-    # == Prompt of the Pager Mode ==========================================================
-
-    # In this case, we will use the same completion provider as the julia prompt.
-    tp_mode = LineEdit.Prompt(
-        _tp_mode_prompt;
-        complete = REPL.REPLCompletionProvider(),
-        prompt_prefix = repl.options.hascolor ? Base.text_colors[:magenta] : "",
-        prompt_suffix = "",
-        sticky = true,
-    )
+    tp_mode = _create_prompt(repl, main, _tp_mode_prompt, :magenta, :pager; sticky = true)
 
     # This function is called when the user hits return after typing a command.
-    tp_mode.on_done = (s, buf, ok) -> begin
-        ok || return REPL.transition(s, :abort)
-
-        # Take the input command.
-        input = String(take!(buf))
-        REPL.reset(repl)
-
-        # Process the input command inside the pager mode.
-        _tp_mode_do_cmd(repl, input)
-
-        REPL.prepare_next(repl)
-        REPL.reset_state(s)
-        s.current_mode.sticky || REPL.transition(s, main)
-    end
-
-    tp_mode.repl = repl
+    tp_mode.on_done = PromptOnDone(repl, main, :pager, nothing)
 
     # Check if the expression is incomplete, and, if so, request for another line.
     tp_mode.on_enter = REPL.return_callback
 
-    # Let the command history be equal to the julia prompt.
-    hp = main.hist
-    hp.mode_mapping[:pager] = tp_mode
-    tp_mode.hist = hp
-
     # Create the sub mode: pager help.
-    tp_help_mode = _create_pager_help_repl_mode(repl, main, tp_mode)
-
-    # == Key Mappings ======================================================================
-
-    # Assign `?` as the key map to switch to pager help mode.
-    help_mode_transition_keymap = Dict{Any, Any}(
-        '?' => function (s, args...)
-            # We must only switch to the pager help mode if `?` is typed at the beginning
-            # of the line.
-            if isempty(s) || (position(LineEdit.buffer(s)) == 0)
-                buf = copy(LineEdit.buffer(s))
-                LineEdit.transition(s, tp_help_mode) do
-                    LineEdit.state(s, tp_help_mode).input_buffer = buf
-                end
-            else
-                LineEdit.edit_insert(s, '?')
-            end
-        end
+    tp_help_mode = _create_prompt(
+        repl, main, _tp_help_mode_prompt, :yellow, :pager_help; sticky = false
     )
 
-    _set_mode_keymap!(tp_mode, main, help_mode_transition_keymap)
+    tp_help_mode.on_done = PromptOnDone(repl, tp_mode, :pager_help, nothing)
+
+    # `?` at the beginning of the line switches to the pager help mode.
+    _set_mode_keymap!(tp_help_mode, main)
+    _set_mode_keymap!(
+        tp_mode, main, Dict{Any, Any}('?' => PromptSwitchKey(tp_help_mode, '?'))
+    )
 
     return tp_mode
-end
-
-"""
-    _create_pager_help_repl_mode(
-        repl::REPL.AbstractREPL,
-        main::LineEdit.Prompt,
-        tp_mode::LineEdit.Prompt
-    ) -> LineEdit.Prompt
-
-Create the pager-help REPL mode.
-
-# Arguments
-
-- `repl::REPL.AbstractREPL`: Active REPL that owns the new mode.
-- `main::LineEdit.Prompt`: Main Julia prompt used for history and keymaps.
-- `tp_mode::LineEdit.Prompt`: Pager prompt to which help mode returns.
-"""
-function _create_pager_help_repl_mode(
-    repl::REPL.AbstractREPL, main::LineEdit.Prompt, tp_mode::LineEdit.Prompt
-)
-    # == Prompt of the Pager Help Mode =====================================================
-
-    tp_help_mode = LineEdit.Prompt(
-        _tp_help_mode_prompt;
-        complete = REPL.REPLCompletionProvider(),
-        prompt_prefix = repl.options.hascolor ? Base.text_colors[:yellow] : "",
-        prompt_suffix = "",
-        sticky = false,
-    )
-
-    tp_help_mode.on_done =
-        (s, buf, ok) -> begin
-            # Without this, aborting the prompt with CTRL-D still evaluated the empty
-            # input, which paged the Julia help welcome text instead of leaving the mode.
-            ok || return REPL.transition(s, :abort)
-
-            # Take the input command.
-            input = String(take!(buf))
-            REPL.reset(repl)
-
-            # Process the input command inside the pager mode.
-            _tp_help_mode_do_cmd(repl, input)
-
-            REPL.prepare_next(repl)
-            REPL.reset_state(s)
-            s.current_mode.sticky || REPL.transition(s, tp_mode)
-        end
-
-    # == Key Mappings ======================================================================
-
-    hp = main.hist
-    hp.mode_mapping[:pager_help] = tp_help_mode
-    tp_help_mode.hist = hp
-    tp_help_mode.repl = repl
-
-    _set_mode_keymap!(tp_help_mode, main)
-
-    return tp_help_mode
 end
 
 """
@@ -263,21 +298,8 @@ function _init_pager_repl_mode(
     # The regular help mode pages its answers if the user asked for it.
     replace_help_mode && _replace_help_mode!(repl)
 
-    # Assign `|` as the key map to switch to pager mode.
-    keymap = Dict{Any, Any}(
-        '|' => function (s, args...)
-            # We must only switch to pager mode if `|` is typed at the beginning
-            # of the line.
-            if isempty(s) || position(LineEdit.buffer(s)) == 0
-                buf = copy(LineEdit.buffer(s))
-                LineEdit.transition(s, tp_mode) do
-                    LineEdit.state(s, tp_mode).input_buffer = buf
-                end
-            else
-                LineEdit.edit_insert(s, '|')
-            end
-        end
-    )
+    # `|` at the beginning of the line switches to the pager mode.
+    keymap = Dict{Any, Any}('|' => PromptSwitchKey(tp_mode, '|'))
 
     # Add the keymap that initializes pager mode to the default REPL key mappings.
     main_mode.keymap_dict = LineEdit.keymap_merge(main_mode.keymap_dict, keymap)
@@ -288,41 +310,6 @@ end
 ############################################################################################
 #                                 Paged Regular Help Mode                                  #
 ############################################################################################
-
-"""
-    struct PagedHelpOnDone <: Function
-
-Replacement of the `on_done` callback of the regular `help?>` prompt that pages its answers.
-It is a `Function`, because the field of the prompt is typed so.
-
-The answers of the regular help mode never pass through `stdout`: they go to the REPL
-display. Hence, the callback evaluates the help itself, like the `pager?>` prompt does, and
-pages the result when it does not fit the display. The original callback is kept, so that
-it can be restored.
-
-# Fields
-
-- `repl::Any`: REPL that owns the prompt.
-- `main::LineEdit.Prompt`: Main Julia prompt the help mode returns to.
-- `original::Any`: Original `on_done` callback of the prompt.
-"""
-struct PagedHelpOnDone <: Function
-    repl::Any
-    main::LineEdit.Prompt
-    original::Any
-end
-
-function (h::PagedHelpOnDone)(s, buf, ok)
-    ok || return REPL.transition(s, :abort)
-
-    input = String(take!(buf))
-    REPL.reset(h.repl)
-    _paged_help_do_cmd(h.repl, input, s.active_module)
-    REPL.prepare_next(h.repl)
-    REPL.reset_state(s)
-
-    return s.current_mode.sticky ? true : REPL.transition(s, h.main)
-end
 
 """
     _paged_help_do_cmd(repl::Any, input::String, mod::Module) -> Nothing
@@ -376,6 +363,21 @@ function _find_help_mode(repl)
 end
 
 """
+    _pages_help(mode::LineEdit.Prompt) -> Bool
+
+Return whether the callback of the prompt `mode`, the regular help prompt, was replaced by
+the one that pages its answers.
+
+# Arguments
+
+- `mode::LineEdit.Prompt`: Regular help prompt.
+"""
+function _pages_help(mode::LineEdit.Prompt)
+    on_done = mode.on_done
+    return (on_done isa PromptOnDone) && (on_done.kind === :paged_help)
+end
+
+"""
     _replace_help_mode!(repl::Any) -> Bool
 
 Make the regular help prompt of `repl` page its answers and return whether the prompt was
@@ -388,8 +390,10 @@ found. A prompt already replaced is left as it is.
 function _replace_help_mode!(repl)
     mode = _find_help_mode(repl)
     isnothing(mode) && return false
-    (mode.on_done isa PagedHelpOnDone) && return true
-    mode.on_done = PagedHelpOnDone(repl, first(repl.interface.modes), mode.on_done)
+    _pages_help(mode) && return true
+    mode.on_done = PromptOnDone(
+        repl, first(repl.interface.modes), :paged_help, mode.on_done
+    )
     return true
 end
 
@@ -405,7 +409,7 @@ was replaced.
 """
 function _restore_help_mode!(repl)
     mode = _find_help_mode(repl)
-    (isnothing(mode) || !(mode.on_done isa PagedHelpOnDone)) && return false
+    (isnothing(mode) || !_pages_help(mode)) && return false
     mode.on_done = mode.on_done.original
     return true
 end
