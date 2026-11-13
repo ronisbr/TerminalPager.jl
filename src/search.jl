@@ -349,6 +349,7 @@ function _search_state(pagerd::Pager)
         active_search_match_id = pagerd.active_search_match_id,
         search_columns = pagerd.search_columns,
         search_pattern = pagerd.search_pattern,
+        search_regex = pagerd.search_regex,
         start_row = pagerd.start_row,
         start_column = pagerd.start_column,
         mode = pagerd.mode,
@@ -371,6 +372,7 @@ function _restore_search_state!(pagerd::Pager, saved::NamedTuple)
     pagerd.active_search_match_id = saved.active_search_match_id
     pagerd.search_columns = saved.search_columns
     pagerd.search_pattern = saved.search_pattern
+    pagerd.search_regex = saved.search_regex
     pagerd.mode = saved.mode
     _restore_viewport!(pagerd, saved)
     return nothing
@@ -410,6 +412,7 @@ function _apply_search!(
     pagerd::Pager, regex::Regex, columns::UnitRange{Int} = _UNRESTRICTED_COLUMNS
 )
     _find_matches!(pagerd, regex; columns = columns)
+    pagerd.search_regex = regex
     _change_active_match!(pagerd, true)
     _move_view_to_match!(pagerd)
     pagerd.mode = :searching
@@ -561,18 +564,28 @@ end
 """
     _quit_search!(pagerd::Pager) -> Nothing
 
-Clear all search state in `pagerd`, leave the searching mode, and request a redraw.
+Clear all search state in `pagerd` and leave the searching mode, or clear the filter when
+there is no search to clear, and request a redraw.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to clear.
 """
 function _quit_search!(pagerd::Pager)
+    # The search is cleared first, so that the filter is kept until Esc is pressed again.
+    if (pagerd.mode != :searching) &&
+        isnothing(pagerd.search_regex) &&
+        !isnothing(pagerd.filter_regex)
+        _clear_filter!(pagerd)
+        return nothing
+    end
+
     empty!(pagerd.search_matches)
     empty!(pagerd.ordered_search_matches)
     pagerd.active_search_match_id = 0
     pagerd.search_columns = _UNRESTRICTED_COLUMNS
     pagerd.search_pattern = ""
+    pagerd.search_regex = nothing
     pagerd.mode = :view
     _request_redraw!(pagerd)
     return nothing

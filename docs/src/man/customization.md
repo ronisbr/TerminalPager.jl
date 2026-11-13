@@ -95,6 +95,7 @@ prefix `terminalpager_`. The available faces are:
 | `mode_search`         | Name of the search mode on the status line.            | Bold yellow.                       |
 | `mode_visual`         | Name of the visual mode on the status line.            | Bold magenta.                      |
 | `mode_freeze`         | Name of the freeze selection mode on the status line.  | Bold cyan.                         |
+| `mode_filter`         | Name of the filter state on the status line.           | Bold green.                        |
 | `message_info`        | Informative message on the status line.                | Green.                             |
 | `message_error`       | Error message on the status line.                      | Red.                               |
 | `search_match`        | Inactive search match.                                 | Black on white.                    |

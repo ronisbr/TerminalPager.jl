@@ -49,6 +49,13 @@ columns 12 to 20, which is handy to search one column of a table; `@12 14` and `
 leave one end open, and the column ruler (`R`) helps picking the columns. The status line
 shows the range next to the matches.
 
+Typing `&` followed by a regular expression shows only the lines matching it, and a pattern
+starting with `!` hides them instead (`\!` for a literal `!`). The view is previewed while
+the pattern is typed, the frozen and the title rows are always shown, the line number ruler
+keeps the source line numbers, `:` goes to source lines, and the status line shows `FILTER`,
+the pattern, and the visible lines over the total. The search runs over the visible lines.
+`&` with an empty pattern clears the filter, and so does `Esc` once the search is cleared.
+
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
 move. `M` marks the visual line, `V` anchors a range that follows the visual line until `V`
 is pressed again or `M` marks the whole range, and `y` copies the visual line, the range,

@@ -48,7 +48,144 @@ function _ruler_width(num_lines::Int)
     return ndigits(num_lines) + 3
 end
 
-_ruler_width(p::Pager) = _ruler_width(p.num_lines)
+_ruler_width(p::Pager) = _ruler_width(_ruler_line_count(p))
+
+"""
+    _ruler_line_count(p::Pager) -> Int
+
+Return the largest number written in the line-number ruler of `p`, which is the source line
+of the last row when a filter is active, or the number of rows.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+function _ruler_line_count(p::Pager)
+    row_to_line = p.row_to_line
+    isnothing(row_to_line) && return p.num_lines
+    return isempty(row_to_line) ? 0 : row_to_line[end]
+end
+
+"""
+    _source_line(p::Pager, row::Int) -> Int
+
+Return the source line shown at the `row` of the view of `p`, which is the row itself when
+no filter is active.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+- `row::Int`: Row of the view.
+"""
+function _source_line(p::Pager, row::Int)
+    row_to_line = p.row_to_line
+    isnothing(row_to_line) && return row
+    return (1 <= row <= length(row_to_line)) ? row_to_line[row] : row
+end
+
+"""
+    _first_row_of_line(p::Pager, line::Int) -> Int
+
+Return the row of the view of `p` showing the source `line`, or `0` if the line is hidden by
+the filter. The row is the line itself when no filter is active.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+- `line::Int`: Source line.
+"""
+function _first_row_of_line(p::Pager, line::Int)
+    line_to_row = p.line_to_row
+    isnothing(line_to_row) && return line
+    return (1 <= line <= length(line_to_row)) ? line_to_row[line] : 0
+end
+
+"""
+    _first_row_at_or_after(p::Pager, line::Int) -> Int
+
+Return the first row of the view of `p` showing the source `line` or a line after it, or the
+last row if every line after it is hidden. The row is the line itself when no filter is
+active.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+- `line::Int`: Source line.
+"""
+function _first_row_at_or_after(p::Pager, line::Int)
+    row_to_line = p.row_to_line
+    isnothing(row_to_line) && return line
+    isempty(row_to_line) && return 1
+    return min(searchsortedfirst(row_to_line, line), length(row_to_line))
+end
+
+"""
+    _rebuild_view_layout!(p::Pager; top_line::Int = _source_line(p, p.start_row)) -> Nothing
+
+Rebuild the rows shown by `p` from its source lines and its filter, and update everything
+that depends on them: the number of rows, the width of the text, the viewport, which keeps
+`top_line` or the first visible line after it at the top, the visual line, and the search
+matches. The frame is invalidated, so that the next redraw repaints the whole screen.
+
+# Arguments
+
+- `p::Pager`: Pager state to update.
+
+# Keywords
+
+- `top_line::Int`: Source line to keep at the top of the view.
+    (**Default**: the source line at the top of the view)
+"""
+function _rebuild_view_layout!(p::Pager; top_line::Int = _source_line(p, p.start_row))
+    source = p.source_layout
+    regex = p.filter_regex
+
+    if isnothing(regex)
+        p.text_layout = source
+        p.row_to_line = nothing
+        p.line_to_row = nothing
+    else
+        # The frozen and the title rows are always shown.
+        kept_rows = max(p.frozen_rows, p.title_rows)
+        rows = _filter_rows(source, regex, p.filter_inverted, kept_rows)
+        line_to_row = zeros(Int, length(source))
+
+        for (row, line) in enumerate(rows)
+            line_to_row[line] = row
+        end
+
+        p.text_layout = ViewLayout(source, rows)
+        p.row_to_line = rows
+        p.line_to_row = line_to_row
+    end
+
+    p.num_lines = length(p.text_layout)
+    p.text_width = -1
+    p.cropped_lines = 0
+    p.cropped_columns = 0
+
+    min_row = _first_scrollable_row(p)
+    top_row = _first_row_at_or_after(p, top_line)
+    p.start_row = clamp(top_row, min_row, max(min_row, p.num_lines))
+    _clamp_viewport!(p)
+    _clamp_visual_line!(p)
+
+    # The matches are computed over the rows, so the search runs again. The active match is
+    # the first one at or after the top of the view.
+    search_regex = p.search_regex
+
+    if !isnothing(search_regex)
+        _find_matches!(p, search_regex; columns = p.search_columns)
+        num_matches = length(p.ordered_search_matches)
+        p.active_search_match_id =
+            num_matches == 0 ? 0 : min(p.active_search_match_id + 1, num_matches)
+    end
+
+    _invalidate_frame!(p)
+    _request_redraw!(p)
+
+    return nothing
+end
 
 """
     _request_redraw!(p::Pager) -> Bool
@@ -1062,6 +1199,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :set_bookmark => nothing,
     :goto_bookmark => nothing,
     :search => nothing,
+    :filter => nothing,
     :next_match => nothing,
     :previous_match => nothing,
     :quit_search => nothing,
@@ -1228,6 +1366,8 @@ function _pager_event_process!(pagerd::Pager)
         _help!(pagerd)
     elseif event == :search
         _search!(pagerd)
+    elseif event == :filter
+        _filter!(pagerd)
     elseif event == :goto_line
         _goto_line!(pagerd)
     elseif event == :show_position
@@ -1732,6 +1872,18 @@ function _goto_line!(pagerd::Pager)
             round(Int, num_lines * value / 100)
         elseif kind === :end
             num_lines - _view_rows(pagerd) + 1
+        elseif !isnothing(pagerd.row_to_line)
+            # A line number is a source line. A hidden one is reported, and the view goes to
+            # the first visible line after it.
+            target = clamp(value, 1, max(1, length(pagerd.source_layout)))
+            row = _first_row_of_line(pagerd, target)
+
+            if row == 0
+                row = _first_row_at_or_after(pagerd, target)
+                _set_message!(pagerd, "Line $target is hidden by the filter")
+            end
+
+            row
         else
             value
         end
@@ -1815,13 +1967,8 @@ function _set_bookmark!(pagerd::Pager)
         return nothing
     end
 
-    line = if pagerd.visual_mode
-        pagerd.visual_mode_line + pagerd.start_row - 1
-    else
-        pagerd.start_row
-    end
-
-    pagerd.bookmarks[c] = (line, pagerd.start_column)
+    row = pagerd.visual_mode ? _visual_line_index(pagerd) : pagerd.start_row
+    pagerd.bookmarks[c] = (_source_line(pagerd, row), pagerd.start_column)
     _set_message!(pagerd, "Mark $c set")
 
     return nothing
@@ -1857,8 +2004,10 @@ function _goto_bookmark!(pagerd::Pager)
 
     _remember_position!(pagerd)
 
+    # The bookmarks store source lines, whereas the previous position is a row.
+    row = c == '\'' ? target[1] : _first_row_at_or_after(pagerd, target[1])
     min_row = _first_scrollable_row(pagerd)
-    pagerd.start_row = clamp(target[1], min_row, max(min_row, pagerd.num_lines))
+    pagerd.start_row = clamp(row, min_row, max(min_row, pagerd.num_lines))
     pagerd.start_column = max(target[2], pagerd.frozen_columns + 1)
     pagerd.visual_mode_line = 1
 
@@ -1877,7 +2026,14 @@ or `nothing` if there is none.
 """
 function _bookmark_rows(pagerd::Pager)
     isempty(pagerd.bookmarks) && return nothing
-    return Set{Int}(first(position) for position in values(pagerd.bookmarks))
+    rows = Set{Int}()
+
+    for position in values(pagerd.bookmarks)
+        row = _first_row_of_line(pagerd, first(position))
+        (row > 0) && push!(rows, row)
+    end
+
+    return rows
 end
 
 """
@@ -2066,8 +2222,13 @@ directions, or an empty range when there is no anchor.
 function _visual_range(pagerd::Pager)
     anchor = pagerd.visual_anchor
     anchor == 0 && return 1:0
-    visual_line = _visual_line_index(pagerd)
-    return min(anchor, visual_line):max(anchor, visual_line)
+
+    # The anchor is a source line, whereas the range is made of rows. A hidden anchor is
+    # moved to the first visible line after it.
+    anchor_row = _first_row_at_or_after(pagerd, anchor)
+    visual_row = _visual_line_index(pagerd)
+
+    return min(anchor_row, visual_row):max(anchor_row, visual_row)
 end
 
 """
@@ -2082,7 +2243,8 @@ request a redraw. Nothing happens outside the visual mode.
 """
 function _toggle_visual_anchor!(pagerd::Pager)
     pagerd.visual_mode || return nothing
-    pagerd.visual_anchor = pagerd.visual_anchor == 0 ? _visual_line_index(pagerd) : 0
+    pagerd.visual_anchor =
+        pagerd.visual_anchor == 0 ? _source_line(pagerd, _visual_line_index(pagerd)) : 0
     _request_redraw!(pagerd)
     return nothing
 end
@@ -2090,9 +2252,9 @@ end
 """
     _selected_line_ids(pagerd::Pager) -> Vector{Int}
 
-Return the lines selected in the visual mode of `pagerd`, sorted and without repetitions:
-the visual line, the range between the anchor and the visual line, and the marked lines. The
-result is empty outside the visual mode.
+Return the source lines selected in the visual mode of `pagerd`, sorted and without
+repetitions: the visual line, the range between the anchor and the visual line, and the
+marked lines that are not hidden by the filter. The result is empty outside the visual mode.
 
 # Arguments
 
@@ -2101,9 +2263,17 @@ result is empty outside the visual mode.
 function _selected_line_ids(pagerd::Pager)
     pagerd.visual_mode || return Int[]
 
-    ids = Int[_visual_line_index(pagerd)]
-    append!(ids, _visual_range(pagerd))
-    append!(ids, pagerd.visual_mode_selected_lines)
+    ids = Int[_source_line(pagerd, _visual_line_index(pagerd))]
+
+    for row in _visual_range(pagerd)
+        push!(ids, _source_line(pagerd, row))
+    end
+
+    # A mark hidden by the filter is not drawn, so it is not copied either.
+    for line in pagerd.visual_mode_selected_lines
+        (_first_row_of_line(pagerd, line) == 0) && continue
+        push!(ids, line)
+    end
 
     return sort!(unique!(ids))
 end
@@ -2121,13 +2291,15 @@ is the length of [`_selected_line_ids`](@ref).
 function _num_selected_lines(pagerd::Pager)
     pagerd.visual_mode || return 0
 
-    visual_line = _visual_line_index(pagerd)
+    visual_row = _visual_line_index(pagerd)
     range = _visual_range(pagerd)
     num_selected = isempty(range) ? 1 : length(range)
 
-    # The marks outside the range are counted once. A mark can only be in the list once.
+    # The marks outside the range are counted once. A mark can only be in the list once, and
+    # it stores a source line, which is mapped to its row. A hidden mark is not counted.
     for line in pagerd.visual_mode_selected_lines
-        ((line in range) || (line == visual_line)) && continue
+        row = _first_row_of_line(pagerd, line)
+        ((row == 0) || (row in range) || (row == visual_row)) && continue
         num_selected += 1
     end
 
@@ -2178,7 +2350,8 @@ function _toggle_visual_line!(pagerd::Pager)
     if pagerd.visual_mode
         # With an anchor, the whole range is marked and the anchor is dropped.
         if pagerd.visual_anchor != 0
-            for line in _visual_range(pagerd)
+            for row in _visual_range(pagerd)
+                line = _source_line(pagerd, row)
                 (line in pagerd.visual_mode_selected_lines) ||
                     push!(pagerd.visual_mode_selected_lines, line)
             end
@@ -2188,7 +2361,7 @@ function _toggle_visual_line!(pagerd::Pager)
             return nothing
         end
 
-        visual_str_id = _visual_line_index(pagerd)
+        visual_str_id = _source_line(pagerd, _visual_line_index(pagerd))
 
         # If the line is already selected, we will deselect it. Notice that a line can only
         # be in the list once, so `findfirst` is enough and does not allocate.
@@ -2221,7 +2394,7 @@ Nothing happens outside the visual mode.
 """
 function _yank!(pagerd::Pager)
     pagerd.visual_mode || return nothing
-    _copy_lines!(pagerd, _selected_line_ids(pagerd))
+    _copy_lines!(pagerd, pagerd.source_layout, _selected_line_ids(pagerd))
     return nothing
 end
 
@@ -2241,25 +2414,29 @@ function _yank_all!(pagerd::Pager)
         return nothing
     end
 
-    _copy_lines!(pagerd, 1:pagerd.num_lines)
+    _copy_lines!(pagerd, pagerd.text_layout, 1:pagerd.num_lines)
 
     return nothing
 end
 
 """
-    _copy_lines!(pagerd::Pager, line_ids::AbstractVector{<:Integer}) -> Nothing
+    _copy_lines!(pagerd::Pager, layout::ViewLayout, line_ids::AbstractVector{<:Integer}) ->
+        Nothing
 
-Copy the lines `line_ids` of the text of `pagerd` to the system clipboard without their
-decorations, leaving a message telling how many lines were copied, or that the clipboard is
+Copy the lines `line_ids` of `layout` to the system clipboard without their decorations,
+leaving a message in `pagerd` telling how many lines were copied, or that the clipboard is
 not available.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
+- `layout::ViewLayout`: Layout the lines are taken from.
 - `line_ids::AbstractVector{<:Integer}`: Lines to copy.
 """
-function _copy_lines!(pagerd::Pager, line_ids::AbstractVector{<:Integer})
-    yanked_lines = _undecorated_lines(pagerd.text_layout, line_ids)
+function _copy_lines!(
+    pagerd::Pager, layout::ViewLayout, line_ids::AbstractVector{<:Integer}
+)
+    yanked_lines = _undecorated_lines(layout, line_ids)
     num_yanked_lines = length(yanked_lines)
     yanked_text = _join_lines(yanked_lines)
 
@@ -2388,6 +2565,8 @@ again afterwards, and the screen is repainted.
 - `pagerd::Pager`: Pager state whose text is edited.
 """
 function _edit!(pagerd::Pager)
+    # The selection is made of source lines, whereas the whole text is the visible rows.
+    layout = pagerd.visual_mode ? pagerd.source_layout : pagerd.text_layout
     ids = pagerd.visual_mode ? _selected_line_ids(pagerd) : 1:pagerd.num_lines
 
     if isempty(ids)
@@ -2395,11 +2574,11 @@ function _edit!(pagerd::Pager)
         return nothing
     end
 
-    text, _ = _assemble_yank_text(pagerd.text_layout, ids)
+    text, _ = _assemble_yank_text(layout, ids)
 
     # The editor opens at the visual line, which is in the selection, or at the top row.
     line = if pagerd.visual_mode
-        something(findfirst(==(_visual_line_index(pagerd)), ids), 1)
+        something(findfirst(==(_source_line(pagerd, _visual_line_index(pagerd))), ids), 1)
     else
         pagerd.start_row
     end
@@ -2480,6 +2659,8 @@ function _save!(pagerd::Pager)
     path = expanduser(strip(keep_decorations ? cmd_input[2:end] : cmd_input))
     isempty(path) && return nothing
 
+    # The selection is made of source lines, whereas the whole text is the visible rows.
+    layout = pagerd.visual_mode ? pagerd.source_layout : pagerd.text_layout
     ids = pagerd.visual_mode ? _selected_line_ids(pagerd) : 1:pagerd.num_lines
 
     if isempty(ids)
@@ -2497,7 +2678,7 @@ function _save!(pagerd::Pager)
     end
 
     text, num_saved_lines = _assemble_yank_text(
-        pagerd.text_layout, ids; keep_decorations = keep_decorations
+        layout, ids; keep_decorations = keep_decorations
     )
 
     # The errors of the file system, like a missing directory or a denied permission, are

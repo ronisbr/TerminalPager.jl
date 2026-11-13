@@ -47,6 +47,7 @@ end
     @test config.mode_search == "\e[0;33;1m"
     @test config.mode_visual == "\e[0;35;1m"
     @test config.mode_freeze == "\e[0;36;1m"
+    @test config.mode_filter == "\e[0;32;1m"
     @test config.message_info == "\e[0;32m"
     @test config.search_match == "\e[0;30;47m"
     @test config.search_active_match == "\e[0;30;43m"

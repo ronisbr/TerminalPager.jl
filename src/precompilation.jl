@@ -156,6 +156,10 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, ":\$\n")
             # Literal search toggled on and off at the prompt.
             write(stdin_wr, "/\el0.1986\el\n")
+            # Filter, inverted filter, and cleared filter.
+            write(stdin_wr, "&0.1986\n")
+            write(stdin_wr, "&!0.1986\n")
+            write(stdin_wr, "&\n")
             # Search restricted to a range of columns.
             write(stdin_wr, "/@1:5 0.1986\n")
             # Search.
@@ -269,6 +273,10 @@ PrecompileTools.@setup_workload begin
             TerminalPager._preview_search!(
                 burst_pager, "line", TerminalPager._search_state(burst_pager)
             )
+            TerminalPager._preview_filter!(
+                burst_pager, "line", TerminalPager._filter_state(burst_pager)
+            )
+            TerminalPager._clear_filter!(burst_pager)
 
             for prepared_lines in (
                 ["plain text", "second line"],
@@ -292,6 +300,15 @@ PrecompileTools.@setup_workload begin
                     maximum_number_of_lines = 10,
                     ruler_foot = true,
                     search_matches = prepared_matches,
+                    show_ruler = true,
+                )
+                TerminalPager._textview(
+                    devnull,
+                    ViewLayout(prepared_layout, [2]),
+                    (1, -1, 1, -1);
+                    line_numbers = [2],
+                    maximum_number_of_columns = 40,
+                    maximum_number_of_lines = 10,
                     show_ruler = true,
                 )
             end

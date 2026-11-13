@@ -119,6 +119,7 @@ the background, as `_textview` expects.
 - `mode_search::String`: Name of the search mode on the status line.
 - `mode_visual::String`: Name of the visual mode on the status line.
 - `mode_freeze::String`: Name of the freeze selection mode on the status line.
+- `mode_filter::String`: Name of the filter state on the status line.
 - `message_info::String`: Informative message on the status line.
 - `message_error::String`: Error message on the status line.
 - `search_match::String`: Inactive search match.
@@ -143,6 +144,7 @@ struct DisplayConfig
     mode_search::String
     mode_visual::String
     mode_freeze::String
+    mode_filter::String
     message_info::String
     message_error::String
     search_match::String
@@ -271,8 +273,26 @@ Store the mutable state for one pager session.
 - `display_size::NTuple{2, Int}`: Current terminal rows and columns.
 - `start_row::Int`: First visible source row.
 - `start_column::Int`: First visible printable column.
-- `text_layout::ViewLayout`: Canonical prepared text layout.
-- `num_lines::Int`: Number of source lines.
+- `text_layout::ViewLayout`: Layout of the rows shown by the pager, which is
+    `source_layout` itself unless a filter is active, in which case it holds the visible
+    lines only.
+- `source_layout::ViewLayout`: Layout of every line of the text.
+- `row_to_line::Union{Nothing, Vector{Int}}`: Source line of each row of `text_layout`, or
+    `nothing` when the rows are the source lines.
+- `line_to_row::Union{Nothing, Vector{Int}}`: Row of each source line, `0` for a hidden
+    line, or `nothing` when the rows are the source lines.
+- `filter_regex::Union{Nothing, Regex}`: Regular expression of the active filter, or
+    `nothing`.
+- `filter_inverted::Bool`: Whether the filter hides the matching lines instead of showing
+    them.
+- `filter_pattern::String`: Input of the active filter, or an empty string.
+- `search_regex::Union{Nothing, Regex}`: Regular expression of the active search, or
+    `nothing`.
+- `num_lines::Int`: Number of rows of `text_layout`.
+
+The rows of `text_layout` are the unit of `start_row`, `visual_mode_line`, the search
+matches, and the frozen and title rows, whereas the marks of the visual mode, the range
+anchor, and the bookmarks store source lines, so that they survive a change of the filter.
 - `text_width::Int`: Printable width of the widest source line, or a negative number if it
     was not computed yet. Read it with `_text_width`.
 - `cropped_lines::Int`: Number of lines cropped below the viewport.
@@ -337,6 +357,13 @@ Base.@kwdef mutable struct Pager
     start_row::Int = 1
     start_column::Int = 1
     text_layout::ViewLayout
+    source_layout::ViewLayout = text_layout
+    row_to_line::Union{Nothing, Vector{Int}} = nothing
+    line_to_row::Union{Nothing, Vector{Int}} = nothing
+    filter_regex::Union{Nothing, Regex} = nothing
+    filter_inverted::Bool = false
+    filter_pattern::String = ""
+    search_regex::Union{Nothing, Regex} = nothing
     num_lines::Int = 0
     text_width::Int = -1
     cropped_lines::Int = 0

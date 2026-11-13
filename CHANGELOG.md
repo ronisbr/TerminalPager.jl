@@ -49,6 +49,13 @@ Version 0.9.0
   `pager?>` prompt does. (Issue [#74][gh-issue-74])
 - ![Feature][badge-feature] `Alt+p` in the `pager>` prompt appends ` |> pager` to the
   command line without submitting it. (Issue [#47][gh-issue-47])
+- ![Feature][badge-feature] `&` (action `:filter`) shows only the lines matching a regular
+  expression, previewed while the pattern is typed, and `!pattern` hides them instead. The
+  frozen and the title rows are always shown, the line number ruler keeps the source line
+  numbers, `:` goes to source lines, the search runs over the visible lines, and the status
+  line shows `FILTER` with the pattern and the visible lines over the total, styled with the
+  new face `mode_filter`. `&` with an empty pattern, or `Esc` once the search is cleared,
+  clears the filter.
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the

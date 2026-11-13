@@ -18,6 +18,7 @@ const _MODE_SEARCH = "SEARCH"
 const _MODE_VISUAL = "VISUAL"
 const _MODE_FREEZE = "FREEZE"
 const _MODE_TITLES = "TITLES"
+const _MODE_FILTER = "FILTER"
 const _MODE_WIDTH = 6
 
 const _NO_MATCH = "no match"
@@ -51,9 +52,12 @@ const _GROUP_GAP = 3
 
 # Key hints of the status line, rebuilt when the key bindings change. The entries are the
 # generation they were built for, and the hints of the normal mode with and without the
-# help action, of the search mode, of the visual mode, and of the freeze selection mode.
+# help action, of the search mode, of the visual mode, of the freeze selection mode, and of
+# the normal mode with an active filter, with and without the help action.
 const _STATUS_HINTS =
-    Ref{Tuple{Int, String, String, String, String, String}}((-1, "", "", "", "", ""))
+    Ref{Tuple{Int, String, String, String, String, String, String, String}}((
+        -1, "", "", "", "", "", "", ""
+    ))
 
 # Padding is written directly from the bytes of this string, so that right-aligning the
 # hint does not allocate a full-width string at every frame.
@@ -214,7 +218,7 @@ end
     _status_hint(mode::Symbol, with_help::Bool) -> String
 
 Return the key hints of the status line for `mode`, which is `:normal`, `:search`,
-`:visual`, or `:freeze`, like `?:help  q:quit` or `n:next  N:prev  Esc:clear`.
+`:visual`, `:freeze`, or `:filter`, like `?:help  q:quit` or `n:next  N:prev  Esc:clear`.
 
 The hints are rebuilt only when the key bindings change, so that the status line does not
 allocate at every frame.
@@ -255,6 +259,13 @@ function _status_hint(mode::Symbol, with_help::Bool)
                 (:toggle_visual_mode, "leave"),
             ),
             freeze_hint,
+            _join_hints(
+                (:help, "help"),
+                (:filter, "filter"),
+                (:quit_search, "clear"),
+                (:quit, "quit"),
+            ),
+            _join_hints((:filter, "filter"), (:quit_search, "clear"), (:quit, "quit")),
         )
         _STATUS_HINTS[] = cached
     end
@@ -262,6 +273,7 @@ function _status_hint(mode::Symbol, with_help::Bool)
     mode === :search && return cached[4]
     mode === :visual && return cached[5]
     mode === :freeze && return cached[6]
+    mode === :filter && return with_help ? cached[7] : cached[8]
     return with_help ? cached[2] : cached[3]
 end
 
@@ -478,6 +490,17 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     num_tags = (w_frozen > 0) + (w_titles > 0) + (w_ruler > 0)
     w_tags = w_frozen + w_titles + w_ruler + max(num_tags - 1, 0) * _ITEM_GAP
 
+    # The active filter is shown after the mode details, with its pattern and the visible
+    # lines over the total.
+    filter_active = !isnothing(pagerd.filter_regex)
+    total_lines = length(pagerd.source_layout)
+    w_filter = if filter_active
+        _MODE_WIDTH + 1 + textwidth(pagerd.filter_pattern) + 1 + ndigits(num_lines) + 1 +
+        ndigits(total_lines)
+    else
+        0
+    end
+
     # Key hints of the current mode.
     hint_mode = if in_selection
         :freeze
@@ -485,6 +508,8 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         :visual
     elseif in_search
         :search
+    elseif filter_active
+        :filter
     else
         :normal
     end
@@ -518,6 +543,9 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
 
     show_detail = (w_detail > 0) && (left + _ITEM_GAP + w_detail + gap + right <= cols)
     show_detail && (left += _ITEM_GAP + w_detail)
+
+    show_filter = (w_filter > 0) && (left + _ITEM_GAP + w_filter + gap + right <= cols)
+    show_filter && (left += _ITEM_GAP + w_filter)
 
     show_arrows =
         (w_arrows > 0) &&
@@ -570,6 +598,19 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
                 write(out, _NO_MATCH)
             end
         end
+    end
+
+    if show_filter
+        _write_blanks(out, _ITEM_GAP)
+        use_color && write(out, display_config.mode_filter)
+        write(out, _MODE_FILTER)
+        use_color && write(out, base)
+        write(out, UInt8(' '))
+        write(out, pagerd.filter_pattern)
+        write(out, UInt8(' '))
+        _write_decimal(out, num_lines)
+        write(out, UInt8('/'))
+        _write_decimal(out, total_lines)
     end
 
     _write_blanks(out, cols - left - right)

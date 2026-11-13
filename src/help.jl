@@ -205,10 +205,11 @@ const _HELP_SECTIONS = HelpSection[
             "Alt-l at the prompt toggles the literal mode, which searches the pattern as " *
             "typed. A pattern like `@12:20 x` matches only in the printable columns 12 " *
             "to 20; `@12 x` and `@:20 x` open one end. The column ruler helps picking " *
-            "them.",
+            "them. Esc clears the search, and then the filter.",
         nothing,
         ActionHelp[
             ActionHelp(:search, "Search for a regex."),
+            ActionHelp(:filter, "Show only the lines matching a regex; ! inverts it."),
             ActionHelp(:next_match, "Go to the next match."),
             ActionHelp(:previous_match, "Go to the previous match."),
             ActionHelp(:quit_search, "Quit the search."),

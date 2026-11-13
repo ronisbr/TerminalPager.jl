@@ -21,6 +21,7 @@ const _FACES = Pair{Symbol, Face}[
     :mode_search => Face(; weight = :bold, foreground = :yellow),
     :mode_visual => Face(; weight = :bold, foreground = :magenta),
     :mode_freeze => Face(; weight = :bold, foreground = :cyan),
+    :mode_filter => Face(; weight = :bold, foreground = :green),
     :message_info => Face(; foreground = :green),
     :message_error => Face(; foreground = :red),
     :search_match => Face(; foreground = :black, background = :white),
@@ -115,6 +116,8 @@ See also: [`drop_face!`](@ref).
     (**Default**: bold magenta)
 - `"mode_freeze"`: Name of the freeze selection mode on the status line.
     (**Default**: bold cyan)
+- `"mode_filter"`: Name of the filter state on the status line.
+    (**Default**: bold green)
 - `"message_info"`: Informative message on the status line.
     (**Default**: green)
 - `"message_error"`: Error message on the status line.
@@ -371,6 +374,7 @@ function _display_config(face_of::F = _current_face) where {F <: Function}
         sgr(:mode_search),
         sgr(:mode_visual),
         sgr(:mode_freeze),
+        sgr(:mode_filter),
         sgr(:message_info),
         sgr(:message_error),
         sgr(:search_match),

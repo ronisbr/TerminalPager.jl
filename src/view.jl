@@ -110,8 +110,11 @@ function _view!(pagerd::Pager)
             push!(visual_line_backgrounds, vm_line_background)
         end
 
+        # The marks are source lines, and the hidden ones are not drawn.
         for line in pagerd.visual_mode_selected_lines
-            push!(visual_lines, line)
+            row = _first_row_of_line(pagerd, line)
+            row == 0 && continue
+            push!(visual_lines, row)
             push!(visual_line_backgrounds, vm_line_background)
         end
 
@@ -198,6 +201,7 @@ function _render_view(
         frozen_columns_at_beginning = pagerd.frozen_columns,
         frozen_lines_at_beginning = pagerd.frozen_rows,
         highlight = display_config.search_match,
+        line_numbers = pagerd.row_to_line,
         maximum_number_of_columns = cols,
         maximum_number_of_lines = rows,
         ruler_decoration = display_config.ruler,

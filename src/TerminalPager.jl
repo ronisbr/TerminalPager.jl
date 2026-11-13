@@ -54,6 +54,7 @@ const _SGR_RESET = "$(CSI)0m"
 include("./command_line.jl")
 include("./debug.jl")
 include("./faces.jl")
+include("./filter.jl")
 include("./help.jl")
 include("./helpers.jl")
 include("./history.jl")
@@ -208,6 +209,8 @@ available faces are listed as follows:
     (**Default**: bold magenta)
 - `"mode_freeze"`: Name of the freeze selection mode on the status line.
     (**Default**: bold cyan)
+- `"mode_filter"`: Name of the filter state on the status line.
+    (**Default**: bold green)
 - `"message_info"`: Informative message on the status line.
     (**Default**: green)
 - `"message_error"`: Error message on the status line.
@@ -357,6 +360,7 @@ function __init__()
     # starts without the patterns of another one.
     empty!(_SEARCH_HISTORY)
     empty!(_SAVE_HISTORY)
+    empty!(_FILTER_HISTORY)
     empty!(_LAST_YANK)
     empty!(_PAGER_HISTORY)
 
