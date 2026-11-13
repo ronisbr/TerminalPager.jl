@@ -442,80 +442,102 @@ end
 ############################################################################################
 
 """
-    _pager(str::String; kwargs...) -> Nothing
+    _session_options(kwargs::Any) -> SessionOptions
 
-Open an interactive pager for `str`, or print it directly when automatic mode fits.
+Return the options of a pager session given `kwargs`, the keywords received by the function
+that starts it, as a named tuple or as the pairs of a keyword slurp.
+
+# Arguments
+
+- `kwargs::Any`: Keywords of the session.
+
+# Extended help
+
+## Throws
+
+- `MethodError`: If a keyword is not an option of the session.
+- `TypeError`: If the value of a keyword has the wrong type.
+"""
+function _session_options(@nospecialize(kwargs))
+    # NOTE: This function reads the keywords with built-in functions only. Hence, nothing
+    # is compiled for each combination of keywords, which is why they are collected here.
+    keywords = kwargs isa NamedTuple ? kwargs : getfield(kwargs, :data)
+    names = fieldnames(typeof(keywords))
+    options = SessionOptions()
+
+    for i in 1:nfields(keywords)
+        name = names[i]::Symbol
+
+        # This is the error thrown for a keyword that a function does not support.
+        hasfield(SessionOptions, name) ||
+            throw(MethodError(Core.kwcall, (keywords, _pager!), Base.get_world_counter()))
+
+        setfield!(options, name, getfield(keywords, i))
+    end
+
+    return options
+end
+
+"""
+    _default_terminal() -> REPL.Terminals.TTYTerminal
+
+Create the terminal of a pager session, which is connected to the standard streams.
+"""
+_default_terminal() = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
+
+"""
+    _pager(str::String, options::SessionOptions) -> PagerResult
+    _pager(str::String; kwargs...) -> Union{Nothing, PagerResult}
+
+Open an interactive pager for `str` with the session `options`, or print it directly when
+the automatic mode is selected and it fits in the display, and return the result of the
+session. The method with keywords creates the options from them, and it returns `nothing`
+unless the keyword `return_selection` is `true`.
 
 # Arguments
 
 - `str::String`: Text to display.
+- `options::SessionOptions`: Options of the session.
 
 # Keywords
 
-- `auto::Bool`: Print fitting text without creating a layout or terminal session.
-    (**Default**: `false`)
-- `return_selection::Bool`: Return the [`PagerResult`](@ref) of the session instead of
-    `nothing`.
-    (**Default**: `false`)
-- `_display_config_loader::Any`: Callable object that creates the session
-    display configuration.
-    (**Default**: `_display_config`)
-- `_input_factory::Any`: Callable object that creates input state for a stream.
-    (**Default**: `PagerInput`)
-- `_layout_factory::Any`: Callable object that creates a prepared text
-    layout.
-    (**Default**: `ViewLayout`)
-- `_terminal_factory::Any`: Callable object that creates the terminal. By default, create a
-    `REPL.Terminals.TTYTerminal` connected to the standard streams.
-    (**Default**: `() -> REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)`)
-- `_raw_runner::Any`: Callable object that runs the pager callback in raw
-    mode.
-    (**Default**: `_with_raw_mode`)
-- `kwargs...`: Additional keywords forwarded to [`_pager!`](@ref).
+- `kwargs...`: Fields of [`SessionOptions`](@ref).
 """
-function _pager(
-    str::String;
-    auto::Bool = false,
-    return_selection::Bool = false,
-    _display_config_loader = _display_config,
-    _input_factory = PagerInput,
-    _layout_factory = ViewLayout,
-    _terminal_factory = () -> REPL.Terminals.TTYTerminal("", stdin, stdout, stderr),
-    _raw_runner = _with_raw_mode,
-    kwargs...,
-)
+function _pager(str::String, options::SessionOptions)
     # `split` yields `SubString`s, and both `_pager_content_fits` and `ViewLayout` accept
     # them. Copying every line into a `String` here duplicated the whole text before the first
     # frame was shown.
     lines = split(str, '\n')
     display_size = displaysize(stdout)::Tuple{Int, Int}
-    if auto && _pager_content_fits(lines, display_size)
+
+    if options.auto && _pager_content_fits(lines, display_size)
         print(str)
-        return return_selection ? _empty_result() : nothing
+        return _empty_result()
     end
 
-    text_layout = _layout_factory(lines)
-    display_config = _display_config_loader()
-    input = _input_factory(stdin)
+    text_layout = options._layout_factory(lines)
+    display_config = options._display_config_loader()
+    input = options._input_factory(stdin)
 
     # Initialize the terminal.
-    term = _terminal_factory()
+    term = options._terminal_factory()
 
     # Switch the terminal to raw mode so that every keystroke is passed immediately instead
     # of waiting for <return>.
-    result = _raw_runner(term) do
-        _pager!(
-            term,
-            str;
-            auto = false,
-            display_config = display_config,
-            input = input,
-            text_layout = text_layout,
-            kwargs...,
-        )
-    end
+    return options._raw_runner(term) do
+        options.auto = false
+        options.text_layout = text_layout
+        options.display_config = display_config
+        options.input = input
 
-    return return_selection ? result : nothing
+        _pager!(term, str, options)
+    end
+end
+
+function _pager(str::String; @nospecialize(kwargs...))
+    options = _session_options(kwargs)
+    result = _pager(str, options)
+    return options.return_selection ? result : nothing
 end
 
 """
@@ -551,97 +573,42 @@ function _with_raw_mode(f, term; raw_function = REPL.Terminals.raw!)
 end
 
 """
+    _pager!(
+        term::REPL.Terminals.TTYTerminal,
+        str::String,
+        options::SessionOptions
+    ) -> PagerResult
     _pager!(term::REPL.Terminals.TTYTerminal, str::String; kwargs...) -> PagerResult
 
-Run the interactive pager for `str` using a terminal that is already in raw mode, and return
-what the session left: the last yanked lines, the viewport, and the search pattern. The
-result of a text printed by the automatic mode is empty.
+Run the interactive pager for `str` with the session `options` using a terminal that is
+already in raw mode, and return what the session left: the last yanked lines, the viewport,
+and the search pattern. The result of a text printed by the automatic mode is empty. The
+method with keywords creates the options from them.
 
 # Arguments
 
 - `term::REPL.Terminals.TTYTerminal`: Terminal used by the pager session.
 - `str::String`: Text to display.
+- `options::SessionOptions`: Options of the session.
 
 # Keywords
 
-- `auto::Bool`: Print fitting text without opening the interactive pager.
-    (**Default**: `false`)
-- `change_freeze::Bool`: Enable commands that change frozen rows and columns.
-    (**Default**: `true`)
-- `display_config::Union{Nothing, DisplayConfig}`: Prepared session display
-    configuration, or `nothing` to load one.
-    (**Default**: `nothing`)
-- `frozen_columns::Int`: Number of leading columns to freeze.
-    (**Default**: `0`)
-- `frozen_rows::Int`: Number of leading rows to freeze.
-    (**Default**: `0`)
-- `title_rows::Int`: Number of leading title rows.
-    (**Default**: `0`)
-- `has_help::Bool`: Enable pager help.
-    (**Default**: `true`)
-- `has_visual_mode::Bool`: Enable visual selection mode.
-    (**Default**: `true`)
-- `show_ruler::Bool`: Show the line-number ruler initially.
-    (**Default**: `false`)
-- `show_column_ruler::Bool`: Show the column ruler initially.
-    (**Default**: the value of the preference `"show_column_ruler"`)
-- `show_scrollbar::Bool`: Show the scrollbar initially.
-    (**Default**: the value of the preference `"show_scrollbar"`)
-- `use_alternate_screen_buffer::Bool`: Request the terminal's alternate screen
-    buffer.
-    (**Default**: `true`)
-- `input::Union{Nothing, PagerInput}`: Input state associated with the terminal
-    input stream, or `nothing` to create one.
-    (**Default**: `nothing`)
-- `text_layout::Union{Nothing, ViewLayout}`: Prepared layout used directly
-    when supplied, or `nothing` to construct one.
-    (**Default**: `nothing`)
-- `_layout_factory::Any`: Callable object that creates a layout from raw
-    lines.
-    (**Default**: `ViewLayout`)
-- `manage_cursor_key_mode::Bool`: Enable and restore terminal cursor-key mode.
-    (**Default**: `true`)
-- `manage_cursor::Bool`: Hide the cursor during the session, and show it and clear the
-    status bar row when the session ends. A nested session must not do this.
-    (**Default**: `true`)
-- `manage_mouse::Bool`: Enable the mouse reporting during the session if the preference
-    `"mouse"` is enabled, and disable it when the session ends. A nested session must not
-    do this.
-    (**Default**: `true`)
-- `_waiter_factory::Any`: Callable object that receives the terminal and returns the
-    [`InputWaiter`](@ref) of the session, which repaints the screen when the display size
-    changes, or `nothing` to read the input directly. It is called only when the input has
-    no waiter, and the session closes the waiter it created. A nested session shares the
-    waiter of its parent.
-    (**Default**: `_default_input_waiter`)
-- `_restore::Union{Nothing, PagerResult}`: Result of a previous session over the text whose
-    viewport and search are restored, or `nothing` to start at the top.
-    (**Default**: `nothing`)
+- `kwargs...`: Fields of [`SessionOptions`](@ref).
 """
 function _pager!(
-    @nospecialize(term::REPL.Terminals.TTYTerminal),
-    str::String;
-    auto::Bool = false,
-    change_freeze::Bool = true,
-    display_config::Union{Nothing, DisplayConfig} = nothing,
-    frozen_columns::Int = 0,
-    frozen_rows::Int = 0,
-    title_rows::Int = 0,
-    has_help::Bool = true,
-    has_visual_mode::Bool = true,
-    show_ruler::Bool = false,
-    show_column_ruler::Bool = _get_preference("show_column_ruler")::Bool,
-    show_scrollbar::Bool = _get_preference("show_scrollbar")::Bool,
-    use_alternate_screen_buffer::Bool = true,
-    input::Union{Nothing, PagerInput} = nothing,
-    text_layout::Union{Nothing, ViewLayout} = nothing,
-    _layout_factory = ViewLayout,
-    manage_cursor_key_mode::Bool = true,
-    manage_cursor::Bool = true,
-    manage_mouse::Bool = true,
-    _waiter_factory = _default_input_waiter,
-    _restore::Union{Nothing, PagerResult} = nothing,
+    @nospecialize(term::REPL.Terminals.TTYTerminal), str::String; @nospecialize(kwargs...)
 )
+    return _pager!(term, str, _session_options(kwargs))
+end
+
+function _pager!(
+    @nospecialize(term::REPL.Terminals.TTYTerminal), str::String, options::SessionOptions
+)
+    text_layout = options.text_layout
+    display_config = options.display_config
+    input = options.input
+    use_alternate_screen_buffer = options.use_alternate_screen_buffer
+
     # The raw text is split only when no layout is supplied, and the result feeds both the
     # auto-fit check and the layout construction.
     source_lines = isnothing(text_layout) ? split(str, '\n') : text_layout
@@ -649,7 +616,7 @@ function _pager!(
     # Get the display size and make sure it is type stable.
     dsize = displaysize(term.out_stream)::Tuple{Int, Int}
 
-    if auto && _pager_content_fits(source_lines, dsize)
+    if options.auto && _pager_content_fits(source_lines, dsize)
         print(str)
         return _empty_result()
     end
@@ -657,11 +624,16 @@ function _pager!(
     # Like the prompts that change them, the numbers of frozen and title rows and columns
     # cannot be negative. Otherwise, the view has more rows than the display, and a page
     # movement skips lines.
-    frozen_rows = max(frozen_rows, 0)
-    frozen_columns = max(frozen_columns, 0)
-    title_rows = max(title_rows, 0)
+    frozen_rows = max(options.frozen_rows, 0)
+    frozen_columns = max(options.frozen_columns, 0)
+    title_rows = max(options.title_rows, 0)
 
-    session_layout = isnothing(text_layout) ? _layout_factory(source_lines) : text_layout
+    session_layout = if isnothing(text_layout)
+        options._layout_factory(source_lines)
+    else
+        text_layout
+    end
+
     num_tokens = length(session_layout)
     session_config = isnothing(display_config) ? _display_config() : display_config
     session_input = isnothing(input) ? PagerInput(term.in_stream) : input
@@ -679,10 +651,10 @@ function _pager!(
         _enter_terminal_modes!(
             modes,
             term.out_stream;
-            cursor_key_mode = manage_cursor_key_mode,
+            cursor_key_mode = options.manage_cursor_key_mode,
             alternate_screen = use_alternate_screen_buffer,
-            hide_cursor = manage_cursor,
-            mouse = manage_mouse && _get_preference("mouse")::Bool,
+            hide_cursor = options.manage_cursor,
+            mouse = options.manage_mouse && _get_preference("mouse")::Bool,
         )
 
         # The pager is divided into a view and a command line. Everything in the view is
@@ -694,9 +666,9 @@ function _pager!(
         buf = IOContext(iobuf, :color => hascolor)
 
         features = Symbol[]
-        change_freeze && push!(features, :change_freeze)
-        has_help && push!(features, :help)
-        has_visual_mode && push!(features, :visual_mode)
+        options.change_freeze && push!(features, :change_freeze)
+        options.has_help && push!(features, :help)
+        options.has_visual_mode && push!(features, :visual_mode)
 
         # Initialize the pager structure.
         pagerd = Pager(;
@@ -708,9 +680,9 @@ function _pager!(
             frozen_rows = frozen_rows,
             input = session_input,
             num_lines = num_tokens,
-            show_ruler = show_ruler,
-            show_column_ruler = show_column_ruler,
-            show_scrollbar = show_scrollbar,
+            show_ruler = options.show_ruler,
+            show_column_ruler = options.show_column_ruler,
+            show_scrollbar = options.show_scrollbar,
             status_position = Symbol(_get_preference("status_position")::String),
             scroll_regions = _get_preference("use_scroll_regions")::Bool,
             start_column = max(1, frozen_columns + 1),
@@ -721,13 +693,14 @@ function _pager!(
             title_rows = title_rows,
         )
 
-        isnothing(_restore) || _restore_state!(pagerd, _restore)
+        restore = options._restore
+        isnothing(restore) || _restore_state!(pagerd, restore)
 
         # The waiter lets a change of the display size interrupt the wait for the input, so
         # that the screen is repainted without a keystroke. A nested session, such as the
         # help, shares the waiter of its parent through the input.
         if isnothing(session_input.waiter)
-            waiter = _waiter_factory(term)
+            waiter = options._waiter_factory(term)
 
             if !isnothing(waiter)
                 owns_waiter = true

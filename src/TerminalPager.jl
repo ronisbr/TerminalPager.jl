@@ -250,7 +250,10 @@ available faces are listed as follows:
 For more information, see: [`TerminalPager.set_face!`](@ref) and
 [`TerminalPager.drop_face!`](@ref).
 """
-function pager(obj::Any; kwargs...)
+function pager(@nospecialize(obj::Any); kwargs...)
+    # NOTE: This function and the ones that render the object do not specialize on its
+    # type. Otherwise, all of them are compiled again for each type of object shown in a
+    # session, which takes much longer than rendering the object itself.
     rendered, options = _object_pager_call(obj, kwargs)
     return pager(rendered; options...)
 end
@@ -274,22 +277,28 @@ redirected or in a notebook, the text is printed instead.
     (**Default**: `false`)
 - `kwargs...`: Pager options documented by [`pager(::Any; kwargs...)`](@ref).
 """
-function pager(obj::AbstractString; return_selection::Bool = false, kwargs...)
+function pager(obj::AbstractString; @nospecialize(kwargs...))
+    # NOTE: This function does not specialize on the keywords, which are read with built-in
+    # functions and collected into the options of the session. Otherwise, every function
+    # that starts the session is compiled again for each combination of keywords.
+    keywords = getfield(kwargs, :data)
+
+    return_selection = if isdefined(keywords, :return_selection)
+        getfield(keywords, :return_selection)::Bool
+    else
+        false
+    end
+
     # If we have a context key called `bypass_pager` with the value `true`, we must not call
     # the pager because we are in the pager> REPL mode. Otherwise, the pager locks the
     # screen until the user types CTRL-D. For more information, see:
     #
     #   https://github.com/ronisbr/TerminalPager.jl/issues/40
     #
-    if get(stdout, :bypass_pager, false)
-        print(obj)
-        return return_selection ? _empty_result() : nothing
-    end
-
-    # Without a terminal on both ends, the pager can neither read keystrokes nor paint the
-    # screen. Like `less`, print the text instead. It used to paint escape sequences into
-    # the redirected output and then throw when the input reached its end.
-    if !(_is_terminal(stdin) && _is_terminal(stdout))
+    # In addition, without a terminal on both ends, the pager can neither read keystrokes
+    # nor paint the screen. Like `less`, print the text instead. It used to paint escape
+    # sequences into the redirected output and then throw when the input reached its end.
+    if get(stdout, :bypass_pager, false) || !(_is_terminal(stdin) && _is_terminal(stdout))
         print(obj)
         return return_selection ? _empty_result() : nothing
     end
@@ -297,11 +306,12 @@ function pager(obj::AbstractString; return_selection::Bool = false, kwargs...)
     # `_pager` requires a `String`. The conversion is a no-op for a `String`, whereas any
     # other subtype, such as a `SubString`, must be copied.
     str = String(obj)
+    options = _session_options(keywords)
 
     # The text is recorded before the session, so that a session interrupted with CTRL-C is
     # in the history too. Its result restores the viewport when the text is reopened.
-    entry = _push_pager_history!(str, (; kwargs...))
-    result = _pager(str; return_selection = true, kwargs...)
+    entry = _push_pager_history!(str, keywords)
+    result = _pager(str, options)
     (result isa PagerResult) && (entry.result = result)
 
     return return_selection ? result : nothing
@@ -330,7 +340,7 @@ Render `obj` with `show` and `MIME"text/plain"` for the color support and displa
 
 - `obj::Any`: Object to render.
 """
-function _render_object(obj)
+function _render_object(@nospecialize(obj))
     # The rendering must honor the color support and the size of the current output.
     # Rendering with color unconditionally showed raw ANSI escapes on terminals without
     # color support, and rendering without the display size wrapped Markdown, and any other
@@ -340,8 +350,15 @@ function _render_object(obj)
     # A terminal always reports its color support. A stream without the property, such as a
     # redirected output, must not receive escape sequences, like `show` does.
     hascolor = get(stdout, :color, false)::Bool
-    context = (:color => hascolor, :displaysize => displaysize(stdout), :limit => false)
-    return sprint(show, MIME"text/plain"(), obj; context = context)
+    buf = IOBuffer()
+    io = IOContext(
+        buf, :color => hascolor, :displaysize => displaysize(stdout), :limit => false
+    )
+
+    # Notice that `sprint` is not used because it would be compiled for each type of object.
+    show(io, MIME"text/plain"(), obj)
+
+    return String(take!(buf))
 end
 
 """

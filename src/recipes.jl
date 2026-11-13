@@ -30,12 +30,12 @@ Both fall back to an empty named tuple.
 julia> TerminalPager.pager_options(::MyTable) = (; frozen_rows = 2, title_rows = 1)
 ```
 """
-pager_options(obj) = (;)
-pager_options(obj, rendered::String) = pager_options(obj)
+pager_options(@nospecialize(obj)) = (;)
+pager_options(@nospecialize(obj), rendered::String) = pager_options(obj)
 
 # An array rendered by `show` starts with a summary line, like `2×2 Matrix{Float64}:`,
 # which stays on top. An empty array and a range have no summary line.
-function pager_options(::AbstractArray, rendered::String)
+function pager_options(@nospecialize(obj::AbstractArray), rendered::String)
     first_newline = findfirst('\n', rendered)
     isnothing(first_newline) && return (;)
     first_line = rendered[1:prevind(rendered, first_newline)]
@@ -57,7 +57,7 @@ Return the recipe of `obj` for its text `rendered`, checking that it is a named 
 - `obj::Any`: Object shown by the pager.
 - `rendered::String`: Text of `obj`.
 """
-function _pager_options(obj, rendered::String)
+function _pager_options(@nospecialize(obj), rendered::String)
     options = pager_options(obj, rendered)
     options isa NamedTuple || throw(
         ArgumentError(
@@ -92,7 +92,7 @@ Return the text of `obj` rendered for the pager and the keywords of its recipe o
 - `obj::Any`: Object shown by the pager.
 - `kwargs::Any`: Keywords passed explicitly.
 """
-function _object_pager_call(obj, kwargs)
+function _object_pager_call(@nospecialize(obj), kwargs)
     rendered = _render_object(obj)
     return rendered, _merge_options(_pager_options(obj, rendered), kwargs)
 end

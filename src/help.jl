@@ -43,9 +43,7 @@ function _help!(pagerd::Pager)
     # switch the terminal back to the normal screen while the parent session keeps painting
     # as if it were on the alternate one. The help clears the screen instead, and the parent
     # repaints everything afterwards.
-    _pager!(
-        pagerd.term,
-        help_str;
+    options = SessionOptions(;
         display_config = pagerd.display_config,
         has_help = false,
         has_visual_mode = false,
@@ -56,6 +54,8 @@ function _help!(pagerd::Pager)
         manage_cursor = false,
         manage_mouse = false,
     )
+
+    _pager!(pagerd.term, help_str, options)
 
     # The nested pager repainted the whole screen.
     _invalidate_frame!(pagerd)

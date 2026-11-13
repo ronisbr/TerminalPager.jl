@@ -607,7 +607,7 @@ automatic mode.
 - `rendered::String`: Output of the command.
 - `covers::Bool`: Whether `rendered` is exactly the rendering of `value`.
 """
-function _repl_mode_options(value, rendered::String, covers::Bool)
+function _repl_mode_options(@nospecialize(value), rendered::String, covers::Bool)
     covers || return (; auto = true)
     return _merge_options(_pager_options(value, rendered), (; auto = true))
 end

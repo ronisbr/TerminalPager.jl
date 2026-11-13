@@ -564,3 +564,107 @@ Base.@kwdef mutable struct Pager
     frame_cache::FrameCache = FrameCache()
     terminal_modes::TerminalModes = TerminalModes()
 end
+
+"""
+    mutable struct SessionOptions
+
+Store the options of a pager session, which are the keywords of [`pager`](@ref) together
+with the objects and the functions that the internal callers and the tests provide.
+
+The keywords are collected into this structure by [`_session_options`](@ref) once, when the
+session starts. Passing them from function to function as keywords instead would compile
+all those functions again for each combination of keywords used in a Julia session.
+
+# Fields
+
+- `auto::Bool`: Print the text without opening the pager if it fits in the display.
+    (**Default**: `false`)
+- `return_selection::Bool`: Return the [`PagerResult`](@ref) of the session instead of
+    `nothing`.
+    (**Default**: `false`)
+- `change_freeze::Bool`: Enable the commands that change the frozen rows and columns.
+    (**Default**: `true`)
+- `frozen_columns::Int`: Number of leading columns to freeze.
+    (**Default**: `0`)
+- `frozen_rows::Int`: Number of leading rows to freeze.
+    (**Default**: `0`)
+- `title_rows::Int`: Number of leading title rows.
+    (**Default**: `0`)
+- `has_help::Bool`: Enable the pager help.
+    (**Default**: `true`)
+- `has_visual_mode::Bool`: Enable the visual selection mode.
+    (**Default**: `true`)
+- `show_ruler::Bool`: Show the line-number ruler initially.
+    (**Default**: `false`)
+- `show_column_ruler::Bool`: Show the column ruler initially.
+    (**Default**: the value of the preference `"show_column_ruler"`)
+- `show_scrollbar::Bool`: Show the scrollbar initially.
+    (**Default**: the value of the preference `"show_scrollbar"`)
+- `use_alternate_screen_buffer::Bool`: Request the alternate screen buffer of the terminal.
+    (**Default**: `true`)
+- `display_config::Union{Nothing, DisplayConfig}`: Prepared display configuration of the
+    session, or `nothing` to load one.
+    (**Default**: `nothing`)
+- `input::Union{Nothing, PagerInput}`: Input state associated with the input stream of the
+    terminal, or `nothing` to create one.
+    (**Default**: `nothing`)
+- `text_layout::Union{Nothing, ViewLayout}`: Prepared layout of the text, or `nothing` to
+    create one.
+    (**Default**: `nothing`)
+- `manage_cursor_key_mode::Bool`: Enable and restore the cursor-key mode of the terminal.
+    (**Default**: `true`)
+- `manage_cursor::Bool`: Hide the cursor during the session, and show it and clear the
+    status bar row when the session ends. A nested session must not do this.
+    (**Default**: `true`)
+- `manage_mouse::Bool`: Enable the mouse reporting during the session if the preference
+    `"mouse"` is enabled, and disable it when the session ends. A nested session must not
+    do this.
+    (**Default**: `true`)
+- `_display_config_loader::Any`: Callable object that creates the display configuration of
+    the session.
+    (**Default**: `_display_config`)
+- `_input_factory::Any`: Callable object that creates the input state for a stream.
+    (**Default**: `PagerInput`)
+- `_layout_factory::Any`: Callable object that creates a layout from the lines of the text.
+    (**Default**: `ViewLayout`)
+- `_terminal_factory::Any`: Callable object that creates the terminal.
+    (**Default**: `_default_terminal`)
+- `_raw_runner::Any`: Callable object that runs the session in the raw mode.
+    (**Default**: `_with_raw_mode`)
+- `_waiter_factory::Any`: Callable object that receives the terminal and returns the
+    [`InputWaiter`](@ref) of the session, which repaints the screen when the display size
+    changes, or `nothing` to read the input directly. It is called only when the input has
+    no waiter, and the session closes the waiter it created. A nested session shares the
+    waiter of its parent.
+    (**Default**: `_default_input_waiter`)
+- `_restore::Union{Nothing, PagerResult}`: Result of a previous session over the text whose
+    viewport and search are restored, or `nothing` to start at the top.
+    (**Default**: `nothing`)
+"""
+Base.@kwdef mutable struct SessionOptions
+    auto::Bool = false
+    return_selection::Bool = false
+    change_freeze::Bool = true
+    frozen_columns::Int = 0
+    frozen_rows::Int = 0
+    title_rows::Int = 0
+    has_help::Bool = true
+    has_visual_mode::Bool = true
+    show_ruler::Bool = false
+    show_column_ruler::Bool = _get_preference("show_column_ruler")::Bool
+    show_scrollbar::Bool = _get_preference("show_scrollbar")::Bool
+    use_alternate_screen_buffer::Bool = true
+    display_config::Union{Nothing, DisplayConfig} = nothing
+    input::Union{Nothing, PagerInput} = nothing
+    text_layout::Union{Nothing, ViewLayout} = nothing
+    manage_cursor_key_mode::Bool = true
+    manage_cursor::Bool = true
+    manage_mouse::Bool = true
+    _display_config_loader::Any = _display_config
+    _input_factory::Any = PagerInput
+    _layout_factory::Any = ViewLayout
+    _terminal_factory::Any = _default_terminal
+    _raw_runner::Any = _with_raw_mode
+    _waiter_factory::Any = _default_input_waiter
+    _restore::Union{Nothing, PagerResult} = nothing
+end

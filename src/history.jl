@@ -75,10 +75,10 @@ function last(n::Integer = 1)
         return nothing
     end
 
-    options = merge(
-        entry.options, (; auto = false, return_selection = true, _restore = entry.result)
-    )
-    result = _pager(entry.text; options...)
+    options = _session_options(entry.options)
+    options.auto = false
+    options._restore = entry.result
+    result = _pager(entry.text, options)
     (result isa PagerResult) && (entry.result = result)
 
     return nothing
