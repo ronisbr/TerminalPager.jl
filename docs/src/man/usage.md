@@ -49,6 +49,12 @@ columns 12 to 20, which is handy to search one column of a table; `@12 14` and `
 leave one end open, and the column ruler (`R`) helps picking the columns. The status line
 shows the range next to the matches.
 
+!!! note
+    The `Alt` shortcuts of this manual need the terminal to send `ESC` followed by the key
+    when `Alt` is held. Terminals on macOS compose a character by default instead, so that
+    `Option+l` types `¬`. Enable the setting that treats the Option key as Meta, named "Use
+    Option as Meta key" in Terminal.app and "Left Option key: Esc+" in iTerm2, for example.
+
 Typing `&` followed by a regular expression shows only the lines matching it, and a pattern
 starting with `!` hides them instead (`\!` for a literal `!`). The view is previewed while
 the pattern is typed, the frozen and the title rows are always shown, the line number ruler
