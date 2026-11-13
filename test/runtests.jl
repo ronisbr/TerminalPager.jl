@@ -12,7 +12,7 @@ Construct a pager for internal tests.
 - `str::AbstractString`: Provide the pager text.
 """
 function _create_pagerd(str::AbstractString)
-    text_layout = TerminalPager.TextViewLayout(split(str, '\n'))
+    text_layout = TerminalPager.ViewLayout(split(str, '\n'))
     matches = NTuple{4, Int}[]
     term = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
     iobuf = IOBuffer()
@@ -137,6 +137,7 @@ include("./internals/input_coalescing.jl")
 include("./internals/input_waiter.jl")
 include("./internals/input_tables.jl")
 include("./internals/rendering.jl")
+include("./internals/view_port.jl")
 include("./internals/status_bar.jl")
 include("./internals/faces.jl")
 include("./internals/debug.jl")

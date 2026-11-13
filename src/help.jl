@@ -15,7 +15,7 @@ const _ACTION_KEYS_GENERATION = Ref(-1)
 
 # One cache entry per color support, holding the generation and the display configuration it
 # was built for, the help text, and its prepared layout.
-const _HELP_CACHE = Dict{Bool, Tuple{Int, DisplayConfig, String, TextViewLayout}}()
+const _HELP_CACHE = Dict{Bool, Tuple{Int, DisplayConfig, String, ViewLayout}}()
 
 # Layout of the help screen: its width, and the widths of the key and description columns.
 const _HELP_WIDTH = 90
@@ -66,7 +66,7 @@ end
 
 """
     _help_screen(use_color::Bool, display_config::DisplayConfig) ->
-        Tuple{String, TextViewLayout}
+        Tuple{String, ViewLayout}
 
 Return the help text and its prepared layout, rebuilding them only when the keybindings or
 the faces change.
@@ -85,7 +85,7 @@ function _help_screen(use_color::Bool, display_config::DisplayConfig)
     end
 
     help_str = _help_string(use_color, display_config)
-    help_layout = TextViewLayout(split(help_str, '\n'))
+    help_layout = ViewLayout(split(help_str, '\n'))
     _HELP_CACHE[use_color] = (generation, display_config, help_str, help_layout)
 
     return help_str, help_layout

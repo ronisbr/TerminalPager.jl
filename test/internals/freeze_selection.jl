@@ -31,7 +31,7 @@ function _create_freeze_pagerd(
     input = TypedInput(chunks)
     output = IOBuffer()
     term = REPL.Terminals.TTYTerminal("", input, output, output)
-    text_layout = TerminalPager.TextViewLayout(lines)
+    text_layout = TerminalPager.ViewLayout(lines)
 
     pagerd = TerminalPager.Pager(;
         buf = IOContext(IOBuffer(), :color => false),

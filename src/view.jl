@@ -27,7 +27,7 @@ function _view!(pagerd::Pager)
     seekstart(buf.io)
 
     # A degenerate display cannot show any content, so rendering must be skipped entirely.
-    # Passing a nonpositive maximum number of lines to `textview` means unbounded, which
+    # Passing a nonpositive maximum number of lines to `_textview` means unbounded, which
     # would render the whole document into the frame buffer.
     if (rows <= 0) || (cols <= 0)
         pagerd.cropped_lines = 0
@@ -138,9 +138,6 @@ function _view!(pagerd::Pager)
         )
     end
 
-    # The line-number ruler shows where the frozen rows end.
-    _mark_frozen_rows!(pagerd, rows)
-
     # Write the information to the structure.
     pagerd.cropped_columns = cropped_columns
     pagerd.cropped_lines = cropped_lines
@@ -180,12 +177,11 @@ function _render_view(
 )
     display_config = pagerd.display_config
 
-    return textview(
+    return _textview(
         io,
         pagerd.text_layout,
         (pagerd.start_row, -1, pagerd.start_column, -1);
         active_highlight = display_config.search_active_match,
-        active_match = 0,
         active_match_location = active_match_location,
         frozen_columns_at_beginning = pagerd.frozen_columns,
         frozen_lines_at_beginning = pagerd.frozen_rows,
@@ -193,6 +189,7 @@ function _render_view(
         maximum_number_of_columns = cols,
         maximum_number_of_lines = rows,
         ruler_decoration = display_config.ruler,
+        ruler_foot = true,
         search_matches = pagerd.search_matches,
         show_ruler = pagerd.show_ruler,
         title_lines = pagerd.title_rows,
@@ -229,67 +226,6 @@ function _scrollbar_thumb(pagerd::Pager, rows::Int)
     return thumb_first, thumb_first + thumb - 1
 end
 
-# UTF-8 bytes of the bar `textview` draws on the line-number ruler, and of the foot that
-# replaces it on the last frozen row. Both have three bytes, so the row is patched in place.
-const _RULER_BAR = codeunits("│")
-const _RULER_FOOT = codeunits("┴")
-
-"""
-    _mark_frozen_rows!(pagerd::Pager, rows::Int) -> Nothing
-
-Replace the bar of the line-number ruler by a foot on the last frozen row of the frame in the
-view buffer of `pagerd`, which has `rows` text rows, so that the ruler shows where the frozen
-rows end.
-
-The frame is patched in place, because the foot has as many bytes as the bar. Nothing is done
-if the ruler is hidden or if there are no frozen rows.
-
-# Arguments
-
-- `pagerd::Pager`: Pager state whose frame is patched.
-- `rows::Int`: Number of text rows of the view.
-"""
-function _mark_frozen_rows!(pagerd::Pager, rows::Int)
-    (pagerd.show_ruler && (pagerd.frozen_rows > 0)) || return nothing
-
-    # `textview` never freezes more rows than the text or the view has.
-    last_frozen = min(pagerd.frozen_rows, pagerd.num_lines, rows)
-    last_frozen <= 0 && return nothing
-    target = _column_ruler_rows(pagerd) + last_frozen
-
-    data, num_bytes = _frame_bytes(pagerd.buf.io)
-    i = 1
-
-    # Skip the rows before the last frozen one.
-    @inbounds for _ in 1:(target - 1)
-        while (i <= num_bytes) && (data[i] != UInt8('\n'))
-            i += 1
-        end
-
-        i > num_bytes && return nothing
-        i += 1
-    end
-
-    # The ruler starts the row, so its bar is the first one in it.
-    num_glyph_bytes = length(_RULER_BAR)
-
-    @inbounds while (i + num_glyph_bytes - 1 <= num_bytes) && (data[i] != UInt8('\n'))
-        if (data[i] == _RULER_BAR[1]) &&
-            (data[i + 1] == _RULER_BAR[2]) &&
-            (data[i + 2] == _RULER_BAR[3])
-            for k in 1:num_glyph_bytes
-                data[i + k - 1] = _RULER_FOOT[k]
-            end
-
-            return nothing
-        end
-
-        i += 1
-    end
-
-    return nothing
-end
-
 # Glyphs of the column ruler, all with a display width of one.
 const _COLUMN_RULER_LINE = '─'
 const _COLUMN_RULER_HALF_TICK = '┬'
@@ -317,12 +253,12 @@ the scrolled columns, the line carries a break mark on the first scrolled column
 - `use_color::Bool`: Decorate the ruler with the face `ruler`.
 """
 function _write_column_ruler!(out::IOBuffer, pagerd::Pager, cols::Int, use_color::Bool)
-    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
     width = max(cols - ruler_width, 0)
     text_width = _text_width(pagerd)
 
-    # These are the sanitized values `textview` uses for the frozen columns and for the first
-    # scrolled column.
+    # These are the sanitized values `_textview` uses for the frozen columns and for the
+    # first scrolled column.
     frozen_columns = clamp(pagerd.frozen_columns, 0, width)
     start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
 
@@ -488,7 +424,7 @@ function _draw_freeze_guides!(
     selected_rows = pagerd.freeze_selection_rows
     selected_columns = pagerd.freeze_selection_columns
     vertical = pagerd.mode == :freeze_selection
-    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
 
     data, num_bytes = _frame_bytes(frame)
     row = 1

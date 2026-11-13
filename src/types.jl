@@ -110,7 +110,7 @@ Store the pager faces rendered into escape sequences for one pager session.
 
 Every field holds a complete SGR sequence that resets the attributes and then selects the
 ones of the face, except the visual line backgrounds, which hold only the SGR parameters of
-the background, as `textview` expects.
+the background, as `_textview` expects.
 
 # Fields
 
@@ -228,7 +228,7 @@ Store the mutable state for one pager session.
 - `display_size::NTuple{2, Int}`: Current terminal rows and columns.
 - `start_row::Int`: First visible source row.
 - `start_column::Int`: First visible printable column.
-- `text_layout::TextViewLayout`: Canonical prepared text layout.
+- `text_layout::ViewLayout`: Canonical prepared text layout.
 - `num_lines::Int`: Number of source lines.
 - `text_width::Int`: Printable width of the widest source line, or a negative number if it
     was not computed yet. Read it with `_text_width`.
@@ -283,7 +283,7 @@ Base.@kwdef mutable struct Pager
     display_size::NTuple{2, Int} = (0, 0)
     start_row::Int = 1
     start_column::Int = 1
-    text_layout::TextViewLayout
+    text_layout::ViewLayout
     num_lines::Int = 0
     text_width::Int = -1
     cropped_lines::Int = 0

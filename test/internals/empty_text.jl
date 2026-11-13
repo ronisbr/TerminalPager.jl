@@ -5,7 +5,7 @@
 ############################################################################################
 
 @testset "Ruler Width" begin
-    # This must match how `StringManipulation.textview` sizes the ruler.
+    # This must match how `_textview` sizes the ruler.
     @test TerminalPager._ruler_width(1) == 4
     @test TerminalPager._ruler_width(9) == 4
     @test TerminalPager._ruler_width(10) == 5
@@ -45,7 +45,7 @@ end
 
 @testset "Degenerate Display Sizes" begin
     # With one terminal row, only the command line fits. Rendering must be skipped:
-    # passing a nonpositive maximum number of lines to `textview` means unbounded, which
+    # passing a nonpositive maximum number of lines to `_textview` means unbounded, which
     # would render the whole document into the frame buffer.
     pagerd = _create_modal_pagerd(["line $i" for i in 1:5], "")
     pagerd.display_size = (1, 40)

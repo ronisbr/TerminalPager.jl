@@ -861,7 +861,7 @@ end
     command_term = REPL.Terminals.TTYTerminal(
         "", command_input, command_output, command_output
     )
-    text_layout = TerminalPager.TextViewLayout(["x", "y"])
+    text_layout = TerminalPager.ViewLayout(["x", "y"])
     pagerd = TerminalPager.Pager(;
         term = command_term,
         buf = IOContext(IOBuffer(), :color => false),
@@ -933,13 +933,13 @@ end
 
 @testset "Auto-Fit and Terminal Restoration" begin
     fit_lines = ["short", "α"]
-    fit_layout = TerminalPager.TextViewLayout(fit_lines)
+    fit_layout = TerminalPager.ViewLayout(fit_lines)
     @test @inferred(TerminalPager._pager_content_fits(fit_lines, (5, 20)))
     @test @inferred(TerminalPager._pager_content_fits(fit_layout, (5, 20)))
     @test TerminalPager._pager_content_fits(fit_layout, (5, 20)) ==
         TerminalPager._pager_content_fits(fit_lines, (5, 20))
     for (lines, display_size) in ((["too wide"], (5, 3)), (fill("x", 4), (5, 20)))
-        layout = TerminalPager.TextViewLayout(lines)
+        layout = TerminalPager.ViewLayout(lines)
         @test TerminalPager._pager_content_fits(layout, display_size) ==
             TerminalPager._pager_content_fits(lines, display_size) ==
             false
@@ -980,7 +980,7 @@ end
             _input_factory = stream -> TerminalPager.PagerInput(pager_input),
             _layout_factory = lines -> begin
                 layout_calls[] += 1
-                return TerminalPager.TextViewLayout(lines)
+                return TerminalPager.ViewLayout(lines)
             end,
             _terminal_factory = () -> pager_term,
             _raw_runner = (f, terminal) -> f(),

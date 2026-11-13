@@ -64,7 +64,18 @@ function _write_decimal(io::IO, n::Int)
         return write(io, @inbounds _DECIMAL_CACHE[n + 1])
     end
 
-    return write(io, string(n))
+    # The larger numbers are written digit by digit, without allocating a string.
+    written = 0
+
+    if n < 0
+        written += write(io, UInt8('-'))
+        n = -n
+    end
+
+    (n >= 10) && (written += _write_decimal(io, div(n, 10)))
+    written += write(io, UInt8(0x30 + rem(n, 10)))
+
+    return written
 end
 
 """

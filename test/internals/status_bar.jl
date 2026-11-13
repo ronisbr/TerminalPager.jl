@@ -28,7 +28,7 @@ function _create_status_pagerd(
     input = IOBuffer()
     out_stream = IOContext(output, :color => color)
     term = REPL.Terminals.TTYTerminal("", input, out_stream, out_stream)
-    text_layout = TerminalPager.TextViewLayout(lines)
+    text_layout = TerminalPager.ViewLayout(lines)
 
     pagerd = TerminalPager.Pager(;
         buf = IOContext(IOBuffer(), :color => color),

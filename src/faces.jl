@@ -349,7 +349,7 @@ Render every pager face into the escape sequences used by a pager session.
 
 The faces are converted by **StringManipulation.jl**, so that each sequence resets the
 terminal attributes and then selects the ones set in the face. The visual faces keep only
-the SGR parameters of their background, like `"44"`, as `textview` expects for the visual
+the SGR parameters of their background, like `"44"`, as `_textview` expects for the visual
 line backgrounds.
 
 # Arguments

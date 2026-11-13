@@ -48,7 +48,7 @@ module InlineHelpModule end
     @test_throws UndefKeywordError TerminalPager.Pager(term = pagerd.term, buf = pagerd.buf)
 
     default_lines = ["default α", "second"]
-    default_layout = TerminalPager.TextViewLayout(default_lines)
+    default_layout = TerminalPager.ViewLayout(default_lines)
     compatible_pager = TerminalPager.Pager(;
         term = pagerd.term, buf = pagerd.buf, num_lines = 2, text_layout = default_layout
     )
@@ -178,7 +178,7 @@ end
     fit_lines = ["fits"]
     fit_layout_factory = lines -> begin
         layout_calls[] += 1
-        return TerminalPager.TextViewLayout(lines)
+        return TerminalPager.ViewLayout(lines)
     end
     @test TerminalPager._pager_content_fits(fit_lines, (10, 40))
     @test layout_calls[] == 0
@@ -193,52 +193,11 @@ end
         _layout_factory = fit_layout_factory,
     )
     @test layout_calls[] == 1
-
-    comparison_lines = [
-        "title α", "\e[31mrow match 界 match\e[0m", "visual e\u0301 row", "last row"
-    ]
-    comparison_layout = TerminalPager.TextViewLayout(comparison_lines)
-    comparison_matches = TerminalPager.string_search_per_line(comparison_layout, r"match")
-    raw_buffer = IOBuffer()
-    prepared_buffer = IOBuffer()
-    raw_crop = TerminalPager.textview(
-        raw_buffer,
-        comparison_lines,
-        (2, -1, 2, -1);
-        active_match = 2,
-        frozen_columns_at_beginning = 1,
-        frozen_lines_at_beginning = 1,
-        maximum_number_of_columns = 24,
-        maximum_number_of_lines = 4,
-        search_matches = comparison_matches,
-        show_ruler = true,
-        title_lines = 1,
-        visual_lines = [3],
-        visual_line_backgrounds = "44",
-    )
-    prepared_crop = TerminalPager.textview(
-        prepared_buffer,
-        comparison_layout,
-        (2, -1, 2, -1);
-        active_match = 0,
-        active_match_location = (2, 2),
-        frozen_columns_at_beginning = 1,
-        frozen_lines_at_beginning = 1,
-        maximum_number_of_columns = 24,
-        maximum_number_of_lines = 4,
-        search_matches = comparison_matches,
-        show_ruler = true,
-        title_lines = 1,
-        visual_lines = [3],
-        visual_line_backgrounds = "44",
-    )
-    @test prepared_crop == raw_crop
-    @test String(take!(prepared_buffer)) == String(take!(raw_buffer))
 end
 
 @testset "Yank Text Assembly" begin
     lines = ["first", "\e[31mred\e[0m", "", "αβ"]
-    layout = TerminalPager.TextViewLayout(lines)
+    layout = TerminalPager.ViewLayout(lines)
     line_ids = [4, 2, 3, 2]
     vector_result = @inferred TerminalPager._assemble_yank_text(lines, line_ids)
     layout_result = @inferred TerminalPager._assemble_yank_text(layout, line_ids)
@@ -324,13 +283,53 @@ end
     @test fallback_calls == [("missing", InlineHelpModule)]
 end
 
-@testset "Private Layout Field" begin
-    # `_text_width` and `_pager_content_fits` read the widths the layout measured from its
-    # private field `_printable_widths`, because StringManipulation.jl has no public
-    # accessor for them. This test fails if a new version of that package changes the
-    # field.
-    @test hasfield(TerminalPager.TextViewLayout, :_printable_widths)
+@testset "View Layout Fields" begin
+    # `_text_width` and `_pager_content_fits` read the widths the layout measured while it
+    # was prepared, and the renderer reads the plain ASCII flags.
+    layout = TerminalPager.ViewLayout(["ab", "α界", "\e[31mred\e[0m", "", "\e[1mbold"])
+    @test layout.printable_widths == [2, 3, 3, 0, 4]
+    @test layout.plain_ascii == [true, false, false, true, false]
+    @test layout.decorations[1] == TerminalPager.Decoration()
+    @test layout.decorations[3] == TerminalPager.Decoration()
+    @test layout.decorations[4].reset
+    @test layout.decorations[5].reset
+    @test length(layout) == 5
+    @test layout[2] == "α界"
+    @test collect(layout) isa Vector{String}
+    @test_throws CanonicalIndexError layout[1] = "x"
+    @test_throws MethodError push!(layout, "x")
 
-    layout = TerminalPager.TextViewLayout(["ab", "α界", "\e[31mred\e[0m"])
-    @test layout._printable_widths == [2, 3, 3]
+    # The state before a line accumulates the decorations of the previous ones.
+    layout = TerminalPager.ViewLayout(["\e[1m\e[31mred", "still red", "\e[0m plain", "x"])
+    @test layout.decorations[2].foreground == "31"
+    @test layout.decorations[2].bold == TerminalPager.StringManipulation.active
+    @test layout.decorations[3] == layout.decorations[2]
+    @test isempty(layout.decorations[4].foreground)
+
+    # A derived layout copies the information of the selected lines in the given order.
+    lines = ["ab", "α界", "\e[31mred\e[0m", "", "\e[1mbold"]
+    source = TerminalPager.ViewLayout(lines)
+    derived = TerminalPager.ViewLayout(source, [5, 2, 2])
+    @test collect(derived) == lines[[5, 2, 2]]
+    @test derived.printable_widths == source.printable_widths[[5, 2, 2]]
+    @test derived.plain_ascii == source.plain_ascii[[5, 2, 2]]
+    @test derived.decorations == source.decorations[[5, 2, 2]]
+    @test_throws BoundsError TerminalPager.ViewLayout(source, [6])
+    @test isempty(TerminalPager.ViewLayout(source, Int[]))
+
+    # A text is split at the newlines.
+    @test collect(TerminalPager.ViewLayout("a\nb\n")) == ["a", "b", ""]
+end
+
+@testset "No StringManipulation View Left in the Source" begin
+    # The view is rendered by this package. `textview` and `TextViewLayout` must not be
+    # reached anymore, because they are going to be removed from StringManipulation.jl.
+    for (root, _, files) in walkdir(joinpath(pkgdir(TerminalPager), "src"))
+        for file in files
+            endswith(file, ".jl") || continue
+            source = read(joinpath(root, file), String)
+            @test !occursin("TextViewLayout", source)
+            @test !occursin(r"(?<![_\w])textview\(", source)
+        end
+    end
 end

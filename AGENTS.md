@@ -29,7 +29,7 @@
 - Tests are wired through the `Test` extra and `test` target in `Project.toml`.
 - REPL help integration intentionally uses private `Base.JuliaSyntax` and `REPL.LineEdit` APIs and is explicitly coupled to them; preserve version-sensitive behavior and test changes across supported Julia versions.
 - REPL help shortcuts are `F1` and `Alt+h`; both show extended help in the regular and pager modes. Keep `Alt+H` unbound because extended help is already the default. Shortcut registration is asynchronous, so tests must fetch the returned task to surface failures.
-- Pager rendering uses `StringManipulation.textview`; account for ANSI escapes, Unicode display width, cropping, highlighting, frozen rows and columns, and search matches when changing viewport behavior.
+- Pager rendering is done by the in-package `_textview` (`src/view/render.jl`) over a `ViewLayout` (`src/view/layout.jl`); StringManipulation.jl provides only string utilities. Account for ANSI escapes, Unicode display width, cropping, highlighting, frozen rows and columns, and search matches when changing viewport behavior.
 - Keep `About` optional. Core package code must not make the weak dependency mandatory.
 
 ## Not Configured

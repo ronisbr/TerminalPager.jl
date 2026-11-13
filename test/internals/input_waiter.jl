@@ -128,7 +128,7 @@ function _create_waiter_pagerd(stream::IO, output::ResizableOutput)
         input = input,
         num_lines = 1,
         term = term,
-        text_layout = TerminalPager.TextViewLayout(["x"]),
+        text_layout = TerminalPager.ViewLayout(["x"]),
     )
 end
 

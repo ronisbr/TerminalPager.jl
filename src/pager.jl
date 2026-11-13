@@ -32,19 +32,23 @@ end
 
 """
     _ruler_width(num_lines::Int) -> Int
+    _ruler_width(p::Pager) -> Int
 
-Return the number of columns the line-number ruler occupies for `num_lines` lines.
+Return the number of columns the line-number ruler occupies for `num_lines` lines, or for the
+text of `p`.
 
 # Arguments
 
 - `num_lines::Int`: Number of lines in the pager text.
+- `p::Pager`: Pager state whose ruler is measured.
 """
 function _ruler_width(num_lines::Int)
-    # This must match how `StringManipulation.textview` sizes the ruler. Notice that
-    # `ndigits` is defined for 0, whereas `floor(Int, log10(num_lines))` throws an
-    # `InexactError` for an empty text.
+    # This must match how `_textview` sizes the ruler. Notice that `ndigits` is defined for
+    # 0, whereas `floor(Int, log10(num_lines))` throws an `InexactError` for an empty text.
     return ndigits(num_lines) + 3
 end
+
+_ruler_width(p::Pager) = _ruler_width(p.num_lines)
 
 """
     _request_redraw!(p::Pager) -> Bool
@@ -209,7 +213,7 @@ function _clamp_viewport!(p::Pager)
     p.start_row = clamp(p.start_row, min_row, max_row)
 
     min_col = max(1, p.frozen_columns + 1)
-    ruler_width = p.show_ruler ? _ruler_width(p.num_lines) : 0
+    ruler_width = p.show_ruler ? _ruler_width(p) : 0
     view_cols = cols - p.frozen_columns - ruler_width
     max_col = max(min_col, _text_width(p) - view_cols + 1)
     p.start_column = clamp(p.start_column, min_col, max_col)
@@ -229,10 +233,8 @@ call.
 """
 function _text_width(p::Pager)
     if p.text_width < 0
-        # The layout measured every line while it was prepared. Notice that
-        # `_printable_widths` is a private field of **StringManipulation.jl**, which has no
-        # public accessor for it. The test "Private Layout Field" fails if it changes.
-        p.text_width = maximum(p.text_layout._printable_widths; init = 0)
+        # The layout measured every line while it was prepared.
+        p.text_width = maximum(p.text_layout.printable_widths; init = 0)
     end
 
     return p.text_width
@@ -262,7 +264,7 @@ Open an interactive pager for `str`, or print it directly when automatic mode fi
     (**Default**: `PagerInput`)
 - `_layout_factory::Any`: Callable object that creates a prepared text
     layout.
-    (**Default**: `TextViewLayout`)
+    (**Default**: `ViewLayout`)
 - `_terminal_factory::Any`: Callable object that creates the terminal. By default, create a
     `REPL.Terminals.TTYTerminal` connected to the standard streams.
     (**Default**: `() -> REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)`)
@@ -276,12 +278,12 @@ function _pager(
     auto::Bool = false,
     _display_config_loader = _display_config,
     _input_factory = PagerInput,
-    _layout_factory = TextViewLayout,
+    _layout_factory = ViewLayout,
     _terminal_factory = () -> REPL.Terminals.TTYTerminal("", stdin, stdout, stderr),
     _raw_runner = _with_raw_mode,
     kwargs...,
 )
-    # `split` yields `SubString`s, and both `_pager_content_fits` and `TextViewLayout` accept
+    # `split` yields `SubString`s, and both `_pager_content_fits` and `ViewLayout` accept
     # them. Copying every line into a `String` here duplicated the whole text before the first
     # frame was shown.
     lines = split(str, '\n')
@@ -388,12 +390,12 @@ Run the interactive pager for `str` using a terminal that is already in raw mode
 - `input::Union{Nothing, PagerInput}`: Input state associated with the terminal
     input stream, or `nothing` to create one.
     (**Default**: `nothing`)
-- `text_layout::Union{Nothing, TextViewLayout}`: Prepared layout used directly
+- `text_layout::Union{Nothing, ViewLayout}`: Prepared layout used directly
     when supplied, or `nothing` to construct one.
     (**Default**: `nothing`)
 - `_layout_factory::Any`: Callable object that creates a layout from raw
     lines.
-    (**Default**: `TextViewLayout`)
+    (**Default**: `ViewLayout`)
 - `manage_cursor_key_mode::Bool`: Enable and restore terminal cursor-key mode.
     (**Default**: `true`)
 - `manage_cursor::Bool`: Hide the cursor during the session, and show it and clear the
@@ -426,8 +428,8 @@ function _pager!(
     show_scrollbar::Bool = _get_preference("show_scrollbar")::Bool,
     use_alternate_screen_buffer::Bool = true,
     input::Union{Nothing, PagerInput} = nothing,
-    text_layout::Union{Nothing, TextViewLayout} = nothing,
-    _layout_factory = TextViewLayout,
+    text_layout::Union{Nothing, ViewLayout} = nothing,
+    _layout_factory = ViewLayout,
     manage_cursor_key_mode::Bool = true,
     manage_cursor::Bool = true,
     manage_mouse::Bool = true,
@@ -698,13 +700,12 @@ function _pager_content_fits(
     return all(line -> printable_textwidth(line) <= display_size[2], lines)
 end
 
-function _pager_content_fits(layout::TextViewLayout, display_size::Tuple{Int, Int})
+function _pager_content_fits(layout::ViewLayout, display_size::Tuple{Int, Int})
     display_size[1] - 2 >= _content_fit_rows(layout) || return false
 
     # The layout already measured every line while it was prepared, so there is no need to
-    # scan the text again. Notice that `_printable_widths` is a private field of
-    # **StringManipulation.jl**, as in `_text_width`.
-    return all(width -> width <= display_size[2], layout._printable_widths)
+    # scan the text again.
+    return all(width -> width <= display_size[2], layout.printable_widths)
 end
 
 """
@@ -1476,7 +1477,7 @@ columns, so the view bounds leave one row and one column for them.
 """
 function _freeze_selection_bounds(pagerd::Pager)
     rows, cols = _get_pager_display_size(pagerd)
-    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
 
     max_rows = max(min(rows - 1, pagerd.num_lines), 0)
     min_rows = clamp(pagerd.title_rows, 0, max_rows)
@@ -1537,7 +1538,7 @@ function _move_freeze_selection!(pagerd::Pager, action, k::Keystroke)
         view_row = k.y - _column_ruler_rows(pagerd)
 
         if 1 <= view_row <= _get_pager_display_size(pagerd)[1]
-            ruler_width = pagerd.show_ruler ? _ruler_width(pagerd.num_lines) : 0
+            ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
             rows = view_row - 1
             columns = k.x - ruler_width - 1
         end
@@ -1636,7 +1637,7 @@ function _show_position!(pagerd::Pager)
     percentage = num_lines > 0 ? round(Int, 100 * last_row / num_lines) : 0
 
     cols = _get_pager_display_size(pagerd)[2]
-    ruler_width = pagerd.show_ruler ? _ruler_width(num_lines) : 0
+    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
     view_cols = max(cols - pagerd.frozen_columns - ruler_width, 0)
     text_width = _text_width(pagerd)
     first_col = min(pagerd.start_column, text_width)
@@ -1690,7 +1691,7 @@ function _toggle_ruler!(pagerd::Pager)
     # If the ruler is hidden, we must verify if the screen is near the right edge to fix the
     # `start_column`.
     if !pagerd.show_ruler
-        ruler_spacing = _ruler_width(pagerd.num_lines)
+        ruler_spacing = _ruler_width(pagerd)
 
         if pagerd.cropped_columns ≤ ruler_spacing
             # Hiding the ruler reclaims `ruler_spacing` columns, of which `cropped_columns`
@@ -2138,7 +2139,7 @@ function _redraw!(pagerd::Pager)
         else
             _move_cursor(out, i, 1)
 
-            # `textview` always leaves the SGR state at its default, but we reset it anyway.
+            # `_textview` always leaves the SGR state at its default, but we reset it anyway.
             # Otherwise, a row painted out of order could erase to the end of the line with a
             # colored background.
             write(out, _SGR_RESET)

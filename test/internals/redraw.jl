@@ -101,7 +101,7 @@ function _create_redraw_pagerd(
     sink = RedrawSink(; color = color)
     input = IOBuffer()
     term = REPL.Terminals.TTYTerminal("", input, sink, sink)
-    text_layout = TerminalPager.TextViewLayout(lines)
+    text_layout = TerminalPager.ViewLayout(lines)
 
     return TerminalPager.Pager(;
         buf = IOContext(IOBuffer(), :color => color),

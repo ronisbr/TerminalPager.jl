@@ -136,7 +136,7 @@ end
 
 @testset "Auto-Fit With A Prepared Layout" begin
     lines = ["plain", "α界 wide", "\e[31mred\e[0m", "", repeat("y", 100)]
-    layout = TerminalPager.TextViewLayout(lines)
+    layout = TerminalPager.ViewLayout(lines)
 
     # The layout already measured every line, so the overload must agree with the one that
     # scans the text again.
@@ -150,7 +150,7 @@ end
     @test eltype(sub_lines) <: SubString
     @test TerminalPager._pager_content_fits(sub_lines, (10, 40)) ==
         TerminalPager._pager_content_fits(String.(sub_lines), (10, 40))
-    @test TerminalPager.TextViewLayout(sub_lines) isa TerminalPager.TextViewLayout
+    @test TerminalPager.ViewLayout(sub_lines) isa TerminalPager.ViewLayout
 end
 
 @testset "Auto-Fit Ignores the Trailing Newline" begin
@@ -159,7 +159,7 @@ end
     # early in automatic mode. This is the normal case in the REPL mode, which always
     # terminates the rendered output with a newline.
     lines = split("one\ntwo\nthree\n", '\n')
-    layout = TerminalPager.TextViewLayout(lines)
+    layout = TerminalPager.ViewLayout(lines)
 
     @test length(lines) == 4
     @test TerminalPager._pager_content_fits(lines, (5, 40))
@@ -167,7 +167,7 @@ end
 
     # An empty line in the middle still occupies a row.
     lines = split("one\n\ntwo\nthree", '\n')
-    layout = TerminalPager.TextViewLayout(lines)
+    layout = TerminalPager.ViewLayout(lines)
 
     @test !TerminalPager._pager_content_fits(lines, (5, 40))
     @test !TerminalPager._pager_content_fits(layout, (5, 40))

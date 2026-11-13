@@ -200,7 +200,7 @@ PrecompileTools.@setup_workload begin
 
             burst_input = IOBuffer("jj")
             burst_term = REPL.Terminals.TTYTerminal("", burst_input, devnull, devnull)
-            burst_layout = TextViewLayout(fill("line", 20))
+            burst_layout = ViewLayout(fill("line", 20))
             burst_pager = Pager(;
                 term = burst_term,
                 buf = IOContext(IOBuffer(), :color => false),
@@ -241,22 +241,24 @@ PrecompileTools.@setup_workload begin
                 ["Unicode α界", "combining e\u0301"],
                 ["\e[31mANSI red\e[0m", "search search"],
             )
-                prepared_layout = TextViewLayout(prepared_lines)
+                prepared_layout = ViewLayout(prepared_lines)
                 TerminalPager._pager_content_fits(prepared_layout, (10, 40))
                 TerminalPager._assemble_yank_text(prepared_layout, [2, 1, 2])
                 prepared_layout[1]
                 length(prepared_layout)
                 prepared_matches = string_search_per_line(prepared_layout, r"search")
                 active_location = isempty(prepared_matches) ? (0, 0) : (2, 1)
-                textview(
+                TerminalPager._textview(
                     devnull,
                     prepared_layout,
                     (1, -1, 1, -1);
-                    active_match = 0,
                     active_match_location = active_location,
+                    frozen_lines_at_beginning = 1,
                     maximum_number_of_columns = 40,
                     maximum_number_of_lines = 10,
+                    ruler_foot = true,
                     search_matches = prepared_matches,
+                    show_ruler = true,
                 )
             end
         end

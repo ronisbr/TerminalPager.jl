@@ -21,7 +21,7 @@ function _create_modal_pagerd(lines::Vector{String}, input_text::AbstractString)
     input = TypedInput(input_text)
     output = IOBuffer()
     term = REPL.Terminals.TTYTerminal("", input, output, output)
-    text_layout = TerminalPager.TextViewLayout(lines)
+    text_layout = TerminalPager.ViewLayout(lines)
 
     return TerminalPager.Pager(;
         buf = IOContext(IOBuffer(), :color => false),

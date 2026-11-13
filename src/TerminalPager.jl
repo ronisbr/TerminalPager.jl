@@ -14,9 +14,15 @@ using REPL.LineEdit: buffer, input_string
 using InteractiveUtils
 using Markdown
 using Preferences
-using StringManipulation
 using StyledStrings
 using StyledStrings: Face, SimpleColor, addface!, getface, loadface!, resetfaces!
+
+# Only the string utilities are used. The view is rendered by this package, so the module is
+# imported instead of used, and the names are listed, to make sure nothing else is reached.
+import StringManipulation
+using StringManipulation: Decoration, get_decorations, highlight_search, left_crop,
+    parse_decoration, printable_textwidth, remove_decorations, replace_default_background,
+    split_string, string_search_per_line, update_decoration
 
 # The performance of TerminalPager.jl does not improve with many compiler optimizations.
 # Hence, we disable them to improve compile time.
@@ -28,6 +34,8 @@ end
 #                                          Types                                           #
 ############################################################################################
 
+# The layout is a field of the pager state, so it must be defined before the types.
+include("./view/layout.jl")
 include("./types.jl")
 
 ############################################################################################
@@ -54,6 +62,8 @@ include("./repl.jl")
 include("./search.jl")
 include("./screen.jl")
 include("./view.jl")
+
+include("./view/render.jl")
 
 include("./input/keybindings.jl")
 include("./input/input.jl")
