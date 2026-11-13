@@ -42,7 +42,11 @@ function _filter!(pagerd::Pager)
         pattern, inverted = _parse_filter(cmd_input)
         regex = _try_regex(pattern; literal = pagerd.literal_search)
 
-        if isnothing(regex)
+        if isempty(pattern)
+            # An inverted filter without a pattern, `!`, is not a filter, like in the
+            # preview. Otherwise, it would hide every line.
+            _restore_filter_state!(pagerd, saved)
+        elseif isnothing(regex)
             _restore_filter_state!(pagerd, saved)
             _set_message!(pagerd, "Invalid regex: $pattern"; kind = :error)
         else

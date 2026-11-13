@@ -231,6 +231,32 @@ end
     empty!(TerminalPager._LAST_YANK)
 end
 
+@testset "Inverted Filter Without a Pattern" begin
+    # `!` alone has no pattern. It must keep the lines as they are whether it is typed, in
+    # which case it is previewed, or pasted at once.
+    for input in (TypedInput("!\n"), TypedInput(["!\n"]))
+        pagerd = _create_modal_pagerd(_FILTER_LINES, "")
+        pagerd.input = TerminalPager.PagerInput(input)
+        pagerd.term = REPL.Terminals.TTYTerminal("", input, IOBuffer(), IOBuffer())
+        pagerd.event = :filter
+        @test TerminalPager._pager_event_process!(pagerd)
+        @test isnothing(pagerd.filter_regex)
+        @test pagerd.filter_pattern == ""
+        @test pagerd.num_lines == length(_FILTER_LINES)
+        @test isempty(TerminalPager._FILTER_HISTORY)
+    end
+
+    # An active filter is kept.
+    pagerd = _create_modal_pagerd(_FILTER_LINES, "!\n")
+    TerminalPager._apply_filter!(pagerd, r"info", false, "info")
+    num_lines = pagerd.num_lines
+    pagerd.event = :filter
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.filter_pattern == "info"
+    @test pagerd.num_lines == num_lines
+    @test isempty(TerminalPager._FILTER_HISTORY)
+end
+
 @testset "Filter With Huge Frozen Rows" begin
     # The numbers of frozen and title rows are selected by the user. A value larger than
     # the number of lines must not overflow when the rows of the filter are computed.
