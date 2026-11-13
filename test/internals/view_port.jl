@@ -1,30 +1,17 @@
 ## Description #############################################################################
 #
-# Tests comparing the view renderer of this package with `StringManipulation.textview`, the
-# function it replaced. The two must produce the same bytes and the same crop counters.
+# Tests of the view renderer over a large set of view combinations. The bytes and the crop
+# counters of every combination are compared with the checksums in `view_port_golden.txt`,
+# which were recorded when the renderer produced exactly the output of the function it
+# replaced, `StringManipulation.textview`.
 #
-# NOTE: These tests must be deleted when `textview` leaves StringManipulation.jl.
+# If the output of the renderer changes on purpose, the checksums are recorded again by
+# running the tests with the environment variable `TERMINALPAGER_UPDATE_GOLDEN` set to
+# `true`.
 #
 ############################################################################################
 
-const _SM = TerminalPager.StringManipulation
-
-"""
-    _reference_view(lines::Vector{String}, view::NTuple{4, Int}; kwargs...) ->
-        Tuple{String, Int, Int}
-
-Render `lines` with `StringManipulation.textview` and return the bytes and the crop counters.
-
-# Arguments
-
-- `lines::Vector{String}`: Lines of the text.
-- `view::NTuple{4, Int}`: View passed to the renderers.
-"""
-function _reference_view(lines::Vector{String}, view::NTuple{4, Int}; kwargs...)
-    buf = IOBuffer()
-    cropped = _SM.textview(buf, lines, view; active_match = 0, kwargs...)
-    return String(take!(buf)), cropped[1], cropped[2]
-end
+const _VIEW_PORT_GOLDEN_FILE = joinpath(@__DIR__, "view_port_golden.txt")
 
 """
     _ported_view(lines::Vector{String}, view::NTuple{4, Int}; kwargs...) ->
@@ -35,10 +22,74 @@ Render `lines` with the renderer of this package and return the bytes and the cr
 # Arguments
 
 - `lines::Vector{String}`: Lines of the text.
-- `view::NTuple{4, Int}`: View passed to the renderers.
+- `view::NTuple{4, Int}`: View passed to the renderer.
 """
 function _ported_view(lines::Vector{String}, view::NTuple{4, Int}; kwargs...)
     return TerminalPager._textview(TerminalPager.ViewLayout(lines), view; kwargs...)
+end
+
+"""
+    _view_checksum(
+        lines::Vector{String},
+        view::NTuple{4, Int},
+        kwargs::NamedTuple
+    ) -> UInt32
+
+Render `lines` with the renderer of this package and return the 32-bit FNV-1a checksum of
+the bytes and the crop counters, which does not depend on the Julia version.
+
+# Arguments
+
+- `lines::Vector{String}`: Lines of the text.
+- `view::NTuple{4, Int}`: View passed to the renderer.
+- `kwargs::NamedTuple`: Keywords passed to the renderer.
+"""
+function _view_checksum(lines::Vector{String}, view::NTuple{4, Int}, kwargs::NamedTuple)
+    text, cropped_lines, cropped_columns = _ported_view(lines, view; kwargs...)
+    checksum = 0x811c9dc5
+
+    for byte in codeunits(string(text, '\0', cropped_lines, '\0', cropped_columns))
+        checksum = (checksum ⊻ byte) * 0x01000193
+    end
+
+    return checksum
+end
+
+"""
+    _read_view_port_golden() -> Dict{String, Vector{UInt32}}
+
+Read the recorded checksums of every group of view combinations, keyed by the group name.
+"""
+function _read_view_port_golden()
+    golden = Dict{String, Vector{UInt32}}()
+    isfile(_VIEW_PORT_GOLDEN_FILE) || return golden
+
+    for line in eachline(_VIEW_PORT_GOLDEN_FILE)
+        name, checksums = split(line, '\t')
+        golden[name] = [parse(UInt32, c; base = 16) for c in split(checksums)]
+    end
+
+    return golden
+end
+
+"""
+    _write_view_port_golden(golden::Dict{String, Vector{UInt32}}) -> Nothing
+
+Write the checksums in `golden` to the golden file, one group per line, sorted by name.
+
+# Arguments
+
+- `golden::Dict{String, Vector{UInt32}}`: Checksums of every group, keyed by its name.
+"""
+function _write_view_port_golden(golden::Dict{String, Vector{UInt32}})
+    open(_VIEW_PORT_GOLDEN_FILE, "w") do io
+        for name in sort!(collect(keys(golden)))
+            checksums = (string(c; base = 16, pad = 8) for c in golden[name])
+            println(io, name, '\t', join(checksums, ' '))
+        end
+    end
+
+    return nothing
 end
 
 """
@@ -148,13 +199,17 @@ const _VIEW_DECORATIONS = (
     ),
 )
 
-@testset "View Port Matches StringManipulation" begin
+@testset "View Port Golden Output" begin
+    update_golden = get(ENV, "TERMINALPAGER_UPDATE_GOLDEN", "false") == "true"
+    golden = _read_view_port_golden()
+    recorded = Dict{String, Vector{UInt32}}()
+
     # Every fixture is rendered with one option changed at a time around a base view, and
     # with a sample of combinations.
     for (name, lines) in _VIEW_FIXTURES
         n = length(lines)
         width = maximum(TerminalPager.printable_textwidth, lines; init = 0)
-        matches = _SM.string_search_per_line(lines, r"a|界|match|qu")
+        matches = TerminalPager.string_search_per_line(lines, r"a|界|match|qu")
 
         rows = unique((1, 2, 5, n + 3))
         columns = unique((1, 3, 10, width + 2))
@@ -223,17 +278,22 @@ const _VIEW_DECORATIONS = (
             end
             push!(variations, (; show_ruler = false))
 
+            checksums = UInt32[]
+
             for variation in variations, decorations in _VIEW_DECORATIONS
                 options = merge(base, variation, decorations)
                 view = options.view
                 kwargs = Base.structdiff(options, (; view = nothing))
-                @test _ported_view(lines, view; kwargs...) ==
-                    _reference_view(lines, view; kwargs...)
+                push!(checksums, _view_checksum(lines, view, kwargs))
             end
+
+            recorded["$name: Single Axis"] = checksums
+            update_golden || @test checksums == get(golden, "$name: Single Axis", UInt32[])
         end
 
         @testset "$name: Sampled Combinations" begin
             state = UInt64(1986)
+            checksums = UInt32[]
 
             for _ in 1:300
                 state, r = _pick(state, rows)
@@ -265,20 +325,31 @@ const _VIEW_DECORATIONS = (
                     ),
                     decorations,
                 )
-                view = (r, -1, c, -1)
-                @test _ported_view(lines, view; kwargs...) ==
-                    _reference_view(lines, view; kwargs...)
+                push!(checksums, _view_checksum(lines, (r, -1, c, -1), kwargs))
             end
+
+            recorded["$name: Sampled Combinations"] = checksums
+            update_golden ||
+                @test checksums == get(golden, "$name: Sampled Combinations", UInt32[])
         end
     end
 
     # The bounded number of rows and columns of the view tuple itself.
     lines = _VIEW_FIXTURES["markdown"]
+    checksums = UInt32[]
+
     for view in ((1, 5, 1, 20), (3, 0, 4, 0), (2, 100, 2, 100), (0, -1, 0, -1))
-        @test _ported_view(lines, view) == _reference_view(lines, view)
-        @test _ported_view(lines, view; show_ruler = true, frozen_lines_at_beginning = 2) ==
-            _reference_view(lines, view; show_ruler = true, frozen_lines_at_beginning = 2)
+        push!(checksums, _view_checksum(lines, view, (;)))
+        push!(
+            checksums,
+            _view_checksum(lines, view, (; show_ruler = true, frozen_lines_at_beginning = 2)),
+        )
     end
+
+    recorded["markdown: Bounded View"] = checksums
+    update_golden || @test checksums == get(golden, "markdown: Bounded View", UInt32[])
+
+    update_golden && _write_view_port_golden(recorded)
 
     # A vector of backgrounds must have one entry per visual line.
     @test_throws ArgumentError _ported_view(
