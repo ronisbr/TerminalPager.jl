@@ -333,3 +333,52 @@ end
         end
     end
 end
+
+@testset "Lines Shown by the Layout" begin
+    displayed = TerminalPager._displayed_line
+
+    # A tab is expanded to the next tab stop, which depends on the printable column.
+    @test displayed("a\tb") == "a       b"
+    @test displayed("\tx") == "        x"
+    @test displayed("ab\tcd\tef") == "ab      cd      ef"
+    @test displayed("12345678\tx") == "12345678        x"
+    @test displayed("界\tx") == "界      x"
+    @test displayed("\e[31ma\e[0m\tb") == "\e[31ma\e[0m       b"
+
+    # The other control characters are removed, like the carriage return of CRLF texts.
+    @test displayed("crlf\r") == "crlf"
+    @test displayed("a\rb\ac\x7f") == "abc"
+
+    # Only the escape sequences that decorate the text are kept.
+    @test displayed("p\e[1A\e[2Kq") == "pq"
+    @test displayed("\e]0;title\ax") == "x"
+    @test displayed("\e]0;title\e\\x") == "x"
+    @test displayed("\e[>4;2mx\eMy") == "xy"
+    @test displayed("lone\e esc \e[31") == "lone esc [31"
+
+    # A line that needs no change is the same object.
+    for line in (
+        "plain", "\e[31mred\e[0m", "\e]8;;u\e\\link\e]8;;\a", "界 é 😀", "\e[38;5;1;4mx"
+    )
+        @test displayed(line) === line
+    end
+
+    # The layout shows the cleaned lines and measures them, and it keeps the original ones
+    # for the commands that copy, edit, and save the text.
+    layout = TerminalPager.ViewLayout(["a\tb", "x", "c\r", "\e[31mr\e[2Ked\e[0m"])
+    @test collect(layout) == ["a       b", "x", "c", "\e[31mred\e[0m"]
+    @test layout.printable_widths == [9, 1, 1, 3]
+    @test layout.plain_ascii == [true, true, true, false]
+    @test layout.originals == ["a\tb", "x", "c\r", "\e[31mr\e[2Ked\e[0m"]
+    @test layout.lines[2] === layout.originals[2]
+    @test TerminalPager.ViewLayout(layout, [3, 1]).originals == ["c\r", "a\tb"]
+
+    @test TerminalPager._assemble_yank_text(layout, [1, 3, 4]) == ("a\tb\nc\r\nred\n", 3)
+    @test TerminalPager._assemble_yank_text(layout, [4]; keep_decorations = true) ==
+        ("\e[31mr\e[2Ked\e[0m\n", 1)
+
+    # The rows with tabs have the width that the terminal shows.
+    options = TerminalPager.ViewOptions(; max_columns = 6)
+    @test TerminalPager._textview(layout, options) ==
+        ("a     \nx\nc\n\e[31mred\e[0m", 0, 3)
+end

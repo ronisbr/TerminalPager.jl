@@ -152,6 +152,14 @@ function _undecorated_lines(
     return selected
 end
 
+# The lines of a layout that are copied, edited, and saved are the ones that were received,
+# not the ones that are shown, in which the tabs, for example, were replaced by blanks.
+function _undecorated_lines(layout::ViewLayout, line_ids; keep_decorations::Bool = false)
+    return _undecorated_lines(
+        layout.originals, line_ids; keep_decorations = keep_decorations
+    )
+end
+
 """
     _join_lines(lines::Vector{String}) -> String
 
