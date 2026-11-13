@@ -101,17 +101,26 @@ function _restore_state!(pagerd::Pager, result::PagerResult)
 end
 
 """
-    _remember_position!(pagerd::Pager) -> Nothing
+    _remember_position!(pagerd::Pager, row::Int = pagerd.start_row,
+        column::Int = pagerd.start_column) -> Nothing
 
-Record the first visible row and column of `pagerd` as the position before a jump, so that
-`''` returns to it.
+Record the `row` and the `column` of the view of `pagerd`, which are the first visible ones
+by default, as the position before a jump, so that `''` returns to it. Like the bookmarks,
+the position stores the line of the text at the row, so that it survives a change of the
+filter.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
+- `row::Int`: Row of the view to record.
+    (**Default**: `pagerd.start_row`)
+- `column::Int`: Printable column to record.
+    (**Default**: `pagerd.start_column`)
 """
-function _remember_position!(pagerd::Pager)
-    pagerd.last_position = (pagerd.start_row, pagerd.start_column)
+function _remember_position!(
+    pagerd::Pager, row::Int = pagerd.start_row, column::Int = pagerd.start_column
+)
+    pagerd.last_position = (_source_line(pagerd, row), column)
     return nothing
 end
 
@@ -173,9 +182,8 @@ function _goto_bookmark!(pagerd::Pager)
 
     _remember_position!(pagerd)
 
-    # The bookmarks store source lines, whereas the previous position is a row.
-    row = c == '\'' ? target[1] : _first_row_at_or_after(pagerd, target[1])
-    pagerd.start_row = _clamp_row(pagerd, row)
+    # The bookmarks and the previous position store lines of the text.
+    pagerd.start_row = _clamp_row(pagerd, _first_row_at_or_after(pagerd, target[1]))
     pagerd.start_column = max(target[2], pagerd.frozen_columns + 1)
     pagerd.visual_mode_line = 1
 

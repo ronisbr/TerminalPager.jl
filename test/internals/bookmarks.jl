@@ -156,3 +156,33 @@ end
     @test isnothing(TerminalPager._bookmark_rows(_create_modal_pagerd(lines, "")))
     @test TerminalPager._bookmark_rows(pagerd) == Set([2, 5])
 end
+
+@testset "Previous Position With a Filter" begin
+    lines = ["line $i" for i in 1:100]
+
+    # The previous position is a line of the text. Hence, it must be the same line after
+    # the filter changes.
+    pagerd = _create_modal_pagerd(lines, "'")
+    pagerd.start_row = 50
+    TerminalPager._remember_position!(pagerd)
+    pagerd.start_row = 80
+    TerminalPager._apply_filter!(pagerd, r"7", false, "7")
+
+    pagerd.event = :goto_bookmark
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test TerminalPager._source_line(pagerd, pagerd.start_row) == 57
+
+    # The position recorded with a filter is also a line of the text.
+    pagerd = _create_modal_pagerd(lines, "'")
+    TerminalPager._apply_filter!(pagerd, r"7", false, "7")
+    pagerd.start_row = 6
+    @test TerminalPager._source_line(pagerd, 6) == 57
+    TerminalPager._remember_position!(pagerd)
+    @test pagerd.last_position == (57, 1)
+    TerminalPager._clear_filter!(pagerd)
+    pagerd.start_row = 1
+
+    pagerd.event = :goto_bookmark
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.start_row == 57
+end

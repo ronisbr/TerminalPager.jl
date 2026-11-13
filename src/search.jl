@@ -381,7 +381,7 @@ function _search!(pagerd::Pager)
             pagerd.search_pattern = cmd_input
 
             # The viewport before the prompt is the position to return to.
-            pagerd.last_position = (saved.start_row, saved.start_column)
+            _remember_position!(pagerd, saved.start_row, saved.start_column)
 
             # The preview already applied the confirmed pattern, unless the literal mode was
             # toggled after it or the search failed, in which case the state before the

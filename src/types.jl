@@ -471,8 +471,8 @@ anchor, and the bookmarks store source lines, so that they survive a change of t
     `:title_selection`.
 - `bookmarks::Dict{Char, Tuple{Int, Int}}`: Line and column of each bookmark, keyed by its
     letter. The lines are marked in the line-number ruler.
-- `last_position::Tuple{Int, Int}`: First visible row and column before the last jump, or
-    `(0, 0)` if there was none.
+- `last_position::Tuple{Int, Int}`: Line of the text at the first visible row and first
+    visible column before the last jump, or `(0, 0)` if there was none.
 - `event::Union{Nothing, Symbol}`: Pending pager event.
 - `features::Vector{Symbol}`: Features enabled for the session.
 - `frozen_columns::Int`: Number of frozen leading columns.
