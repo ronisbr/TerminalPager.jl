@@ -47,6 +47,10 @@ The available preferences are:
     (**Default** = `false`)
 - `"show_scrollbar"`: If `true`, the pager shows a scrollbar at the right edge of the view
     unless the keyword `show_scrollbar` says otherwise. (**Default** = `false`)
+- `"status_position"`: Style of the position at the right of the status line: `"percent"`
+    shows `All`, `Top`, `Bot`, or the percentage of the text above the bottom of the view,
+    `"line"` shows the top row over the number of lines, like `L120/3456`, and `"both"`
+    shows the two. (**Default** = `"percent"`)
 - `"use_scroll_regions"`: If `true`, scrolling asks the terminal to shift the rows it
     already shows and repaints only the new ones, which makes scrolling much cheaper on
     large windows and slow connections. Disable it if your terminal does not support the

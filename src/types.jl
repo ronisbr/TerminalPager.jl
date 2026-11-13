@@ -258,6 +258,8 @@ Store the mutable state for one pager session.
 - `show_ruler::Bool`: Whether to show the line-number ruler.
 - `show_column_ruler::Bool`: Whether to show the column ruler on top of the view.
 - `show_scrollbar::Bool`: Whether to show the scrollbar at the right edge of the view.
+- `status_position::Symbol`: Style of the position shown on the status line, `:percent`,
+    `:line`, or `:both`.
 - `scroll_regions::Bool`: Whether scrolling may shift the rows already on screen with the
     terminal scroll region sequences instead of repainting them.
 - `view_buf::IOBuffer`: Reused buffer holding the rendered view before the scrollbar is added
@@ -303,6 +305,7 @@ Base.@kwdef mutable struct Pager
     show_ruler::Bool = false
     show_column_ruler::Bool = false
     show_scrollbar::Bool = false
+    status_position::Symbol = :percent
     scroll_regions::Bool = true
     view_buf::IOBuffer = IOBuffer()
     visual_mode::Bool = false

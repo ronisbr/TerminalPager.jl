@@ -150,6 +150,90 @@ end
     @test _status_bar_text(pagerd, output) == "❯" * " "^17 * "q:quit   All"
 end
 
+@testset "Status Bar Line Position" begin
+    lines = ["line $i" for i in 1:20]
+    pagerd, output = _create_status_pagerd(lines)
+    pagerd.start_row = 5
+    pagerd.cropped_lines = 11
+
+    # The line style shows the top row over the number of lines, and both styles show it
+    # before the percentage.
+    pagerd.status_position = :line
+    text = _status_bar_text(pagerd, output)
+    @test text == "❯" * " "^45 * "q:quit   L5/20"
+    @test textwidth(text) == 60
+
+    pagerd.status_position = :both
+    text = _status_bar_text(pagerd, output)
+    @test text == "❯" * " "^41 * "q:quit   L5/20 45%"
+    @test textwidth(text) == 60
+
+    # The position is kept next to a message.
+    TerminalPager._set_message!(pagerd, "Invalid regex: ["; kind = :error)
+    text = _status_bar_text(pagerd, output)
+    @test startswith(text, "✗ Invalid regex: [")
+    @test endswith(text, " L5/20 45%")
+    @test textwidth(text) == 60
+    TerminalPager._clear_message!(pagerd)
+
+    # The key hints are dropped before the position on a narrow display.
+    pagerd.display_size = (10, 12)
+    @test _status_bar_text(pagerd, output) == "❯  L5/20 45%"
+
+    # An empty text has no rows.
+    pagerd, output = _create_status_pagerd(String[])
+    pagerd.status_position = :line
+    @test endswith(_status_bar_text(pagerd, output), "q:quit   L1/0")
+
+    # The style is read from the preference when the session starts.
+    try
+        TerminalPager.set_preference!("status_position", "line")
+        input = IOBuffer("q")
+        output = IOBuffer()
+        term = REPL.Terminals.TTYTerminal("", input, output, output)
+        TerminalPager._pager!(
+            term,
+            "a\nb\nc";
+            input = TerminalPager.PagerInput(input),
+            use_alternate_screen_buffer = false,
+        )
+        @test occursin("L1/3", String(take!(output)))
+    finally
+        TerminalPager.drop_preference!("status_position")
+    end
+
+    @test_throws ArgumentError TerminalPager.set_preference!("status_position", "bogus")
+end
+
+@testset "Show Position" begin
+    lines = ["line $i" for i in 1:20]
+    pagerd, output = _create_status_pagerd(lines)
+    pagerd.start_row = 5
+    @test TerminalPager._pager_action(TerminalPager.Keystroke(; value = "=")) ===
+        :show_position
+
+    TerminalPager._view!(pagerd)
+    pagerd.event = :show_position
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.message == "Lines 5-13 of 20 (65%) · Columns 1-7 of 7"
+    @test pagerd.message_kind === :info
+
+    # Frozen columns, the ruler, and a scrolled view reduce the visible columns.
+    pagerd.start_row = 15
+    pagerd.start_column = 3
+    pagerd.frozen_columns = 1
+    pagerd.show_ruler = true
+    pagerd.display_size = (10, 8)
+    pagerd.event = :show_position
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.message == "Lines 15-20 of 20 (100%) · Columns 3-4 of 7"
+
+    pagerd, output = _create_status_pagerd(String[])
+    pagerd.event = :show_position
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.message == "Lines 0-0 of 0 (0%) · Columns 0-0 of 0"
+end
+
 @testset "Status Bar Hidden Text Hints" begin
     # The hints tell that the text continues beyond the left or the right edge of the view.
     # They keep a slot of two columns, so that the key hints do not move while scrolling.

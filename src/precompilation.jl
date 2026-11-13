@@ -140,6 +140,11 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, "?")
             # Exit help mode.
             write(stdin_wr, "q")
+            # Position report and the goto forms.
+            write(stdin_wr, "=")
+            write(stdin_wr, ":50%\n")
+            write(stdin_wr, ":+1\n")
+            write(stdin_wr, ":\$\n")
             # Search.
             write(stdin_wr, "/0.1986\n")
             # Next search.

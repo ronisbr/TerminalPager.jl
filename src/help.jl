@@ -165,6 +165,7 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:toggle_ruler, "Toggle the line number ruler."),
             ActionHelp(:toggle_column_ruler, "Toggle the column ruler on top of the view."),
             ActionHelp(:toggle_scrollbar, "Toggle the scrollbar."),
+            ActionHelp(:show_position, "Show the visible lines and columns."),
         ],
     ),
     HelpSection(
@@ -190,7 +191,7 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:eol, "Last column."),
             ActionHelp(:home, "First line."),
             ActionHelp(:end, "Last line."),
-            ActionHelp(:goto_line, "Go to a line number."),
+            ActionHelp(:goto_line, "Go to a line, a percentage, an offset, or the end."),
         ],
     ),
     HelpSection(

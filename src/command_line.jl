@@ -26,11 +26,12 @@ const _RULER = "ruler"
 const _RULER_WIDTH = textwidth(_RULER)
 
 # Position tokens, like the ones of `vim`. Every token, including a percentage, is three
-# columns wide.
+# columns wide. The line style writes `L` and the top row over the number of lines instead.
 const _POSITION_ALL = "All"
 const _POSITION_TOP = "Top"
 const _POSITION_BOTTOM = "Bot"
 const _POSITION_WIDTH = 3
+const _POSITION_LINE_PREFIX = "L"
 
 # Hints telling that the text continues beyond the left and the right edges of the view.
 # They occupy a slot of two columns whenever one of them is shown, so that the segments at
@@ -83,6 +84,48 @@ function _write_blanks(io::IO, n::Int)
     end
 
     return written
+end
+
+"""
+    _prompt_position!(pagerd::Pager, prefix::String) -> Tuple{Symbol, Symbol, Int}
+
+Prompt for a position with `prefix` and return the status, the kind, and the value. The
+status is `:value`, `:cancel`, `:empty`, or `:invalid`, like [`_prompt_number!`](@ref),
+which also sets the error message. The kind is `:absolute` for a line number, `:percent` for
+a number followed by `%`, `:relative` for a number starting with `+` or `-`, or `:end` for
+`\$` or `end`, whose value is zero.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose terminal and input are used.
+- `prefix::String`: Prompt displayed before the position.
+"""
+function _prompt_position!(pagerd::Pager, prefix::String)
+    cmd_input = _read_cmd!(pagerd; prefix = prefix)
+    isnothing(cmd_input) && return :cancel, :absolute, 0
+
+    input = strip(cmd_input)
+    isempty(input) && return :empty, :absolute, 0
+    ((input == "\$") || (input == "end")) && return :value, :end, 0
+
+    kind = if endswith(input, '%')
+        input = input[1:prevind(input, lastindex(input))]
+        :percent
+    elseif startswith(input, '+') || startswith(input, '-')
+        :relative
+    else
+        :absolute
+    end
+
+    # `tryparse` accepts a leading sign, so the relative offsets parse as they are typed.
+    value = tryparse(Int, input; base = 10)
+
+    if isnothing(value)
+        _set_message!(pagerd, "Not a number: $cmd_input"; kind = :error)
+        return :invalid, :absolute, 0
+    end
+
+    return :value, kind, value
 end
 
 """
@@ -278,7 +321,9 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     else
         0
     end
-    w_position = _POSITION_WIDTH
+    position_style = pagerd.status_position
+    start_row = pagerd.start_row
+    w_position = _position_width(position_style, start_row, num_lines)
 
     # == Message ===========================================================================
 
@@ -316,7 +361,9 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
 
         if show_position
             _write_blanks(out, cols - width - w_position)
-            _write_position(out, num_lines, at_top, at_bottom, percentage)
+            _write_position(
+                out, position_style, start_row, num_lines, at_top, at_bottom, percentage
+            )
         end
 
         return nothing
@@ -517,26 +564,56 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         _write_blanks(out, _ITEM_GAP)
     end
 
-    show_position && _write_position(out, num_lines, at_top, at_bottom, percentage)
+    show_position && _write_position(
+        out, position_style, start_row, num_lines, at_top, at_bottom, percentage
+    )
 
     return nothing
 end
 
 """
+    _position_width(style::Symbol, start_row::Int, num_lines::Int) -> Int
+
+Return the width of the position of the status line for `style`, which is `:percent`,
+`:line`, or `:both`, when the view starts at `start_row` and the text has `num_lines` lines.
+
+# Arguments
+
+- `style::Symbol`: Style of the position.
+- `start_row::Int`: First visible row.
+- `num_lines::Int`: Number of lines of the text.
+"""
+function _position_width(style::Symbol, start_row::Int, num_lines::Int)
+    style === :percent && return _POSITION_WIDTH
+
+    # `L`, the row, `/`, and the number of lines.
+    w_line = 2 + ndigits(start_row) + ndigits(num_lines)
+    style === :line && return w_line
+
+    return w_line + 1 + _POSITION_WIDTH
+end
+
+"""
     _write_position(
         io::IO,
+        style::Symbol,
+        start_row::Int,
         num_lines::Int,
         at_top::Bool,
         at_bottom::Bool,
         percentage::Int
     ) -> Nothing
 
-Write the position of the status line to `io`, which is always three columns wide: `All`
-if the whole text is visible, `Top`, `Bot`, or `percentage` right-aligned before `%`.
+Write the position of the status line to `io` with the `style` `:percent`, `:line`, or
+`:both`. The percent token is always three columns wide: `All` if the whole text is visible,
+`Top`, `Bot`, or `percentage` right-aligned before `%`. The line token is `L`, `start_row`,
+`/`, and `num_lines`. Both tokens are separated by one blank in the style `:both`.
 
 # Arguments
 
 - `io::IO`: Output stream to update.
+- `style::Symbol`: Style of the position.
+- `start_row::Int`: First visible row.
 - `num_lines::Int`: Number of lines of the text.
 - `at_top::Bool`: Whether the view shows the first scrollable line.
 - `at_bottom::Bool`: Whether the view shows the last line.
@@ -544,11 +621,22 @@ if the whole text is visible, `Top`, `Bot`, or `percentage` right-aligned before
 """
 function _write_position(
     io::IO,
+    style::Symbol,
+    start_row::Int,
     num_lines::Int,
     at_top::Bool,
     at_bottom::Bool,
     percentage::Int,
 )
+    if style !== :percent
+        write(io, _POSITION_LINE_PREFIX)
+        _write_decimal(io, start_row)
+        write(io, UInt8('/'))
+        _write_decimal(io, num_lines)
+        style === :line && return nothing
+        write(io, UInt8(' '))
+    end
+
     if (num_lines == 0) || (at_top && at_bottom)
         write(io, _POSITION_ALL)
     elseif at_top

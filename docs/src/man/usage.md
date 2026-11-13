@@ -24,12 +24,15 @@ inside the `pager`.
 The last row is a status line with the prompt `❯` in the normal mode, the search or the
 visual mode and its state, the enabled features, the key hints of the current mode, whether
 the text continues beyond the left or the right edge (`‹` and `›`), and the position (`All`,
-`Top`, `Bot`, or a percentage). The row has no background by default; the face `status_bar`
-draws it as a bar (see the [customization](customization.md) page). The movements follow
-`less` and Vi: the arrow keys, `j`, `k`, `h`, `l`, `Space`, `PgUp`, `PgDn`, `Home`, `End`,
-`g`, and `G`. Typing `:` followed by a line number moves the display to that line, `r`
-toggles a line number ruler, which ends with a foot on the last frozen row, `R` toggles a
-column ruler on top of the view, `s` toggles a scrollbar, and `q` quits.
+`Top`, `Bot`, or a percentage; the preference `"status_position"` shows the top row over the
+number of lines instead, or both). The row has no background by default; the face
+`status_bar` draws it as a bar (see the [customization](customization.md) page). The
+movements follow `less` and Vi: the arrow keys, `j`, `k`, `h`, `l`, `Space`, `PgUp`, `PgDn`,
+`Home`, `End`, `g`, and `G`. Typing `:` followed by a position moves the display: a line
+number, a percentage of the text like `50%`, an offset from the top row like `+10` or `-5`,
+or `$` for the last page. `=` shows the visible lines and columns, the totals, and the
+percentage. `r` toggles a line number ruler, which ends with a foot on the last frozen row,
+`R` toggles a column ruler on top of the view, `s` toggles a scrollbar, and `q` quits.
 
 The mouse wheel scrolls the text, and `SHIFT` and the wheel scroll it horizontally. Notice
 that, while the pager reports the mouse, selecting text with the terminal requires holding

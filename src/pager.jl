@@ -525,6 +525,7 @@ function _pager!(
             show_ruler = show_ruler,
             show_column_ruler = show_column_ruler,
             show_scrollbar = show_scrollbar,
+            status_position = Symbol(_get_preference("status_position")::String),
             scroll_regions = _get_preference("use_scroll_regions")::Bool,
             start_column = max(1, frozen_columns + 1),
             start_row = min(max(1, frozen_rows + 1), num_tokens),
@@ -972,6 +973,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :quit => nothing,
     :quit_eot => nothing,
     :goto_line => nothing,
+    :show_position => nothing,
     :search => nothing,
     :next_match => nothing,
     :previous_match => nothing,
@@ -1118,6 +1120,8 @@ function _pager_event_process!(pagerd::Pager)
         _search!(pagerd)
     elseif event == :goto_line
         _goto_line!(pagerd)
+    elseif event == :show_position
+        _show_position!(pagerd)
     elseif event == :next_match
         _move_to_match!(pagerd, true)
     elseif event == :previous_match
@@ -1579,23 +1583,70 @@ end
 """
     _goto_line!(pagerd::Pager) -> Nothing
 
-Prompt for a line number and show that line at the top of the view of `pagerd`, like `less`
-does, and request a redraw. The view never moves into the frozen rows, and an invalid or
-cancelled number keeps it.
+Prompt for a position and show that line at the top of the view of `pagerd`, like `less`
+does, and request a redraw. The position is a line number, a percentage of the text like
+`50%`, an offset from the current top row like `+10` or `-5`, or `\$` or `end` for the last
+page. The view never moves into the frozen rows, and an invalid or cancelled position keeps
+it.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
 """
 function _goto_line!(pagerd::Pager)
-    status, line = _prompt_number!(pagerd, ":")
+    status, kind, value = _prompt_position!(pagerd, ":")
 
     if status === :value
+        num_lines = pagerd.num_lines
         min_row = _first_scrollable_row(pagerd)
-        pagerd.start_row = clamp(line, min_row, max(min_row, pagerd.num_lines))
+
+        line = if kind === :relative
+            pagerd.start_row + value
+        elseif kind === :percent
+            round(Int, num_lines * value / 100)
+        elseif kind === :end
+            num_lines - _view_rows(pagerd) + 1
+        else
+            value
+        end
+
+        pagerd.start_row = clamp(line, min_row, max(min_row, num_lines))
     end
 
     _request_redraw!(pagerd)
+
+    return nothing
+end
+
+"""
+    _show_position!(pagerd::Pager) -> Nothing
+
+Show a message with the lines and the columns of the text that are visible in `pagerd`, the
+totals, and the percentage of the text above the bottom of the view.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _show_position!(pagerd::Pager)
+    num_lines = pagerd.num_lines
+    view_rows = max(_view_rows(pagerd), 0)
+    first_row = min(pagerd.start_row, num_lines)
+    last_row = min(pagerd.start_row + view_rows - 1, num_lines)
+    percentage = num_lines > 0 ? round(Int, 100 * last_row / num_lines) : 0
+
+    cols = _get_pager_display_size(pagerd)[2]
+    ruler_width = pagerd.show_ruler ? _ruler_width(num_lines) : 0
+    view_cols = max(cols - pagerd.frozen_columns - ruler_width, 0)
+    text_width = _text_width(pagerd)
+    first_col = min(pagerd.start_column, text_width)
+    last_col = min(pagerd.start_column + view_cols - 1, text_width)
+
+    _set_message!(
+        pagerd,
+        "Lines $first_row-$last_row of $num_lines ($percentage%) · " *
+            "Columns $first_col-$last_col of $text_width",
+    )
 
     return nothing
 end

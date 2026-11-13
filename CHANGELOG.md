@@ -28,6 +28,12 @@ Version 0.9.0
   true)` and `TerminalPager.drop_all_preferences!` drop the stored bindings.
 - ![Enhancement][badge-enhancement] `TerminalPager.set_keybinding` throws an `ArgumentError`
   for an unknown action instead of silently binding a dead key.
+- ![Feature][badge-feature] `=` (action `:show_position`) shows the visible lines and
+  columns, the totals, and the percentage of the text above the bottom of the view. The `:`
+  prompt accepts a percentage of the text like `50%`, an offset from the top row like `+10`
+  or `-5`, and `$` or `end` for the last page, besides a line number. The new preference
+  `"status_position"` shows the top row over the number of lines on the status line, like
+  `L120/3456`, instead of the percentage, or both.
 
 Version 0.8.0
 -------------

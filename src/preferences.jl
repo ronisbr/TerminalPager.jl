@@ -19,6 +19,7 @@ const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, String}}(
     "pager_mode" => "default",
     "show_column_ruler" => false,
     "show_scrollbar" => false,
+    "status_position" => "percent",
     "use_scroll_regions" => true,
 )
 
@@ -196,6 +197,16 @@ function _validate_preference(pref::String, value)::Union{Bool, String}
             ArgumentError(
                 "Preference \"pager_mode\" must be \"default\" or \"vi\"; " *
                     "received \"$value\".",
+            ),
+        )
+    end
+
+    # The position of the status line has three styles.
+    if (pref == "status_position") && (value ∉ ("percent", "line", "both"))
+        throw(
+            ArgumentError(
+                "Preference \"status_position\" must be \"percent\", \"line\", or " *
+                    "\"both\"; received \"$value\".",
             ),
         )
     end

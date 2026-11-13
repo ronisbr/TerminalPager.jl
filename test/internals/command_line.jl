@@ -373,12 +373,31 @@ end
     end
 
     # Cancelling, an empty number, or an invalid one keeps the position.
-    for input in ("\e", "\n", "abc\n")
+    for input in ("\e", "\n", "abc\n", "10x%\n", "+\n")
         pagerd = _create_modal_pagerd(lines, input)
         pagerd.start_row = 7
         pagerd.event = :goto_line
         @test TerminalPager._pager_event_process!(pagerd)
         @test pagerd.start_row == 7
     end
-    @test pagerd.message == "Not a number: abc"
+    @test pagerd.message == "Not a number: +"
+
+    # A percentage of the text, an offset from the top row, or the last page. The display
+    # has 10 rows, so the view has 9 rows and the last page starts at line 22.
+    for (input, expected) in (
+        ("50%\n", 15),
+        ("0%\n", 1),
+        ("150%\n", 30),
+        ("+10\n", 17),
+        ("-5\n", 2),
+        ("-50\n", 1),
+        (" \$ \n", 22),
+        ("end\n", 22),
+    )
+        pagerd = _create_modal_pagerd(lines, input)
+        pagerd.start_row = 7
+        pagerd.event = :goto_line
+        @test TerminalPager._pager_event_process!(pagerd)
+        @test pagerd.start_row == expected
+    end
 end
