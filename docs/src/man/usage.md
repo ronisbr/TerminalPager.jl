@@ -175,9 +175,9 @@ pushed by a package, such as the window of a plotting package, shows the values 
 and the pager renders the others. The preference `"repl_mode_display"` set to `"pager"`
 renders every value into the pager instead.
 
-In the `pager>` prompt, `Alt+|` appends ` |> pager` to the command line without submitting
-it. The preference `"replace_help_mode"` makes the regular `help?>` prompt page its answers
-too, like the `pager?>` prompt does, from the next Julia session on.
+In the `julia>` and `pager>` prompts, `Alt+|` appends ` |> pager` to the command line
+without submitting it. The preference `"replace_help_mode"` makes the regular `help?>`
+prompt page its answers too, like the `pager?>` prompt does, from the next Julia session on.
 
 ## Recipes
 

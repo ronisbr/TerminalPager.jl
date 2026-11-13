@@ -83,15 +83,16 @@ end
         return (; prompt = prompt, keymap_dict = Dict{Char, Any}('\e' => escapes))
     end
 
-    # The shortcut is registered in the pager prompt only, and it must not use `<Alt> + p`,
-    # which REPL.jl binds to the previous history entry in every prompt.
+    # The shortcut is registered in the main and pager prompts, and it must not use
+    # `<Alt> + p`, which REPL.jl binds to the previous history entry in every prompt.
     regular_mode = create_mode()
     pager_mode = create_mode(TerminalPager._tp_mode_prompt)
     repl = (; interface = (; modes = [regular_mode, pager_mode]))
     fetch(TerminalPager._register_pipe_shortcuts(repl))
     @test pager_mode.keymap_dict['\e']['|'] === TerminalPager._append_pager_pipe
+    @test regular_mode.keymap_dict['\e']['|'] === TerminalPager._append_pager_pipe
     @test !haskey(pager_mode.keymap_dict['\e'], 'p')
-    @test !haskey(regular_mode.keymap_dict['\e'], '|')
+    @test !haskey(regular_mode.keymap_dict['\e'], 'p')
 
     # The text is appended at the end of the line, wherever the cursor is, and nothing is
     # appended to an empty line.
