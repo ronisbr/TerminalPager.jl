@@ -374,10 +374,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 # render the object.
                 if val !== nothing
                     shown_from = position(buf)
-                    Base.invokelatest(show, stdout, MIME("text/plain"), val)
-                    write(stdout, '\n')
+                    displayed = _display_value!(stdout, val)
                     shown_to = position(buf)
-                    shown_value = val
+
+                    # A value shown by another display leaves nothing in the buffer.
+                    shown_value = displayed ? nothing : val
                 end
             end
         end
@@ -411,6 +412,46 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     end
 
     return nothing
+end
+
+"""
+    _display_value!(io::IO, value::Any) -> Bool
+
+Show `value`, the result of a `pager>` command, like the REPL does: the displays of the
+display stack are tried from the top, except the REPL display and the text display, which
+point at the terminal behind the pager, and `value` is rendered into `io` with
+`MIME"text/plain"` when none of them accepts it. Return whether another display showed it.
+With the preference `"repl_mode_display"` set to `"pager"`, the stack is not tried.
+
+# Arguments
+
+- `io::IO`: Buffer of the `pager>` command output.
+- `value::Any`: Value to show.
+"""
+function _display_value!(io::IO, @nospecialize(value))
+    if _get_preference("repl_mode_display")::String == "stack"
+        displays = Base.Multimedia.displays
+
+        for i in length(displays):-1:1
+            d = displays[i]
+            ((d isa REPL.REPLDisplay) || (d isa TextDisplay)) && continue
+
+            # Like `Base.display`, a display without a method for the value is skipped. The
+            # displays are pushed at runtime, so the call must see the latest world.
+            try
+                Base.invokelatest(display, d, value)
+                return true
+            catch err
+                (err isa MethodError) && ((err.f === display) || (err.f === show)) ||
+                    rethrow()
+            end
+        end
+    end
+
+    Base.invokelatest(show, io, MIME("text/plain"), value)
+    write(io, '\n')
+
+    return false
 end
 
 """

@@ -19,6 +19,7 @@ const _AVAILABLE_PREFERENCES = Dict{String, Union{Bool, Int, String}}(
     "history_size" => 5,
     "mouse" => true,
     "pager_mode" => "default",
+    "repl_mode_display" => "stack",
     "show_column_ruler" => false,
     "show_scrollbar" => false,
     "status_position" => "percent",
@@ -217,6 +218,16 @@ function _validate_preference(pref::String, value)::Union{Bool, Int, String}
         throw(
             ArgumentError(
                 "Preference \"pager_mode\" must be \"default\" or \"vi\"; " *
+                    "received \"$value\".",
+            ),
+        )
+    end
+
+    # The values of the `pager>` mode go through the display stack or to the pager only.
+    if (pref == "repl_mode_display") && (value ∉ ("stack", "pager"))
+        throw(
+            ArgumentError(
+                "Preference \"repl_mode_display\" must be \"stack\" or \"pager\"; " *
                     "received \"$value\".",
             ),
         )

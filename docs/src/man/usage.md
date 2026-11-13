@@ -157,6 +157,11 @@ help mode. In this case, the prompt is changed to `pager?>`. Any docstring acces
 mode is rendered inside a pager. The pager uses the alternate screen buffer, so the screen
 content is restored after exiting it.
 
+The value of a command goes through the display stack like in the regular REPL: a display
+pushed by a package, such as the window of a plotting package, shows the values it accepts,
+and the pager renders the others. The preference `"repl_mode_display"` set to `"pager"`
+renders every value into the pager instead.
+
 ## Recipes
 
 The default keywords of `pager` for an object come from its recipe, the function

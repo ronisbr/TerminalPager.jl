@@ -47,6 +47,10 @@ The available preferences are:
 - `"pager_mode"`: If it is `"vi"`, some keybindings are modified to match the behavior of
     Vi. Notice that this change only takes effect when a new Julia session is initialized.
     (**Default** = `"default"`)
+- `"repl_mode_display"`: If it is `"stack"`, the value of a `pager>` command goes through
+    the display stack like in the regular REPL, so that a display pushed by a package, such
+    as a plot window, shows it; the pager renders it only when no display accepts it. If it
+    is `"pager"`, the value is always rendered into the pager. (**Default** = `"stack"`)
 - `"show_column_ruler"`: If `true`, the pager shows a two-row ruler with the column numbers
     on top of the view unless the keyword `show_column_ruler` says otherwise.
     (**Default** = `false`)

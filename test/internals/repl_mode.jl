@@ -83,6 +83,87 @@ function _capture_stdout(f::Function)
     end
 end
 
+struct _RationalDisplay <: AbstractDisplay
+    shown::Vector{Any}
+end
+
+Base.display(d::_RationalDisplay, x::Rational) = (push!(d.shown, x); nothing)
+
+struct _ThrowingDisplay <: AbstractDisplay end
+Base.display(::_ThrowingDisplay, x) = error("boom")
+
+struct _ShowErrorDisplay <: AbstractDisplay end
+Base.display(::_ShowErrorDisplay, x) = throw(MethodError(show, (x,)))
+
+@testset "REPL Mode Display Stack" begin
+    output = IOBuffer()
+    io = IOContext(output, :color => false)
+    rational_display = _RationalDisplay(Any[])
+
+    # Without another display, the value is rendered into the buffer.
+    @test !TerminalPager._display_value!(io, 42)
+    @test String(take!(output)) == "42\n"
+
+    pushdisplay(rational_display)
+    try
+        # A display accepting the value shows it, and nothing is rendered into the buffer.
+        @test TerminalPager._display_value!(io, 1 // 2)
+        @test rational_display.shown == [1 // 2]
+        @test isempty(take!(output))
+
+        # A display without a method for the value is skipped.
+        @test !TerminalPager._display_value!(io, 42)
+        @test String(take!(output)) == "42\n"
+        @test rational_display.shown == [1 // 2]
+
+        # A display throwing a method error of `show` is skipped too, but other errors are
+        # not silenced.
+        pushdisplay(_ShowErrorDisplay())
+        try
+            @test !TerminalPager._display_value!(io, 42)
+            @test String(take!(output)) == "42\n"
+        finally
+            popdisplay()
+        end
+
+        pushdisplay(_ThrowingDisplay())
+        try
+            @test_throws ErrorException TerminalPager._display_value!(io, 42)
+        finally
+            popdisplay()
+        end
+
+        # The REPL display and the text display point at the terminal behind the pager, so
+        # they are skipped.
+        term = REPL.Terminals.TTYTerminal("", IOBuffer(), IOBuffer(), IOBuffer())
+        repl = REPL.LineEditREPL(term, true)
+        pushdisplay(REPL.REPLDisplay(repl))
+        pushdisplay(TextDisplay(IOBuffer()))
+        try
+            @test !TerminalPager._display_value!(io, 42)
+            @test String(take!(output)) == "42\n"
+            @test isempty(take!(term.out_stream))
+        finally
+            popdisplay()
+            popdisplay()
+        end
+
+        # The preference keeps every value in the pager.
+        try
+            TerminalPager.set_preference!("repl_mode_display", "pager")
+            @test !TerminalPager._display_value!(io, 1 // 3)
+            @test String(take!(output)) == "1//3\n"
+            @test rational_display.shown == [1 // 2]
+        finally
+            TerminalPager.drop_preference!("repl_mode_display")
+        end
+    finally
+        popdisplay(rational_display)
+    end
+
+    @test_throws ArgumentError TerminalPager.set_preference!("repl_mode_display", "bogus")
+end
+
 @testset "Standard Output To Pager" begin
     # `auto = true` with a text that fits makes the pager print it instead of opening a
     # terminal session, which is what lets us capture it here.

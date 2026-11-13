@@ -39,6 +39,11 @@ Version 0.9.0
   summary line on top, the new extension `TerminalPagerDataFramesExt` freezes the header rows
   and the row number column of the data frames, and the `pager>` mode applies the recipe of
   the value of a command. (Issue [#11][gh-issue-11])
+- ![Feature][badge-feature] The value of a `pager>` command goes through the display stack
+  like in the regular REPL, so that a display pushed by a package, such as a plot window,
+  shows it; the pager renders it only when no display accepts it. The new preference
+  `"repl_mode_display"` set to `"pager"` restores the previous behavior. (Issue
+  [#48][gh-issue-48])
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the
@@ -617,6 +622,7 @@ Version 0.0.1
 [gh-issue-32]: https://github.com/ronisbr/TerminalPager.jl/issues/32
 [gh-issue-40]: https://github.com/ronisbr/TerminalPager.jl/issues/40
 [gh-issue-46]: https://github.com/ronisbr/TerminalPager.jl/issues/46
+[gh-issue-48]: https://github.com/ronisbr/TerminalPager.jl/issues/48
 [gh-issue-54]: https://github.com/ronisbr/TerminalPager.jl/issues/54
 [gh-issue-82]: https://github.com/ronisbr/TerminalPager.jl/issues/82
 [gh-issue-89]: https://github.com/ronisbr/TerminalPager.jl/issues/89
