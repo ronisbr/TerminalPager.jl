@@ -182,6 +182,26 @@ struct SearchMatch
 end
 
 """
+    mutable struct TerminalModes
+
+Record the terminal modes a pager session enabled, so that they can be left and entered
+again, for example around an external editor, and undone when the session ends.
+
+# Fields
+
+- `cursor_key_mode::Bool`: Whether the application cursor key mode was enabled.
+- `alternate_screen::Bool`: Whether the alternate screen buffer was entered.
+- `cursor_hidden::Bool`: Whether the cursor was hidden.
+- `mouse::Bool`: Whether the mouse reporting was enabled.
+"""
+Base.@kwdef mutable struct TerminalModes
+    cursor_key_mode::Bool = false
+    alternate_screen::Bool = false
+    cursor_hidden::Bool = false
+    mouse::Bool = false
+end
+
+"""
     struct PagerResult
 
 Store what a pager session leaves when it quits.
@@ -308,6 +328,7 @@ Store the mutable state for one pager session.
 - `visual_line_backgrounds::Vector{String}`: Reused buffer with the background of each entry
     of `visual_lines`.
 - `frame_cache::FrameCache`: State supporting the incremental redraw.
+- `terminal_modes::TerminalModes`: Terminal modes enabled by the session.
 """
 Base.@kwdef mutable struct Pager
     term::REPL.Terminals.TTYTerminal
@@ -358,4 +379,5 @@ Base.@kwdef mutable struct Pager
     visual_lines::Vector{Int} = Int[]
     visual_line_backgrounds::Vector{String} = String[]
     frame_cache::FrameCache = FrameCache()
+    terminal_modes::TerminalModes = TerminalModes()
 end

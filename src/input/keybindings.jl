@@ -66,6 +66,7 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("y", false, false, false) => :yank,
     ("Y", false, false, false) => :yank_all,
     ("S", false, false, false) => :save,
+    ("e", false, false, false) => :edit,
     ("V", false, false, false) => :toggle_visual_anchor,
     ("<wheel_up>", false, false, false) => :wheel_up,
     ("<wheel_down>", false, false, false) => :wheel_down,
@@ -141,6 +142,7 @@ const _ACTIONS = Symbol[
     :yank_all,
     :save,
     :yank_quit,
+    :edit,
 ]
 
 # Name of the preference that stores the persisted key bindings.

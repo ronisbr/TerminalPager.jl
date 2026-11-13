@@ -471,42 +471,18 @@ function _pager!(
     block_alternate_screen_buffer = _get_preference("block_alternate_screen_buffer")::Bool
     use_alternate_screen_buffer &= !block_alternate_screen_buffer
 
-    cursor_key_mode_enabled = false
-    alternate_screen_enabled = false
-    cursor_hidden = false
-    mouse_enabled = false
+    modes = TerminalModes()
     owns_waiter = false
     local pagerd
     try
-        if manage_cursor_key_mode
-            cursor_key_mode_enabled = true
-            _turn_on_cursor_key_mode(term.out_stream)
-        end
-
-        # Clear the screen and position the cursor at the top.
-        if use_alternate_screen_buffer
-            # As in `_with_raw_mode`, the flag is set before the write, so that a write that
-            # partially reached the terminal is still undone.
-            alternate_screen_enabled = true
-            _turn_on_alternate_screen_buffer(term.out_stream)
-        else
-            _clear_screen(term.out_stream)
-        end
-
-        # The cursor has nothing to point at in the view. Hence, it is hidden for the whole
-        # session and shown only while a command is edited. As above, the flag is set before
-        # the write.
-        if manage_cursor
-            cursor_hidden = true
-            _hide_cursor(term.out_stream)
-        end
-
-        # The mouse reporting lets the wheel scroll the text. It is a terminal state that
-        # outlives the session if it is not disabled at the end.
-        if manage_mouse && _get_preference("mouse")::Bool
-            mouse_enabled = true
-            _turn_on_mouse(term.out_stream)
-        end
+        _enter_terminal_modes!(
+            modes,
+            term.out_stream;
+            cursor_key_mode = manage_cursor_key_mode,
+            alternate_screen = use_alternate_screen_buffer,
+            hide_cursor = manage_cursor,
+            mouse = manage_mouse && _get_preference("mouse")::Bool,
+        )
 
         # The pager is divided into a view and a command line. Everything in the view is
         # written to this buffer and then flushed to the screen.
@@ -539,6 +515,7 @@ function _pager!(
             start_column = max(1, frozen_columns + 1),
             start_row = min(max(1, frozen_rows + 1), num_tokens),
             term = term,
+            terminal_modes = modes,
             text_layout = session_layout,
             title_rows = title_rows,
         )
@@ -582,14 +559,7 @@ function _pager!(
         end
     finally
         try
-            _restore_terminal(
-                term.out_stream;
-                mouse = mouse_enabled,
-                clear_status_row = cursor_hidden && !alternate_screen_enabled,
-                show_cursor = cursor_hidden,
-                alternate_screen = alternate_screen_enabled,
-                cursor_key_mode = cursor_key_mode_enabled,
-            )
+            _leave_terminal_modes!(modes, term.out_stream)
         finally
             # The waiter is closed even if the restoration throws, so that its timer and its
             # reader task do not outlive the session.
@@ -600,6 +570,104 @@ function _pager!(
     return PagerResult(
         pagerd.yanked, pagerd.start_row, pagerd.start_column, pagerd.search_pattern
     )
+end
+
+"""
+    _enter_terminal_modes!(modes::TerminalModes, io::IO; kwargs...) -> Nothing
+
+Enable the requested terminal modes on `io` and record them in `modes`. Each flag of `modes`
+is set before the sequence is written, so that a write that partially reached the terminal
+is still undone by [`_leave_terminal_modes!`](@ref). Without the alternate screen buffer,
+the screen is cleared instead.
+
+# Arguments
+
+- `modes::TerminalModes`: Record of the enabled modes.
+- `io::IO`: Terminal output stream to update.
+
+# Keywords
+
+- `cursor_key_mode::Bool`: Enable the application cursor key mode.
+- `alternate_screen::Bool`: Enter the alternate screen buffer.
+- `hide_cursor::Bool`: Hide the cursor.
+- `mouse::Bool`: Enable the mouse reporting.
+"""
+function _enter_terminal_modes!(
+    modes::TerminalModes,
+    @nospecialize(io::IO);
+    cursor_key_mode::Bool,
+    alternate_screen::Bool,
+    hide_cursor::Bool,
+    mouse::Bool,
+)
+    if cursor_key_mode
+        modes.cursor_key_mode = true
+        _turn_on_cursor_key_mode(io)
+    end
+
+    # Clear the screen and position the cursor at the top.
+    if alternate_screen
+        modes.alternate_screen = true
+        _turn_on_alternate_screen_buffer(io)
+    else
+        _clear_screen(io)
+    end
+
+    # The cursor has nothing to point at in the view. Hence, it is hidden for the whole
+    # session and shown only while a command is edited.
+    if hide_cursor
+        modes.cursor_hidden = true
+        _hide_cursor(io)
+    end
+
+    # The mouse reporting lets the wheel scroll the text. It is a terminal state that
+    # outlives the session if it is not disabled at the end.
+    if mouse
+        modes.mouse = true
+        _turn_on_mouse(io)
+    end
+
+    return nothing
+end
+
+"""
+    _leave_terminal_modes!(modes::TerminalModes, io::IO) -> Nothing
+
+Undo the terminal modes recorded in `modes` on `io`, performing every step even if a
+previous one throws. The flags of `modes` are kept, so that the modes can be entered again.
+
+# Arguments
+
+- `modes::TerminalModes`: Record of the enabled modes.
+- `io::IO`: Terminal output stream to restore.
+"""
+function _leave_terminal_modes!(modes::TerminalModes, @nospecialize(io::IO))
+    _restore_terminal(
+        io;
+        mouse = modes.mouse,
+        clear_status_row = modes.cursor_hidden && !modes.alternate_screen,
+        show_cursor = modes.cursor_hidden,
+        alternate_screen = modes.alternate_screen,
+        cursor_key_mode = modes.cursor_key_mode,
+    )
+
+    return nothing
+end
+
+"""
+    _set_raw_mode!(term::REPL.Terminals.TTYTerminal, raw::Bool) -> Nothing
+
+Enable or disable the raw mode of `term` if its input is a TTY. The terminals of the tests
+read from buffers, which have no raw mode.
+
+# Arguments
+
+- `term::REPL.Terminals.TTYTerminal`: Terminal to update.
+- `raw::Bool`: Whether to enable the raw mode.
+"""
+function _set_raw_mode!(@nospecialize(term::REPL.Terminals.TTYTerminal), raw::Bool)
+    (term.in_stream isa Base.TTY) && REPL.Terminals.raw!(term, raw)
+    return nothing
 end
 
 """
@@ -1007,6 +1075,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :yank_all => nothing,
     :save => nothing,
     :yank_quit => :visual_mode,
+    :edit => nothing,
 )
 
 """
@@ -1198,6 +1267,8 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :yank_quit
         _yank!(pagerd)
         return false
+    elseif event == :edit
+        _edit!(pagerd)
     end
 
     # Some events move the view, such as going to a line or to a search match. The visual
@@ -2256,6 +2327,77 @@ function _join_lines(lines::Vector{String})
     end
 
     return String(take!(buf))
+end
+
+# Function that opens a file in the editor at a line. It is a reference so that the tests
+# can replace it.
+const _EDITOR = Ref{Any}(InteractiveUtils.edit)
+
+"""
+    _edit!(pagerd::Pager) -> Nothing
+
+Open the lines selected in the visual mode of `pagerd`, or the whole text outside it, in the
+editor of `InteractiveUtils.edit` at the visual line or the first visible row. The text is
+written without the decorations to a temporary file, which is deleted when the editor
+returns. The terminal modes and the raw mode are left while the editor runs and entered
+again afterwards, and the screen is repainted.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose text is edited.
+"""
+function _edit!(pagerd::Pager)
+    ids = pagerd.visual_mode ? _selected_line_ids(pagerd) : 1:pagerd.num_lines
+
+    if isempty(ids)
+        _set_message!(pagerd, "Nothing to edit"; kind = :error)
+        return nothing
+    end
+
+    text, _ = _assemble_yank_text(pagerd.text_layout, ids)
+
+    # The editor opens at the visual line, which is in the selection, or at the top row.
+    line = if pagerd.visual_mode
+        something(findfirst(==(_visual_line_index(pagerd)), ids), 1)
+    else
+        pagerd.start_row
+    end
+
+    path = tempname() * ".txt"
+    write(path, text)
+
+    modes = pagerd.terminal_modes
+    term = pagerd.term
+
+    # The editor needs the normal screen, a visible cursor, and the cooked input.
+    _leave_terminal_modes!(modes, term.out_stream)
+    _set_raw_mode!(term, false)
+
+    try
+        _EDITOR[](path, line)
+    catch err
+        err isa InterruptException && rethrow()
+        _set_message!(
+            pagerd, "Could not open the editor: $(sprint(showerror, err))"; kind = :error
+        )
+    finally
+        _set_raw_mode!(term, true)
+        _enter_terminal_modes!(
+            modes,
+            term.out_stream;
+            cursor_key_mode = modes.cursor_key_mode,
+            alternate_screen = modes.alternate_screen,
+            hide_cursor = modes.cursor_hidden,
+            mouse = modes.mouse,
+        )
+        rm(path; force = true)
+
+        # The editor painted over the screen, so nothing of the frame is known anymore.
+        _invalidate_frame!(pagerd)
+        _request_redraw!(pagerd)
+    end
+
+    return nothing
 end
 
 # Lines copied by the last yank of the session, returned by `yanked`.

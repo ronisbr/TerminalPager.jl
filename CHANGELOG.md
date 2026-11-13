@@ -23,6 +23,9 @@ Version 0.9.0
   session. The copied lines are kept even when the system clipboard is not available.
 - ![Enhancement][badge-enhancement] `Enter` (action `:yank_quit`) copies the selection and
   quits the pager in the visual mode. Outside it, `Enter` still moves one line down.
+- ![Feature][badge-feature] `e` (action `:edit`) opens the whole text, or the selection in
+  the visual mode, in the editor of `InteractiveUtils.edit` at the current line, and repaints
+  the pager when the editor returns.
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the
