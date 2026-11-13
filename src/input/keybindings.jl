@@ -486,10 +486,12 @@ keywords `alt`, `ctrl`, and `shift`.
     "<wheel_left>", "<wheel_right>", "<mouse_press>", "<mouse_press_middle>",
     "<mouse_press_right>", "<mouse_release>", "<mouse_drag>"
 
-`"<eot>"` is CTRL-D and `"<shiftin>"` is CTRL-U. Every other CTRL combination with a letter must
-be selected with the keyword `ctrl` instead, for example
-`set_keybinding("a", :quit; ctrl = true)`. The mouse keys are reported when the preference
-`"mouse"` is enabled.
+`"<eot>"` is CTRL-D and `"<shiftin>"` is CTRL-U. Every other CTRL combination with a letter
+must be selected with the keyword `ctrl` instead, for example
+`set_keybinding("a", :quit; ctrl = true)`, except CTRL-I, which the terminal sends as
+`"<tab>"`, and CTRL-J and CTRL-M, which it sends as `"<enter>"`. A binding with the keyword
+`ctrl` for one of those three letters never matches. The mouse keys are reported when the
+preference `"mouse"` is enabled.
 
 `action` can be one of the following symbols:
 

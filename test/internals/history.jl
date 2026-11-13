@@ -40,6 +40,19 @@
         label = TerminalPager._history_label(1, TerminalPager._PAGER_HISTORY[end]; width = 24)
         @test occursin(r"^#1  \d\d:\d\d  1 line  red …$", label)
         @test textwidth(label) == 24
+
+        # A first line that fits exactly is not cropped.
+        fits = TerminalPager._history_label(2, TerminalPager._PAGER_HISTORY[1]; width = 80)
+        label = TerminalPager._history_label(
+            2, TerminalPager._PAGER_HISTORY[1]; width = textwidth(fits)
+        )
+        @test label == fits
+        label = TerminalPager._history_label(
+            2, TerminalPager._PAGER_HISTORY[1]; width = textwidth(fits) - 1
+        )
+        @test endswith(label, "lines  o…")
+        @test textwidth(label) == textwidth(fits) - 1
+
         label = TerminalPager._history_label(1, TerminalPager._PAGER_HISTORY[end]; width = 5)
         @test occursin(r"^#1  \d\d:\d\d  1 line$", label)
         @test TerminalPager._history_num_lines("") == 0

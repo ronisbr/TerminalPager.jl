@@ -214,21 +214,21 @@ function _history_label(n::Int, entry::PagerHistoryEntry; width::Int)
     available = width - textwidth(prefix)
     available <= 0 && return rstrip(prefix)
 
-    # The first line is cropped at the display width with an ellipsis.
+    # The first line is shown entirely if it fits. Otherwise, it is cropped at the display
+    # width with an ellipsis.
+    (textwidth(first_line) <= available) && return prefix * first_line
+
     cropped = IOBuffer()
     cropped_width = 0
 
     for c in first_line
         character_width = textwidth(c)
-
-        if cropped_width + character_width > available - 1
-            write(cropped, "…")
-            break
-        end
-
+        (cropped_width + character_width > available - 1) && break
         write(cropped, c)
         cropped_width += character_width
     end
+
+    write(cropped, "…")
 
     return prefix * String(take!(cropped))
 end
