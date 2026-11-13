@@ -91,6 +91,31 @@ function _write_blanks(io::IO, n::Int)
 end
 
 """
+    _write_cropped(io::IO, text::Any, column::Int, last_column::Int) -> Int
+
+Write the characters of `text`, a string or a vector of characters, to `io` from the display
+`column`, stopping before the first character that would end after `last_column`. Return
+the display column after the last character written.
+
+# Arguments
+
+- `io::IO`: Output stream to update.
+- `text::Any`: Characters to write.
+- `column::Int`: One-based display column of the first character.
+- `last_column::Int`: Last display column that can be written.
+"""
+function _write_cropped(io::IO, text, column::Int, last_column::Int)
+    for character in text
+        character_width = textwidth(character)
+        (column + character_width > last_column + 1) && break
+        write(io, character)
+        column += character_width
+    end
+
+    return column
+end
+
+"""
     _prompt_key!(pagerd::Pager, prompt::String) -> Union{Nothing, Char}
 
 Show `prompt` on the status row of `pagerd`, wait for one keystroke, and return its
@@ -111,7 +136,7 @@ function _prompt_key!(pagerd::Pager, prompt::String)
             out = _screen_buffer!(pagerd)
             _move_cursor(out, pagerd.display_size[1], 1)
             _clear_to_eol(out)
-            write(out, prompt)
+            _write_cropped(out, prompt, 1, pagerd.display_size[2])
             _flush_screen!(pagerd)
             redraw = false
         end
@@ -890,19 +915,12 @@ function _read_cmd!(
                 _move_cursor(out, display_size[1], 1)
                 _clear_to_eol(out)
                 write(out, _SHOW_CURSOR)
-                write(out, prefix)
 
-                # The command must be truncated at the right edge of the display. Otherwise,
-                # the terminal wraps the last row, the whole screen scrolls, and the frame
-                # snapshot no longer describes what is on it.
-                column = prefix_width + 1
-
-                for character in chars
-                    character_width = textwidth(character)
-                    column + character_width > display_size[2] + 1 && break
-                    write(out, character)
-                    column += character_width
-                end
+                # The prompt and the command must be truncated at the right edge of the
+                # display. Otherwise, the terminal wraps the last row, the whole screen
+                # scrolls, and the frame snapshot no longer describes what is on it.
+                column = _write_cropped(out, prefix, 1, display_size[2])
+                column = _write_cropped(out, chars, column, display_size[2])
 
                 # The status is right-aligned after the command when it fits.
                 status_width = textwidth(status)

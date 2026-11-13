@@ -47,6 +47,7 @@
 
             # An existing file is overwritten only after a confirmation.
             pagerd = _create_modal_pagerd(["new"], path * "\nn")
+            pagerd.display_size = (10, 2 * length(path))
             pagerd.event = :save
             @test TerminalPager._pager_event_process!(pagerd)
             @test read(path, String) == "first\nred\nthird\n"

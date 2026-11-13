@@ -423,3 +423,30 @@ end
         @test pagerd.start_row == expected
     end
 end
+
+@testset "Prompt Wider Than the Display" begin
+    # The prompt must be truncated at the right edge of the display, like the command.
+    # Otherwise, the terminal wraps the last row and the whole screen scrolls.
+    pagerd = _create_modal_pagerd(["a", "b"], "12\n")
+    pagerd.display_size = (10, 12)
+    @test TerminalPager._prompt_number!(pagerd, "Frozen columns", 0) == (:value, 12)
+
+    written = String(take!(pagerd.term.out_stream))
+
+    for frame in split(written, "\e[10;1H\e[0K\e[?25h")[2:end]
+        text = first(split(frame, '\e'))
+        @test textwidth(text) <= 12
+        @test startswith("Frozen columns [0] › 12", text)
+    end
+
+    pagerd = _create_modal_pagerd(["a", "b"], "y")
+    pagerd.display_size = (10, 12)
+    @test TerminalPager._prompt_key!(pagerd, "Overwrite /a/long/path? (y/n)") == 'y'
+    @test String(take!(pagerd.term.out_stream)) == "\e[10;1H\e[0KOverwrite /a"
+
+    out = IOBuffer()
+    @test TerminalPager._write_cropped(out, "ab界cd", 1, 4) == 5
+    @test String(take!(out)) == "ab界"
+    @test TerminalPager._write_cropped(out, ['a', '界', 'b'], 3, 4) == 4
+    @test String(take!(out)) == "a"
+end
