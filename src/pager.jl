@@ -67,6 +67,70 @@ function _ruler_line_count(p::Pager)
 end
 
 """
+    _shown_ruler_width(p::Pager) -> Int
+
+Return the number of columns of the display of `p` taken by the line-number ruler, which is
+`0` if it is hidden.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+_shown_ruler_width(p::Pager) = p.show_ruler ? _ruler_width(p) : 0
+
+"""
+    _first_scrollable_column(p::Pager) -> Int
+
+Return the first printable column of the text of `p` that scrolls, which is the one after
+the frozen columns.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+"""
+_first_scrollable_column(p::Pager) = max(1, p.frozen_columns + 1)
+
+"""
+    _clamp_row(p::Pager, row::Int) -> Int
+
+Return `row` moved into the rows of the text of `p` that scroll, which are the ones after
+the frozen rows.
+
+# Arguments
+
+- `p::Pager`: Pager state to inspect.
+- `row::Int`: Row of the view.
+"""
+function _clamp_row(p::Pager, row::Int)
+    min_row = _first_scrollable_row(p)
+    return clamp(row, min_row, max(min_row, p.num_lines))
+end
+
+"""
+    _reset_crop!(p::Pager) -> Nothing
+
+Reset the numbers of lines and columns of `p` cropped by the last frame. They describe a
+view that does not exist anymore, so they must be computed again by the next
+[`_view!`](@ref) instead of being used by the movements.
+
+# Arguments
+
+- `p::Pager`: Pager state to update.
+"""
+function _reset_crop!(p::Pager)
+    p.cropped_lines = 0
+    p.cropped_columns = 0
+    return nothing
+end
+
+"""
+    _empty_result() -> PagerResult
+
+Return the result of a text that was printed instead of shown by a pager session.
+"""
+_empty_result() = PagerResult(String[], 1, 1, "")
+
+"""
     _source_line(p::Pager, row::Int) -> Int
 
 Return the source line shown at the `row` of the view of `p`, which is the row itself when
@@ -161,12 +225,9 @@ function _rebuild_view_layout!(p::Pager; top_line::Int = _source_line(p, p.start
 
     p.num_lines = length(p.text_layout)
     p.text_width = -1
-    p.cropped_lines = 0
-    p.cropped_columns = 0
+    _reset_crop!(p)
 
-    min_row = _first_scrollable_row(p)
-    top_row = _first_row_at_or_after(p, top_line)
-    p.start_row = clamp(top_row, min_row, max(min_row, p.num_lines))
+    p.start_row = _clamp_row(p, _first_row_at_or_after(p, top_line))
     _clamp_viewport!(p)
     _clamp_visual_line!(p)
 
@@ -349,9 +410,8 @@ function _clamp_viewport!(p::Pager)
     max_row = max(min_row, p.num_lines - view_rows + 1)
     p.start_row = clamp(p.start_row, min_row, max_row)
 
-    min_col = max(1, p.frozen_columns + 1)
-    ruler_width = p.show_ruler ? _ruler_width(p) : 0
-    view_cols = cols - p.frozen_columns - ruler_width
+    min_col = _first_scrollable_column(p)
+    view_cols = cols - p.frozen_columns - _shown_ruler_width(p)
     max_col = max(min_col, _text_width(p) - view_cols + 1)
     p.start_column = clamp(p.start_column, min_col, max_col)
 
@@ -431,7 +491,7 @@ function _pager(
     display_size = displaysize(stdout)::Tuple{Int, Int}
     if auto && _pager_content_fits(lines, display_size)
         print(str)
-        return return_selection ? PagerResult(String[], 1, 1, "") : nothing
+        return return_selection ? _empty_result() : nothing
     end
 
     text_layout = _layout_factory(lines)
@@ -591,7 +651,7 @@ function _pager!(
 
     if auto && _pager_content_fits(source_lines, dsize)
         print(str)
-        return PagerResult(String[], 1, 1, "")
+        return _empty_result()
     end
 
     # Like the prompts that change them, the numbers of frozen and title rows and columns
@@ -1151,7 +1211,7 @@ burst sees the boundary without a redraw.
 - `step::Int`: Signed number of columns to move.
 """
 function _scroll_horizontal!(pagerd::Pager, step::Int)
-    min_col = max(1, pagerd.frozen_columns + 1)
+    min_col = _first_scrollable_column(pagerd)
     start_column = pagerd.start_column
 
     if step > 0
@@ -1444,17 +1504,9 @@ function _change_freeze!(pagerd::Pager)
             # The clamped field value must be used here, not the raw parsed one, and the
             # first visible row must stay inside the text.
             pagerd.frozen_rows = max(0, frozen_rows)
-            pagerd.start_row = clamp(
-                pagerd.start_row,
-                pagerd.frozen_rows + 1,
-                max(pagerd.frozen_rows + 1, pagerd.num_lines),
-            )
+            pagerd.start_row = _clamp_row(pagerd, pagerd.start_row)
             pagerd.visual_mode_line = 1
-
-            # The crop counters describe the previous layout, so they must be recomputed by
-            # the next `_view!` instead of being reused by the movement handling.
-            pagerd.cropped_lines = 0
-            pagerd.cropped_columns = 0
+            _reset_crop!(pagerd)
         end
 
         status, frozen_columns = _prompt_number!(
@@ -1464,8 +1516,7 @@ function _change_freeze!(pagerd::Pager)
         if status === :value
             pagerd.frozen_columns = max(0, frozen_columns)
             pagerd.start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
-            pagerd.cropped_lines = 0
-            pagerd.cropped_columns = 0
+            _reset_crop!(pagerd)
         end
 
         if status !== :invalid
@@ -1713,12 +1764,7 @@ function _end_selection!(pagerd::Pager, start_row::Int, start_column::Int)
     pagerd.start_row = start_row
     pagerd.start_column = start_column
     _clamp_viewport!(pagerd)
-
-    # The crop counters describe the frames of the selection, so they must be recomputed by
-    # the next `_view!` instead of being reused by the movement handling.
-    pagerd.cropped_lines = 0
-    pagerd.cropped_columns = 0
-
+    _reset_crop!(pagerd)
     _request_redraw!(pagerd)
 
     return nothing
@@ -1741,7 +1787,7 @@ columns, so the view bounds leave one row and one column for them.
 """
 function _freeze_selection_bounds(pagerd::Pager)
     rows, cols = _get_pager_display_size(pagerd)
-    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
+    ruler_width = _shown_ruler_width(pagerd)
 
     max_rows = max(min(rows - 1, pagerd.num_lines), 0)
     min_rows = clamp(pagerd.title_rows, 0, max_rows)
@@ -1802,9 +1848,8 @@ function _move_freeze_selection!(pagerd::Pager, action, k::Keystroke)
         view_row = k.y - _column_ruler_rows(pagerd)
 
         if 1 <= view_row <= _get_pager_display_size(pagerd)[1]
-            ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
             rows = view_row - 1
-            columns = k.x - ruler_width - 1
+            columns = k.x - _shown_ruler_width(pagerd) - 1
         end
     elseif action === :up
         rows -= 1
@@ -1864,7 +1909,6 @@ function _goto_line!(pagerd::Pager)
     if status === :value
         _remember_position!(pagerd)
         num_lines = pagerd.num_lines
-        min_row = _first_scrollable_row(pagerd)
 
         line = if kind === :relative
             pagerd.start_row + value
@@ -1888,7 +1932,7 @@ function _goto_line!(pagerd::Pager)
             value
         end
 
-        pagerd.start_row = clamp(line, min_row, max(min_row, num_lines))
+        pagerd.start_row = _clamp_row(pagerd, line)
     end
 
     _request_redraw!(pagerd)
@@ -1909,8 +1953,7 @@ and a search pattern that is not valid anymore is ignored.
 - `result::PagerResult`: Result of the previous session.
 """
 function _restore_state!(pagerd::Pager, result::PagerResult)
-    min_row = _first_scrollable_row(pagerd)
-    pagerd.start_row = clamp(result.start_row, min_row, max(min_row, pagerd.num_lines))
+    pagerd.start_row = _clamp_row(pagerd, result.start_row)
     pagerd.start_column = max(result.start_column, pagerd.frozen_columns + 1)
     _clamp_viewport!(pagerd)
 
@@ -2006,8 +2049,7 @@ function _goto_bookmark!(pagerd::Pager)
 
     # The bookmarks store source lines, whereas the previous position is a row.
     row = c == '\'' ? target[1] : _first_row_at_or_after(pagerd, target[1])
-    min_row = _first_scrollable_row(pagerd)
-    pagerd.start_row = clamp(row, min_row, max(min_row, pagerd.num_lines))
+    pagerd.start_row = _clamp_row(pagerd, row)
     pagerd.start_column = max(target[2], pagerd.frozen_columns + 1)
     pagerd.visual_mode_line = 1
 
@@ -2054,8 +2096,7 @@ function _show_position!(pagerd::Pager)
     percentage = num_lines > 0 ? round(Int, 100 * last_row / num_lines) : 0
 
     cols = _get_pager_display_size(pagerd)[2]
-    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
-    view_cols = max(cols - pagerd.frozen_columns - ruler_width, 0)
+    view_cols = max(cols - pagerd.frozen_columns - _shown_ruler_width(pagerd), 0)
     text_width = _text_width(pagerd)
     first_col = min(pagerd.start_column, text_width)
     last_col = min(pagerd.start_column + view_cols - 1, text_width)
@@ -2118,8 +2159,7 @@ function _toggle_ruler!(pagerd::Pager)
             # frozen region.
             pagerd.start_column = max(
                 pagerd.start_column - (ruler_spacing - pagerd.cropped_columns),
-                pagerd.frozen_columns + 1,
-                1,
+                _first_scrollable_column(pagerd),
             )
         end
     end
@@ -2166,7 +2206,7 @@ function _toggle_scrollbar!(pagerd::Pager)
     # Hiding the scrollbar reclaims one column that the cropped text can use. Like the
     # ruler, the reclaimed column must not push the view into the frozen region.
     if !pagerd.show_scrollbar && (pagerd.cropped_columns == 0)
-        pagerd.start_column = max(pagerd.start_column - 1, pagerd.frozen_columns + 1, 1)
+        pagerd.start_column = max(pagerd.start_column - 1, _first_scrollable_column(pagerd))
     end
 
     _request_redraw!(pagerd)
@@ -2744,10 +2784,22 @@ Return the reusable buffer that assembles everything sent to the terminal, after
 - `pagerd::Pager`: Pager state whose buffer is returned.
 """
 function _screen_buffer!(pagerd::Pager)
-    out = pagerd.frame_cache.out
-    truncate(out, 0)
-    seekstart(out)
-    return out
+    return _reset_buffer!(pagerd.frame_cache.out)
+end
+
+"""
+    _reset_buffer!(buf::IOBuffer) -> IOBuffer
+
+Empty `buf`, keeping its storage so that it is reused, and return it.
+
+# Arguments
+
+- `buf::IOBuffer`: Buffer to empty.
+"""
+function _reset_buffer!(buf::IOBuffer)
+    truncate(buf, 0)
+    seekstart(buf)
+    return buf
 end
 
 """

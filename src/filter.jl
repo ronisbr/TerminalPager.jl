@@ -197,8 +197,7 @@ function _restore_filter_state!(pagerd::Pager, saved::NamedTuple)
     pagerd.search_matches = saved.search_matches
     pagerd.ordered_search_matches = saved.ordered_search_matches
     pagerd.active_search_match_id = saved.active_search_match_id
-    pagerd.cropped_lines = 0
-    pagerd.cropped_columns = 0
+    _reset_crop!(pagerd)
     _invalidate_frame!(pagerd)
     _request_redraw!(pagerd)
     return nothing

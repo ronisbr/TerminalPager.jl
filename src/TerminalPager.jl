@@ -283,7 +283,7 @@ function pager(obj::AbstractString; return_selection::Bool = false, kwargs...)
     #
     if get(stdout, :bypass_pager, false)
         print(obj)
-        return return_selection ? PagerResult(String[], 1, 1, "") : nothing
+        return return_selection ? _empty_result() : nothing
     end
 
     # Without a terminal on both ends, the pager can neither read keystrokes nor paint the
@@ -291,7 +291,7 @@ function pager(obj::AbstractString; return_selection::Bool = false, kwargs...)
     # the redirected output and then throw when the input reached its end.
     if !(_is_terminal(stdin) && _is_terminal(stdout))
         print(obj)
-        return return_selection ? PagerResult(String[], 1, 1, "") : nothing
+        return return_selection ? _empty_result() : nothing
     end
 
     # `_pager` requires a `String`. The conversion is a no-op for a `String`, whereas any

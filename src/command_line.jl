@@ -518,7 +518,7 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
 
     # Hidden text: "‹" when the view is scrolled to the right and "›" when the text is cut
     # at the right edge. Notice that the hints follow the last rendered frame.
-    hidden_left = pagerd.start_column > max(1, frozen_columns + 1)
+    hidden_left = pagerd.start_column > _first_scrollable_column(pagerd)
     hidden_right = pagerd.cropped_columns > 0
     w_arrows = (hidden_left || hidden_right) ? _HIDDEN_WIDTH : 0
 

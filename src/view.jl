@@ -23,15 +23,13 @@ function _view!(pagerd::Pager)
 
     # `_redraw!` reads the frame from `buf` without consuming it, so that the storage is
     # reused across frames. Hence, we must reset the buffer here.
-    truncate(buf.io, 0)
-    seekstart(buf.io)
+    _reset_buffer!(buf.io)
 
     # A degenerate display cannot show any content, so rendering must be skipped entirely.
     # Passing a nonpositive maximum number of lines to `_textview` means unbounded, which
     # would render the whole document into the frame buffer.
     if (rows <= 0) || (cols <= 0)
-        pagerd.cropped_lines = 0
-        pagerd.cropped_columns = 0
+        _reset_crop!(pagerd)
         _request_redraw!(pagerd)
         return nothing
     end
@@ -75,10 +73,7 @@ function _view!(pagerd::Pager)
     show_scrollbar = pagerd.show_scrollbar
     selecting = _selecting_on_screen(pagerd)
     target = if show_scrollbar || selecting
-        view_buf = pagerd.view_buf
-        truncate(view_buf, 0)
-        seekstart(view_buf)
-        IOContext(view_buf, buf)
+        IOContext(_reset_buffer!(pagerd.view_buf), buf)
     else
         buf
     end
@@ -128,12 +123,7 @@ function _view!(pagerd::Pager)
 
     if selecting
         # The frame with the guides feeds the scrollbar, or it is the frame itself.
-        drawn = show_scrollbar ? pagerd.freeze_buf : buf.io
-
-        if show_scrollbar
-            truncate(drawn, 0)
-            seekstart(drawn)
-        end
+        drawn = show_scrollbar ? _reset_buffer!(pagerd.freeze_buf) : buf.io
 
         _draw_freeze_guides!(drawn, frame, rows, cols, pagerd)
         frame = drawn
@@ -271,7 +261,7 @@ the scrolled columns, the line carries a break mark on the first scrolled column
 - `use_color::Bool`: Decorate the ruler with the face `ruler`.
 """
 function _write_column_ruler!(out::IOBuffer, pagerd::Pager, cols::Int, use_color::Bool)
-    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
+    ruler_width = _shown_ruler_width(pagerd)
     width = max(cols - ruler_width, 0)
     text_width = _text_width(pagerd)
 
@@ -442,7 +432,7 @@ function _draw_freeze_guides!(
     selected_rows = pagerd.freeze_selection_rows
     selected_columns = pagerd.freeze_selection_columns
     vertical = pagerd.mode == :freeze_selection
-    ruler_width = pagerd.show_ruler ? _ruler_width(pagerd) : 0
+    ruler_width = _shown_ruler_width(pagerd)
 
     data, num_bytes = _frame_bytes(frame)
     row = 1
