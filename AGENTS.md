@@ -5,7 +5,7 @@
 - `src/TerminalPager.jl` defines the module, public `pager` entry point, initialization hooks, and includes the implementation files.
 - `src/input/` contains key-code, keybinding, and input handling.
 - `test/runtests.jl` is the test entry point; focused internal tests are in `test/internals/`.
-- `ext/TerminalPagerAboutExt.jl` is the `About` weak-dependency extension registered as `TerminalPagerAboutExt` in `Project.toml`.
+- `ext/TerminalPagerAboutExt.jl` is the `About` weak-dependency extension registered as `TerminalPagerAboutExt` in `Project.toml`, and `ext/TerminalPagerDataFramesExt.jl` is the `DataFrames` one, registered as `TerminalPagerDataFramesExt`, which defines the pager recipe of data frames and has no tests.
 - `docs/` is a Documenter environment with its own `Project.toml`, build script, and sources.
 - `.github/workflows/ci.yml` tests Julia 1.10 and the latest stable Julia on Ubuntu x64, macOS arm64, and Windows x64. A separate workflow tests nightly.
 
@@ -30,7 +30,7 @@
 - REPL help integration intentionally uses private `Base.JuliaSyntax` and `REPL.LineEdit` APIs and is explicitly coupled to them; preserve version-sensitive behavior and test changes across supported Julia versions.
 - REPL help shortcuts are `F1` and `Alt+h`; both show extended help in the regular and pager modes. Keep `Alt+H` unbound because extended help is already the default. Shortcut registration is asynchronous, so tests must fetch the returned task to surface failures.
 - Pager rendering is done by the in-package `_textview` (`src/view/render.jl`) over a `ViewLayout` (`src/view/layout.jl`); StringManipulation.jl provides only string utilities. Account for ANSI escapes, Unicode display width, cropping, highlighting, frozen rows and columns, and search matches when changing viewport behavior.
-- Keep `About` optional. Core package code must not make the weak dependency mandatory.
+- Keep `About` and `DataFrames` optional. Core package code must not make the weak dependencies mandatory.
 
 ## Not Configured
 

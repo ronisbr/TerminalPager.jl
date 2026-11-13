@@ -156,3 +156,22 @@ In pager mode, you can also type `?` at the beginning of the command line to acc
 help mode. In this case, the prompt is changed to `pager?>`. Any docstring accessed in this
 mode is rendered inside a pager. The pager uses the alternate screen buffer, so the screen
 content is restored after exiting it.
+
+## Recipes
+
+The default keywords of `pager` for an object come from its recipe, the function
+`TerminalPager.pager_options`, which packages and users define for their types. The method
+`pager_options(obj, rendered::String)` receives the text rendered by `show`, so that it can
+measure it, and falls back to `pager_options(obj)`. Both fall back to an empty named tuple,
+and the keywords passed to `pager` explicitly win over the recipe. For example, the built-in
+recipe of the arrays keeps the summary line on top, and the recipe of a table whose header is
+the first row can be written as:
+
+```julia
+julia> TerminalPager.pager_options(::MyTable) = (; frozen_rows = 1, title_rows = 1)
+```
+
+When **DataFrames.jl** is loaded, the extension `TerminalPagerDataFramesExt` defines the
+recipe of the data frames, which freezes the header rows and the row number column. The
+`pager>` REPL mode applies the recipe of the value of a command when its output is the
+rendering of that value.

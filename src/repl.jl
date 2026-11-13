@@ -325,6 +325,12 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
         # Variable to indicate that we have an error while evaluating the expression.
         is_error = false
 
+        # The last value shown, and where its rendering starts and ends in the buffer, so
+        # that its recipe is applied when the buffer holds nothing else.
+        shown_value = nothing
+        shown_from = -1
+        shown_to = -1
+
         # Loop through the lines.
         for i in eachindex(lines)
             # Assemble the candidate command in a single pass. Growing a string instead
@@ -367,8 +373,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
                 # If the output is not `nothing`, call `show` with `MIME("text/plain")` to
                 # render the object.
                 if val !== nothing
+                    shown_from = position(buf)
                     Base.invokelatest(show, stdout, MIME("text/plain"), val)
                     write(stdout, '\n')
+                    shown_to = position(buf)
+                    shown_value = val
                 end
             end
         end
@@ -383,9 +392,11 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
 
             # Take everything and display in the pager using `auto` mode. In this case, the
             # pager will only be called if there is not space in the display to show
-            # everything.
+            # everything. The recipe of the value applies when the output is its rendering.
+            covers =
+                (shown_value !== nothing) && (shown_from == 0) && (shown_to == position(buf))
             str = String(take!(buf))
-            pager(str; auto = true)
+            pager(str; _repl_mode_options(shown_value, str, covers)...)
 
             copy_to_clipboard && clipboard(remove_decorations(str))
         end
@@ -400,6 +411,24 @@ function _tp_mode_do_cmd(repl::REPL.AbstractREPL, input::String)
     end
 
     return nothing
+end
+
+"""
+    _repl_mode_options(value::Any, rendered::String, covers::Bool) -> NamedTuple
+
+Return the keywords of the pager for the output `rendered` of a `pager>` command, which are
+the recipe of `value` when `covers` tells that the output is its rendering, and always the
+automatic mode.
+
+# Arguments
+
+- `value::Any`: Last value shown by the command.
+- `rendered::String`: Output of the command.
+- `covers::Bool`: Whether `rendered` is exactly the rendering of `value`.
+"""
+function _repl_mode_options(value, rendered::String, covers::Bool)
+    covers || return (; auto = true)
+    return _merge_options(_pager_options(value, rendered), (; auto = true))
 end
 
 """

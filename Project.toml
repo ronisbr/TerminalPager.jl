@@ -16,12 +16,15 @@ StyledStrings = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 
 [weakdeps]
 About = "69d22d85-9f48-4c46-bbbe-7ad8341ff72a"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 
 [extensions]
 TerminalPagerAboutExt = "About"
+TerminalPagerDataFramesExt = "DataFrames"
 
 [compat]
 About = "1"
+DataFrames = "1"
 Markdown = "1.10"
 PrecompileTools = "1"
 Preferences = "1"

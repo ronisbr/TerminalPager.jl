@@ -57,6 +57,7 @@ include("./faces.jl")
 include("./help.jl")
 include("./helpers.jl")
 include("./history.jl")
+include("./recipes.jl")
 include("./pager.jl")
 include("./preferences.jl")
 include("./repl.jl")
@@ -79,6 +80,10 @@ export pager
 
 Call the pager to show the output of the object `obj`. Return `nothing`, or the
 [`PagerResult`](@ref) of the session when the keyword `return_selection` is `true`.
+
+The default keywords of `obj` come from its recipe, [`pager_options`](@ref), which packages
+and users define for their types. For example, an array keeps its summary line on top. The
+keywords passed explicitly win over the recipe.
 
 # Arguments
 
@@ -232,7 +237,10 @@ available faces are listed as follows:
 For more information, see: [`TerminalPager.set_face!`](@ref) and
 [`TerminalPager.drop_face!`](@ref).
 """
-pager(obj::Any; kwargs...) = pager(_render_object(obj); kwargs...)
+function pager(obj::Any; kwargs...)
+    rendered, options = _object_pager_call(obj, kwargs)
+    return pager(rendered; options...)
+end
 
 """
     pager(obj::AbstractString; kwargs...) -> Union{Nothing, PagerResult}

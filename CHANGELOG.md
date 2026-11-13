@@ -33,6 +33,12 @@ Version 0.9.0
   lists them. In the `pager>` prompt, `Alt+l` reopens the last text and `Alt+Shift+l` opens
   a menu to pick one. The new preferences `"history_size"` and `"history_max_bytes"` bound
   the history.
+- ![Feature][badge-feature] The default keywords of `pager` for an object come from its
+  recipe, the new function `TerminalPager.pager_options`, which packages and users define for
+  their types; the method receiving the rendered text can measure it. The arrays keep their
+  summary line on top, the new extension `TerminalPagerDataFramesExt` freezes the header rows
+  and the row number column of the data frames, and the `pager>` mode applies the recipe of
+  the value of a command. (Issue [#11][gh-issue-11])
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the
@@ -598,6 +604,7 @@ Version 0.0.1
 [gh-issue-7]: https://github.com/ronisbr/TerminalPager.jl/issues/7
 [gh-issue-8]: https://github.com/ronisbr/TerminalPager.jl/issues/8
 [gh-issue-9]: https://github.com/ronisbr/TerminalPager.jl/issues/9
+[gh-issue-11]: https://github.com/ronisbr/TerminalPager.jl/issues/11
 [gh-issue-12]: https://github.com/ronisbr/TerminalPager.jl/issues/12
 [gh-issue-13]: https://github.com/ronisbr/TerminalPager.jl/issues/13
 [gh-issue-14]: https://github.com/ronisbr/TerminalPager.jl/issues/14
