@@ -108,7 +108,7 @@ end
     pagerd.visual_mode = true
     push!(pagerd.visual_mode_selected_lines, 3)
     text = _status_bar_text(pagerd, output)
-    @test text == "VISUAL  1 selected" * " "^13 * "m:mark  y:yank  v:leave   45%"
+    @test text == "VISUAL  1 selected" * " "^13 * "M:mark  y:yank  v:leave   45%"
     pagerd.visual_mode = false
     empty!(pagerd.visual_mode_selected_lines)
 
@@ -390,7 +390,7 @@ end
         @test TerminalPager._status_hint(:normal, true) == "?:help  q:quit"
         @test TerminalPager._status_hint(:normal, false) == "q:quit"
         @test TerminalPager._status_hint(:search, true) == "n:next  N:prev  Esc:clear"
-        @test TerminalPager._status_hint(:visual, true) == "m:mark  y:yank  v:leave"
+        @test TerminalPager._status_hint(:visual, true) == "M:mark  y:yank  v:leave"
 
         TerminalPager.delete_keybinding("q")
         @test isnothing(TerminalPager._primary_key(:quit))

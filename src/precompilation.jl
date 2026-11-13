@@ -131,15 +131,17 @@ PrecompileTools.@setup_workload begin
             # Visual mode.
             write(stdin_wr, "v")
             # Mark lines.
-            write(stdin_wr, "mjmjmjmjmjm")
+            write(stdin_wr, "MjMjMjMjMjM")
             # Unmark lines.
-            write(stdin_wr, "mkmk")
+            write(stdin_wr, "MkMk")
             # Exit visual mode.
             write(stdin_wr, "v")
             # Help.
             write(stdin_wr, "?")
             # Exit help mode.
             write(stdin_wr, "q")
+            # Bookmarks: set, jump, and return.
+            write(stdin_wr, "ma'a''")
             # Position report and the goto forms.
             write(stdin_wr, "=")
             write(stdin_wr, ":50%\n")

@@ -190,6 +190,8 @@ function _render_view(
         maximum_number_of_lines = rows,
         ruler_decoration = display_config.ruler,
         ruler_foot = true,
+        ruler_mark_decoration = display_config.bookmark,
+        ruler_marks = _bookmark_rows(pagerd),
         search_matches = pagerd.search_matches,
         show_ruler = pagerd.show_ruler,
         title_lines = pagerd.title_rows,

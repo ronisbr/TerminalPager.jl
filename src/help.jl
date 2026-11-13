@@ -192,6 +192,8 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:home, "First line."),
             ActionHelp(:end, "Last line."),
             ActionHelp(:goto_line, "Go to a line, a percentage, an offset, or the end."),
+            ActionHelp(:set_bookmark, "Bookmark the top line under the next letter typed."),
+            ActionHelp(:goto_bookmark, "Go to the bookmark of the next letter, or back."),
         ],
     ),
     HelpSection(
@@ -199,7 +201,8 @@ const _HELP_SECTIONS = HelpSection[
         "The search is case-insensitive unless the pattern has an uppercase letter. " *
             "Alt-l at the prompt toggles the literal mode, which searches the pattern as " *
             "typed. A pattern like `@12:20 x` matches only in the printable columns 12 " *
-            "to 20; `@12 x` and `@:20 x` open one end. The column ruler helps picking them.",
+            "to 20; `@12 x` and `@:20 x` open one end. The column ruler helps picking " *
+            "them.",
         nothing,
         ActionHelp[
             ActionHelp(:search, "Search for a regex."),

@@ -198,6 +198,8 @@ available faces are listed as follows:
     (**Default**: bold cyan)
 - `"ruler"`: Line number ruler.
     (**Default**: bright black)
+- `"bookmark"`: Mark of a bookmarked line in the line number ruler.
+    (**Default**: yellow)
 - `"scrollbar_track"`: Track of the scrollbar.
     (**Default**: bright black)
 - `"scrollbar_thumb"`: Thumb of the scrollbar.

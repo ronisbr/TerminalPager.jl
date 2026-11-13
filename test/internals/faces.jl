@@ -53,6 +53,7 @@ end
     @test config.visual_line == "100"
     @test config.visual_active_line == "44"
     @test config.freeze_guide == "\e[0;36;1m"
+    @test config.bookmark == "\e[0;33m"
     @test config.scrollbar_track == "\e[0;90m"
     @test config.scrollbar_thumb == "\e[0m"
     @test config.help_title == "\e[0;36;1m"

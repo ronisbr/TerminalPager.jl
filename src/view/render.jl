@@ -70,6 +70,9 @@ without one after the last row, and the frozen rows end with a reset of the attr
     (**Default**: `"\\e[90m"`)
 - `ruler_foot::Bool`: End the ruler of the last frozen row with a foot instead of a bar.
     (**Default**: `false`)
+- `ruler_mark_decoration::String`: Escape sequence that decorates the marks of the ruler, or
+    an empty string to decorate them like the ruler.
+    (**Default**: `""`)
 - `ruler_marks::Union{Nothing, Set{Int}}`: Rows whose ruler starts with a mark instead of a
     blank, or `nothing` for none.
     (**Default**: `nothing`)
@@ -102,6 +105,7 @@ function _textview(
     maximum_number_of_lines::Int = -1,
     ruler_decoration::String = _DEFAULT_RULER_DECORATION,
     ruler_foot::Bool = false,
+    ruler_mark_decoration::String = "",
     ruler_marks::Union{Nothing, Set{Int}} = nothing,
     search_matches::Union{Nothing, SearchMatches} = nothing,
     show_ruler::Bool = false,
@@ -215,6 +219,7 @@ function _textview(
                 _ruler_number(line_numbers, l),
                 ruler_spacing,
                 ruler_decoration,
+                ruler_mark_decoration,
                 ruler_foot && (l == frozen_lines_at_beginning),
                 _is_ruler_mark(ruler_marks, l),
             )
@@ -287,6 +292,7 @@ function _textview(
                 _ruler_number(line_numbers, l),
                 ruler_spacing,
                 ruler_decoration,
+                ruler_mark_decoration,
                 false,
                 _is_ruler_mark(ruler_marks, l),
             )
@@ -425,12 +431,13 @@ function _visual_line_background(
 end
 
 """
-    _write_ruler!(buf::IO, number::Int, spacing::Int, decoration::String, foot::Bool,
-        mark::Bool) -> Nothing
+    _write_ruler!(buf::IO, number::Int, spacing::Int, decoration::String,
+        mark_decoration::String, foot::Bool, mark::Bool) -> Nothing
 
 Write the line-number ruler of one row to `buf`: `decoration`, a mark or a blank, `number`
 right-aligned in `spacing` columns, a blank, a foot or a bar, and the reset of the
-attributes.
+attributes. A mark is written with `mark_decoration` unless it is empty, and `decoration` is
+written again after it.
 
 # Arguments
 
@@ -438,14 +445,30 @@ attributes.
 - `number::Int`: Number of the row.
 - `spacing::Int`: Width of the number column.
 - `decoration::String`: Escape sequence that decorates the ruler.
+- `mark_decoration::String`: Escape sequence that decorates the mark, or an empty string.
 - `foot::Bool`: Write a foot instead of a bar after the number.
 - `mark::Bool`: Write a mark instead of a blank before the number.
 """
 function _write_ruler!(
-    buf::IO, number::Int, spacing::Int, decoration::String, foot::Bool, mark::Bool
+    buf::IO,
+    number::Int,
+    spacing::Int,
+    decoration::String,
+    mark_decoration::String,
+    foot::Bool,
+    mark::Bool,
 )
     write(buf, decoration)
-    write(buf, mark ? _RULER_MARK : " ")
+
+    if !mark
+        write(buf, UInt8(' '))
+    elseif isempty(mark_decoration)
+        write(buf, _RULER_MARK)
+    else
+        write(buf, mark_decoration)
+        write(buf, _RULER_MARK)
+        write(buf, decoration)
+    end
 
     for _ in 1:(spacing - ndigits(number))
         write(buf, UInt8(' '))

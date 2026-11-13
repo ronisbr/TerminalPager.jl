@@ -29,6 +29,7 @@ const _FACES = Pair{Symbol, Face}[
     :visual_active_line => Face(; background = :blue),
     :freeze_guide => Face(; weight = :bold, foreground = :cyan),
     :ruler => Face(; foreground = :bright_black),
+    :bookmark => Face(; foreground = :yellow),
     :scrollbar_track => Face(; foreground = :bright_black),
     :scrollbar_thumb => Face(),
     :command_status => Face(; foreground = :bright_black),
@@ -130,6 +131,8 @@ See also: [`drop_face!`](@ref).
     (**Default**: bold cyan)
 - `"ruler"`: Line number ruler.
     (**Default**: bright black)
+- `"bookmark"`: Mark of a bookmarked line in the line number ruler.
+    (**Default**: yellow)
 - `"scrollbar_track"`: Track of the scrollbar.
     (**Default**: bright black)
 - `"scrollbar_thumb"`: Thumb of the scrollbar.
@@ -376,6 +379,7 @@ function _display_config(face_of::F = _current_face) where {F <: Function}
         background(:visual_active_line),
         sgr(:freeze_guide),
         sgr(:ruler),
+        sgr(:bookmark),
         sgr(:scrollbar_track),
         sgr(:scrollbar_thumb),
         sgr(:command_status),

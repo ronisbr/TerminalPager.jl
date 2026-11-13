@@ -311,6 +311,9 @@ function _search!(pagerd::Pager)
         else
             _push_history!(_SEARCH_HISTORY, cmd_input)
 
+            # The viewport before the prompt is the position to return to.
+            pagerd.last_position = (saved.start_row, saved.start_column)
+
             # The preview already applied the confirmed pattern, unless the literal mode was
             # toggled after it.
             if !(
@@ -545,6 +548,7 @@ otherwise, move the view to it, and request a redraw.
 - `forward::Bool`: Whether to activate the next match instead of the previous one.
 """
 function _move_to_match!(pagerd::Pager, forward::Bool)
+    _remember_position!(pagerd)
     _change_active_match!(pagerd, forward)
     _move_view_to_match!(pagerd)
     _request_redraw!(pagerd)

@@ -975,6 +975,8 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :quit_eot => nothing,
     :goto_line => nothing,
     :show_position => nothing,
+    :set_bookmark => nothing,
+    :goto_bookmark => nothing,
     :search => nothing,
     :next_match => nothing,
     :previous_match => nothing,
@@ -1123,6 +1125,10 @@ function _pager_event_process!(pagerd::Pager)
         _goto_line!(pagerd)
     elseif event == :show_position
         _show_position!(pagerd)
+    elseif event == :set_bookmark
+        _set_bookmark!(pagerd)
+    elseif event == :goto_bookmark
+        _goto_bookmark!(pagerd)
     elseif event == :next_match
         _move_to_match!(pagerd, true)
     elseif event == :previous_match
@@ -1598,6 +1604,7 @@ function _goto_line!(pagerd::Pager)
     status, kind, value = _prompt_position!(pagerd, ":")
 
     if status === :value
+        _remember_position!(pagerd)
         num_lines = pagerd.num_lines
         min_row = _first_scrollable_row(pagerd)
 
@@ -1617,6 +1624,107 @@ function _goto_line!(pagerd::Pager)
     _request_redraw!(pagerd)
 
     return nothing
+end
+
+"""
+    _remember_position!(pagerd::Pager) -> Nothing
+
+Record the first visible row and column of `pagerd` as the position before a jump, so that
+`''` returns to it.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _remember_position!(pagerd::Pager)
+    pagerd.last_position = (pagerd.start_row, pagerd.start_column)
+    return nothing
+end
+
+"""
+    _set_bookmark!(pagerd::Pager) -> Nothing
+
+Prompt for a letter and bookmark the first visible row of `pagerd`, or the visual line in
+the visual mode, together with the first visible column. A cancelled prompt keeps the
+bookmarks, and a key that is not a letter is reported.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _set_bookmark!(pagerd::Pager)
+    c = _prompt_key!(pagerd, "m")
+    _request_redraw!(pagerd)
+    isnothing(c) && return nothing
+
+    if !isletter(c)
+        _set_message!(pagerd, "Bookmarks are letters"; kind = :error)
+        return nothing
+    end
+
+    line = if pagerd.visual_mode
+        pagerd.visual_mode_line + pagerd.start_row - 1
+    else
+        pagerd.start_row
+    end
+
+    pagerd.bookmarks[c] = (line, pagerd.start_column)
+    _set_message!(pagerd, "Mark $c set")
+
+    return nothing
+end
+
+"""
+    _goto_bookmark!(pagerd::Pager) -> Nothing
+
+Prompt for a letter and move the view of `pagerd` to its bookmark, or back to the position
+before the last jump when the key is `'`. The bookmarked line is shown at the top of the
+view, where the visual line is placed too. A missing bookmark is reported.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _goto_bookmark!(pagerd::Pager)
+    c = _prompt_key!(pagerd, "'")
+    _request_redraw!(pagerd)
+    isnothing(c) && return nothing
+
+    target = if c == '\''
+        pagerd.last_position
+    else
+        get(pagerd.bookmarks, c, (0, 0))
+    end
+
+    if target == (0, 0)
+        message = c == '\'' ? "No previous position" : "Mark $c not set"
+        _set_message!(pagerd, message; kind = :error)
+        return nothing
+    end
+
+    _remember_position!(pagerd)
+
+    min_row = _first_scrollable_row(pagerd)
+    pagerd.start_row = clamp(target[1], min_row, max(min_row, pagerd.num_lines))
+    pagerd.start_column = max(target[2], pagerd.frozen_columns + 1)
+    pagerd.visual_mode_line = 1
+
+    return nothing
+end
+
+"""
+    _bookmark_rows(pagerd::Pager) -> Union{Nothing, Set{Int}}
+
+Return the rows marked in the line-number ruler of `pagerd`, which are its bookmarked lines,
+or `nothing` if there is none.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _bookmark_rows(pagerd::Pager)
+    isempty(pagerd.bookmarks) && return nothing
+    return Set{Int}(first(position) for position in values(pagerd.bookmarks))
 end
 
 """

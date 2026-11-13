@@ -87,6 +87,49 @@ function _write_blanks(io::IO, n::Int)
 end
 
 """
+    _prompt_key!(pagerd::Pager, prompt::String) -> Union{Nothing, Char}
+
+Show `prompt` on the status row of `pagerd`, wait for one keystroke, and return its
+character, or `nothing` if the keystroke is ESC, CTRL-C, or not a printable character
+without modifiers. The screen is repainted if the display size changes while waiting, and
+the caller must request a redraw to restore the status row.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state whose terminal and input are used.
+- `prompt::String`: Prompt shown on the status row.
+"""
+function _prompt_key!(pagerd::Pager, prompt::String)
+    redraw = true
+
+    while true
+        if redraw
+            out = _screen_buffer!(pagerd)
+            _move_cursor(out, pagerd.display_size[1], 1)
+            _clear_to_eol(out)
+            write(out, prompt)
+            _flush_screen!(pagerd)
+            redraw = false
+        end
+
+        # A change of the display size repaints the view and the prompt without waiting for
+        # the keystroke.
+        if !_wait_for_input!(pagerd)
+            _update_display_size!(pagerd)
+            _view!(pagerd)
+            _redraw!(pagerd)
+            redraw = true
+            continue
+        end
+
+        k = _read_keystroke!(pagerd.input)
+        ((k.value == "<esc>") || (k.ctrl && (k.value == "c"))) && return nothing
+        _is_printable_keystroke(k) || return nothing
+        return only(k.value)
+    end
+end
+
+"""
     _prompt_position!(pagerd::Pager, prefix::String) -> Tuple{Symbol, Symbol, Int}
 
 Prompt for a position with `prefix` and return the status, the kind, and the value. The

@@ -4,6 +4,12 @@ TerminalPager.jl
 Version 0.9.0
 -------------
 
+- ![BREAKING][badge-breaking] Breaking Change: The visual mark moved from `m` to `M`
+  (action `:select_visual_mode_line`), because `m` now sets a bookmark.
+- ![Feature][badge-feature] `m` followed by a letter bookmarks the top line, or the visual
+  line in the visual mode, and `'` followed by the letter jumps back to it. `''` returns to
+  the position before the last jump, search, or `:` goto. The bookmarked lines are marked
+  with `•` in the line number ruler, styled with the new face `bookmark`.
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the

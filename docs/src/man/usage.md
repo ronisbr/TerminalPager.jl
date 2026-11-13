@@ -50,8 +50,13 @@ leave one end open, and the column ruler (`R`) helps picking the columns. The st
 shows the range next to the matches.
 
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
-move. `m` marks the visual line, and `y` copies the visual line and the marked lines to the
+move. `M` marks the visual line, and `y` copies the visual line and the marked lines to the
 clipboard.
+
+`m` followed by a letter bookmarks the top line, or the visual line in the visual mode, and
+`'` followed by the letter jumps back to it. `''` returns to the position before the last
+jump, search, or `:` goto. The bookmarked lines are marked with `•` in the line number ruler.
+The bookmarks last for the session.
 
 Rows and columns can be frozen with `f`, so that they stay visible while scrolling, and `t`
 selects how many frozen rows are titles, which do not scroll horizontally either. `F`

@@ -127,6 +127,7 @@ the background, as `_textview` expects.
 - `visual_active_line::String`: Background of the visual line.
 - `freeze_guide::String`: Guide lines of the freeze selection mode.
 - `ruler::String`: Line number ruler.
+- `bookmark::String`: Mark of a bookmarked line in the ruler.
 - `scrollbar_track::String`: Track of the scrollbar.
 - `scrollbar_thumb::String`: Thumb of the scrollbar.
 - `command_status::String`: Status shown at the right of the command line.
@@ -150,6 +151,7 @@ struct DisplayConfig
     visual_active_line::String
     freeze_guide::String
     ruler::String
+    bookmark::String
     scrollbar_track::String
     scrollbar_thumb::String
     command_status::String
@@ -247,6 +249,10 @@ Store the mutable state for one pager session.
 - `message_kind::Symbol`: Kind of `message`, `:info` or `:error`.
 - `mode::Symbol`: Current pager mode, `:view`, `:searching`, `:freeze_selection`, or
     `:title_selection`.
+- `bookmarks::Dict{Char, Tuple{Int, Int}}`: Line and column of each bookmark, keyed by its
+    letter. The lines are marked in the line-number ruler.
+- `last_position::Tuple{Int, Int}`: First visible row and column before the last jump, or
+    `(0, 0)` if there was none.
 - `event::Union{Nothing, Symbol}`: Pending pager event.
 - `features::Vector{Symbol}`: Features enabled for the session.
 - `frozen_columns::Int`: Number of frozen leading columns.
@@ -298,6 +304,8 @@ Base.@kwdef mutable struct Pager
     message::String = ""
     message_kind::Symbol = :info
     mode::Symbol = :view
+    bookmarks::Dict{Char, Tuple{Int, Int}} = Dict{Char, Tuple{Int, Int}}()
+    last_position::Tuple{Int, Int} = (0, 0)
     event::Union{Nothing, Symbol} = nothing
     features::Vector{Symbol} = Symbol[]
     frozen_columns::Int = 0

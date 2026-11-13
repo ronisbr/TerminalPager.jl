@@ -89,6 +89,7 @@ prefix `terminalpager_`. The available faces are:
 | `visual_active_line`  | Visual line (background only).                         | Blue background.                   |
 | `freeze_guide`        | Guide lines of the freeze selection.                   | Bold cyan.                         |
 | `ruler`               | Line number ruler.                                     | Bright black.                      |
+| `bookmark`            | Mark of a bookmarked line in the line number ruler.    | Yellow.                            |
 | `scrollbar_track`     | Track of the scrollbar.                                | Bright black.                      |
 | `scrollbar_thumb`     | Thumb of the scrollbar.                                | No attributes.                     |
 | `command_status`      | Status at the right of the command line.               | Bright black.                      |
