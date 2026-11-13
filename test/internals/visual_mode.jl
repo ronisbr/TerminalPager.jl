@@ -422,3 +422,24 @@ end
     @test pagerd.start_row == 1
     @test pagerd.visual_mode_line == 5
 end
+
+@testset "Mark a Large Range" begin
+    # Marking a range must not search the marks for each one of its lines. With 200,000
+    # lines, this took several seconds.
+    num_lines = 200_000
+    pagerd = _create_modal_pagerd(fill("line", num_lines), "")
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+    pagerd.visual_mode_selected_lines = [5, 3]
+    pagerd.visual_anchor = 1
+    pagerd.start_row = num_lines - 8
+    pagerd.visual_mode_line = 9
+
+    elapsed = @elapsed TerminalPager._toggle_visual_line!(pagerd)
+
+    @test pagerd.visual_anchor == 0
+    @test length(pagerd.visual_mode_selected_lines) == num_lines
+    @test allunique(pagerd.visual_mode_selected_lines)
+    @test pagerd.visual_mode_selected_lines[1:4] == [5, 3, 1, 2]
+    @test elapsed < 5
+end

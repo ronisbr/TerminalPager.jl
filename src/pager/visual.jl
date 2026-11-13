@@ -197,10 +197,17 @@ function _toggle_visual_line!(pagerd::Pager)
     if pagerd.visual_mode
         # With an anchor, the whole range is marked and the anchor is dropped.
         if pagerd.visual_anchor != 0
+            # The lines already marked are collected in a set. Searching the vector for
+            # each line of the range takes a time that grows with the square of the number
+            # of lines, which froze the pager for a large range.
+            selected_lines = pagerd.visual_mode_selected_lines
+            marked = Set(selected_lines)
+
             for row in _visual_range(pagerd)
                 line = _source_line(pagerd, row)
-                (line in pagerd.visual_mode_selected_lines) ||
-                    push!(pagerd.visual_mode_selected_lines, line)
+                line in marked && continue
+                push!(marked, line)
+                push!(selected_lines, line)
             end
 
             pagerd.visual_anchor = 0
