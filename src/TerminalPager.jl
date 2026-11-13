@@ -315,13 +315,9 @@ function pager(obj::AbstractString; @nospecialize(kwargs...))
     # `_pager` requires a `String`. The conversion is a no-op for a `String`, whereas any
     # other subtype, such as a `SubString`, must be copied.
     str = String(obj)
-    options = _session_options(keywords)
 
-    # The text is recorded before the session, so that a session interrupted with CTRL-C is
-    # in the history too. Its result restores the viewport when the text is reopened.
-    entry = _push_pager_history!(str, keywords)
-    result = _pager(str, options)
-    (result isa PagerResult) && (entry.result = result)
+    # The text is recorded in the pager history if the session starts.
+    result = _pager(str, _session_options(keywords), keywords)
 
     return return_selection ? result : nothing
 end

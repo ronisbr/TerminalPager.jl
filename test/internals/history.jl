@@ -90,6 +90,55 @@
     end
 end
 
+@testset "History of the Printed Texts" begin
+    empty!(TerminalPager._PAGER_HISTORY)
+
+    old_stdout = stdout
+    output = IOContext(IOBuffer(), :displaysize => (8, 30), :color => false)
+    sessions = Ref(0)
+
+    # The hooks make the session a counter, so that no terminal is needed.
+    keywords = (;
+        auto = true,
+        _display_config_loader = TerminalPager.DisplayConfig,
+        _input_factory = stream -> nothing,
+        _terminal_factory = () -> nothing,
+        _raw_runner = (f, terminal) -> (sessions[] += 1; nothing),
+    )
+
+    try
+        Base.eval(:(stdout = $output))
+
+        # A text that fits in the display is only printed. Hence, it is not shown by the
+        # pager and it must not be recorded in the history.
+        for text in ("fits\n", "")
+            options = TerminalPager._session_options(keywords)
+            TerminalPager._pager(text, options, keywords)
+        end
+
+        @test sessions[] == 0
+        @test isempty(TerminalPager._PAGER_HISTORY)
+        @test String(take!(output.io)) == "fits\n"
+
+        # A text that does not fit starts a session, which is recorded.
+        text = join(fill("long line", 40), '\n')
+        TerminalPager._pager(text, TerminalPager._session_options(keywords), keywords)
+
+        @test sessions[] == 1
+        @test length(TerminalPager._PAGER_HISTORY) == 1
+        @test TerminalPager._PAGER_HISTORY[1].text == text
+        @test TerminalPager._PAGER_HISTORY[1].options === keywords
+
+        # A session without options for the history is not recorded.
+        TerminalPager._pager(text, TerminalPager._session_options(keywords))
+        @test sessions[] == 2
+        @test length(TerminalPager._PAGER_HISTORY) == 1
+    finally
+        Base.eval(:(stdout = $old_stdout))
+        empty!(TerminalPager._PAGER_HISTORY)
+    end
+end
+
 @testset "Restore the Viewport and the Search" begin
     lines = ["line $i" for i in 1:30]
 

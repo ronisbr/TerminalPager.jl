@@ -49,7 +49,11 @@ Create the terminal of a pager session, which is connected to the standard strea
 _default_terminal() = REPL.Terminals.TTYTerminal("", stdin, stdout, stderr)
 
 """
-    _pager(str::String, options::SessionOptions) -> PagerResult
+    _pager(
+        str::String,
+        options::SessionOptions,
+        history_options::Union{Nothing, NamedTuple} = nothing
+    ) -> PagerResult
     _pager(str::String; kwargs...) -> Union{Nothing, PagerResult}
 
 Open an interactive pager for `str` with the session `options`, or print it directly when
@@ -57,16 +61,27 @@ the automatic mode is selected and it fits in the display, and return the result
 session. The method with keywords creates the options from them, and it returns `nothing`
 unless the keyword `return_selection` is `true`.
 
+If `history_options` is not `nothing`, the text is recorded in the pager history with those
+options when the session starts, so that it can be reopened. A text that was only printed
+is not recorded, because the pager did not show it.
+
 # Arguments
 
 - `str::String`: Text to display.
 - `options::SessionOptions`: Options of the session.
+- `history_options::Union{Nothing, NamedTuple}`: Keywords recorded with the text in the pager
+    history, or `nothing` to not record it.
+    (**Default**: `nothing`)
 
 # Keywords
 
 - `kwargs...`: Fields of [`SessionOptions`](@ref).
 """
-function _pager(str::String, options::SessionOptions)
+function _pager(
+    str::String,
+    options::SessionOptions,
+    @nospecialize(history_options::Union{Nothing, NamedTuple} = nothing),
+)
     # `split` yields `SubString`s, and both `_pager_content_fits` and `ViewLayout` accept
     # them. Copying every line into a `String` here duplicated the whole text before the first
     # frame was shown.
@@ -78,6 +93,14 @@ function _pager(str::String, options::SessionOptions)
         return _empty_result()
     end
 
+    # The text is recorded before the session, so that a session interrupted with CTRL-C is
+    # in the history too. Its result restores the viewport when the text is reopened.
+    entry = if isnothing(history_options)
+        nothing
+    else
+        _push_pager_history!(str, history_options)
+    end
+
     text_layout = options._layout_factory(lines)
     display_config = options._display_config_loader()
     input = options._input_factory(stdin)
@@ -87,7 +110,7 @@ function _pager(str::String, options::SessionOptions)
 
     # Switch the terminal to raw mode so that every keystroke is passed immediately instead
     # of waiting for <return>.
-    return options._raw_runner(term) do
+    result = options._raw_runner(term) do
         options.auto = false
         options.text_layout = text_layout
         options.display_config = display_config
@@ -95,6 +118,10 @@ function _pager(str::String, options::SessionOptions)
 
         _pager!(term, str, options)
     end
+
+    (!isnothing(entry) && (result isa PagerResult)) && (entry.result = result)
+
+    return result
 end
 
 function _pager(str::String; @nospecialize(kwargs...))
