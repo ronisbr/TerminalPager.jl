@@ -64,6 +64,8 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("m", false, false, false) => :set_bookmark,
     ("'", false, false, false) => :goto_bookmark,
     ("y", false, false, false) => :yank,
+    ("Y", false, false, false) => :yank_all,
+    ("V", false, false, false) => :toggle_visual_anchor,
     ("<wheel_up>", false, false, false) => :wheel_up,
     ("<wheel_down>", false, false, false) => :wheel_down,
     ("<wheel_up>", false, false, true) => :fastleft,
@@ -134,6 +136,8 @@ const _ACTIONS = Symbol[
     :select_visual_mode_line,
     :mouse_select,
     :yank,
+    :toggle_visual_anchor,
+    :yank_all,
 ]
 
 # Name of the preference that stores the persisted key bindings.

@@ -50,8 +50,10 @@ leave one end open, and the column ruler (`R`) helps picking the columns. The st
 shows the range next to the matches.
 
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
-move. `M` marks the visual line, and `y` copies the visual line and the marked lines to the
-clipboard.
+move. `M` marks the visual line, `V` anchors a range that follows the visual line until `V`
+is pressed again or `M` marks the whole range, and `y` copies the visual line, the range,
+and the marked lines to the clipboard. `Y` copies the whole text from any mode. The status
+line shows how many lines are selected.
 
 `m` followed by a letter bookmarks the top line, or the visual line in the visual mode, and
 `'` followed by the letter jumps back to it. `''` returns to the position before the last

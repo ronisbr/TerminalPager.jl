@@ -10,6 +10,10 @@ Version 0.9.0
   line in the visual mode, and `'` followed by the letter jumps back to it. `''` returns to
   the position before the last jump, search, or `:` goto. The bookmarked lines are marked
   with `•` in the line number ruler, styled with the new face `bookmark`.
+- ![Feature][badge-feature] `V` (action `:toggle_visual_anchor`) anchors a range at the
+  visual line, which is highlighted up to the visual line as it moves; `M` marks the whole
+  range and `y` copies it with the marked lines. `Y` (action `:yank_all`) copies the whole
+  text to the clipboard from any mode. The status line shows how many lines are selected.
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the

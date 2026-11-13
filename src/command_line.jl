@@ -250,6 +250,7 @@ function _status_hint(mode::Symbol, with_help::Bool)
             ),
             _join_hints(
                 (:select_visual_mode_line, "mark"),
+                (:toggle_visual_anchor, "range"),
                 (:yank, "yank"),
                 (:toggle_visual_mode, "leave"),
             ),
@@ -444,11 +445,11 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
         display_config.mode_search
     end
 
-    # Details of the mode: "r×c", "t", "n selected", "match i/n", or "no match". The search
+    # Details of the mode: "r×c", "t", "n lines", "match i/n", or "no match". The search
     # restricted to a range of columns shows the range, like "@12:20", before the matches.
     selection_rows = pagerd.freeze_selection_rows
     selection_columns = pagerd.freeze_selection_columns
-    num_selected = length(pagerd.visual_mode_selected_lines)
+    num_selected = _num_selected_lines(pagerd)
     num_matches = length(pagerd.ordered_search_matches)
     match_id = pagerd.active_search_match_id
     search_columns = pagerd.search_columns
@@ -458,7 +459,7 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     elseif in_titles
         ndigits(selection_rows)
     elseif in_visual
-        ndigits(num_selected) + 9
+        ndigits(num_selected) + (num_selected == 1 ? 5 : 6)
     elseif in_search
         (w_columns > 0 ? w_columns + _ITEM_GAP : 0) +
         (num_matches > 0 ? 7 + ndigits(match_id) + ndigits(num_matches) : _NO_MATCH_WIDTH)
@@ -553,7 +554,7 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
             _write_decimal(out, selection_rows)
         elseif in_visual
             _write_decimal(out, num_selected)
-            write(out, " selected")
+            write(out, num_selected == 1 ? " line" : " lines")
         else
             if w_columns > 0
                 _write_column_range(out, search_columns)

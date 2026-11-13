@@ -774,6 +774,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
         # The selections must not survive the forced disable. Otherwise, they reappear the
         # next time the visual mode is enabled.
         empty!(pagerd.visual_mode_selected_lines)
+        pagerd.visual_anchor = 0
     end
 
     axis, step, policy = _movement(action, page_rows, half_page_rows)
@@ -993,6 +994,8 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :select_visual_mode_line => :visual_mode,
     :mouse_select => :visual_mode,
     :yank => :visual_mode,
+    :toggle_visual_anchor => :visual_mode,
+    :yank_all => nothing,
 )
 
 """
@@ -1157,6 +1160,10 @@ function _pager_event_process!(pagerd::Pager)
         _toggle_visual_line!(pagerd)
     elseif event == :yank
         _yank!(pagerd)
+    elseif event == :toggle_visual_anchor
+        _toggle_visual_anchor!(pagerd)
+    elseif event == :yank_all
+        _yank_all!(pagerd)
     end
 
     # Some events move the view, such as going to a line or to a search match. The visual
@@ -1869,7 +1876,7 @@ end
     _toggle_visual_mode!(pagerd::Pager) -> Nothing
 
 Enter or leave the visual mode of `pagerd` and request a redraw. Leaving it clears the marks
-and moves the visual line back to the top of the view.
+and the range anchor, and moves the visual line back to the top of the view.
 
 # Arguments
 
@@ -1881,11 +1888,104 @@ function _toggle_visual_mode!(pagerd::Pager)
     if !pagerd.visual_mode
         pagerd.visual_mode_line = 1
         empty!(pagerd.visual_mode_selected_lines)
+        pagerd.visual_anchor = 0
     end
 
     _request_redraw!(pagerd)
 
     return nothing
+end
+
+"""
+    _visual_line_index(pagerd::Pager) -> Int
+
+Return the line of the text under the visual line of `pagerd`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+_visual_line_index(pagerd::Pager) = pagerd.visual_mode_line + pagerd.start_row - 1
+
+"""
+    _visual_range(pagerd::Pager) -> UnitRange{Int}
+
+Return the lines between the range anchor of `pagerd` and its visual line, in both
+directions, or an empty range when there is no anchor.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _visual_range(pagerd::Pager)
+    anchor = pagerd.visual_anchor
+    anchor == 0 && return 1:0
+    visual_line = _visual_line_index(pagerd)
+    return min(anchor, visual_line):max(anchor, visual_line)
+end
+
+"""
+    _toggle_visual_anchor!(pagerd::Pager) -> Nothing
+
+Anchor a range at the visual line of `pagerd`, or drop the anchor if there is one, and
+request a redraw. Nothing happens outside the visual mode.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _toggle_visual_anchor!(pagerd::Pager)
+    pagerd.visual_mode || return nothing
+    pagerd.visual_anchor = pagerd.visual_anchor == 0 ? _visual_line_index(pagerd) : 0
+    _request_redraw!(pagerd)
+    return nothing
+end
+
+"""
+    _selected_line_ids(pagerd::Pager) -> Vector{Int}
+
+Return the lines selected in the visual mode of `pagerd`, sorted and without repetitions:
+the visual line, the range between the anchor and the visual line, and the marked lines. The
+result is empty outside the visual mode.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _selected_line_ids(pagerd::Pager)
+    pagerd.visual_mode || return Int[]
+
+    ids = Int[_visual_line_index(pagerd)]
+    append!(ids, _visual_range(pagerd))
+    append!(ids, pagerd.visual_mode_selected_lines)
+
+    return sort!(unique!(ids))
+end
+
+"""
+    _num_selected_lines(pagerd::Pager) -> Int
+
+Return the number of lines selected in the visual mode of `pagerd` without allocating, which
+is the length of [`_selected_line_ids`](@ref).
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _num_selected_lines(pagerd::Pager)
+    pagerd.visual_mode || return 0
+
+    visual_line = _visual_line_index(pagerd)
+    range = _visual_range(pagerd)
+    num_selected = isempty(range) ? 1 : length(range)
+
+    # The marks outside the range are counted once. A mark can only be in the list once.
+    for line in pagerd.visual_mode_selected_lines
+        ((line in range) || (line == visual_line)) && continue
+        num_selected += 1
+    end
+
+    return num_selected
 end
 
 """
@@ -1930,7 +2030,19 @@ redraw. Nothing happens outside the visual mode.
 """
 function _toggle_visual_line!(pagerd::Pager)
     if pagerd.visual_mode
-        visual_str_id = pagerd.visual_mode_line + pagerd.start_row - 1
+        # With an anchor, the whole range is marked and the anchor is dropped.
+        if pagerd.visual_anchor != 0
+            for line in _visual_range(pagerd)
+                (line in pagerd.visual_mode_selected_lines) ||
+                    push!(pagerd.visual_mode_selected_lines, line)
+            end
+
+            pagerd.visual_anchor = 0
+            _request_redraw!(pagerd)
+            return nothing
+        end
+
+        visual_str_id = _visual_line_index(pagerd)
 
         # If the line is already selected, we will deselect it. Notice that a line can only
         # be in the list once, so `findfirst` is enough and does not allocate.
@@ -1962,36 +2074,63 @@ Nothing happens outside the visual mode.
 - `pagerd::Pager`: Pager state to update.
 """
 function _yank!(pagerd::Pager)
-    if pagerd.visual_mode
-        yanked_lines = vcat(
-            pagerd.visual_mode_line + pagerd.start_row - 1,
-            pagerd.visual_mode_selected_lines,
+    pagerd.visual_mode || return nothing
+    _copy_lines!(pagerd, _selected_line_ids(pagerd))
+    return nothing
+end
+
+"""
+    _yank_all!(pagerd::Pager) -> Nothing
+
+Copy the whole text of `pagerd` to the system clipboard, leaving a message telling how many
+lines were copied, that the clipboard is not available, or that there is nothing to copy.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _yank_all!(pagerd::Pager)
+    if pagerd.num_lines == 0
+        _set_message!(pagerd, "Nothing to copy"; kind = :error)
+        return nothing
+    end
+
+    _copy_lines!(pagerd, 1:pagerd.num_lines)
+
+    return nothing
+end
+
+"""
+    _copy_lines!(pagerd::Pager, line_ids::AbstractVector{<:Integer}) -> Nothing
+
+Copy the lines `line_ids` of the text of `pagerd` to the system clipboard without their
+decorations, leaving a message telling how many lines were copied, or that the clipboard is
+not available.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+- `line_ids::AbstractVector{<:Integer}`: Lines to copy.
+"""
+function _copy_lines!(pagerd::Pager, line_ids::AbstractVector{<:Integer})
+    yanked_text, num_yanked_lines = _assemble_yank_text(pagerd.text_layout, line_ids)
+
+    # `clipboard` throws when no system clipboard provider is available, for example in a
+    # headless session. The error must not tear down the pager.
+    copied = try
+        clipboard(yanked_text)
+        true
+    catch
+        false
+    end
+
+    if copied
+        _set_message!(
+            pagerd,
+            num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" : "1 line copied",
         )
-
-        yanked_text, num_yanked_lines = _assemble_yank_text(
-            pagerd.text_layout, yanked_lines
-        )
-
-        # `clipboard` throws when no system clipboard provider is available, for
-        # example in a headless session. The error must not tear down the pager.
-        copied = try
-            clipboard(yanked_text)
-            true
-        catch
-            false
-        end
-
-        if copied
-            _set_message!(
-                pagerd,
-                num_yanked_lines > 1 ? "$(num_yanked_lines) lines copied" :
-                    "1 line copied",
-            )
-        else
-            _set_message!(
-                pagerd, "Could not copy to the system clipboard"; kind = :error
-            )
-        end
+    else
+        _set_message!(pagerd, "Could not copy to the system clipboard"; kind = :error)
     end
 
     return nothing

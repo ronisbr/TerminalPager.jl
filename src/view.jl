@@ -95,8 +95,20 @@ function _view!(pagerd::Pager)
         empty!(visual_lines)
         empty!(visual_line_backgrounds)
 
-        push!(visual_lines, pagerd.visual_mode_line + start_row - 1)
+        visual_line = pagerd.visual_mode_line + start_row - 1
+        push!(visual_lines, visual_line)
         push!(visual_line_backgrounds, vm_active_line_background)
+
+        # The range is clamped to the view, so that a huge range costs nothing per frame.
+        # The visual line keeps its own background because the first background of a row
+        # wins.
+        range = _visual_range(pagerd)
+
+        for line in max(first(range), start_row):min(last(range), start_row + rows - 1)
+            line == visual_line && continue
+            push!(visual_lines, line)
+            push!(visual_line_backgrounds, vm_line_background)
+        end
 
         for line in pagerd.visual_mode_selected_lines
             push!(visual_lines, line)

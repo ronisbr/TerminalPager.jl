@@ -276,6 +276,8 @@ Store the mutable state for one pager session.
 - `visual_mode::Bool`: Whether visual selection mode is active.
 - `visual_mode_line::Int`: Active visual line relative to the viewport.
 - `visual_mode_selected_lines::Vector{Int}`: Selected source-line indices.
+- `visual_anchor::Int`: Line anchoring a range that ends at the visual line, or `0` when
+    there is no range.
 - `mouse_row::Int`: Row of the last mouse event, or `0` if there was none.
 - `mouse_column::Int`: Column of the last mouse event, or `0` if there was none.
 - `visual_lines::Vector{Int}`: Reused buffer with the lines rendered with a background.
@@ -324,6 +326,7 @@ Base.@kwdef mutable struct Pager
     visual_mode::Bool = false
     visual_mode_line::Int = 1
     visual_mode_selected_lines::Vector{Int} = Int[]
+    visual_anchor::Int = 0
     mouse_row::Int = 0
     mouse_column::Int = 0
     visual_lines::Vector{Int} = Int[]

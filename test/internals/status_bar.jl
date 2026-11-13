@@ -104,11 +104,21 @@ end
     pagerd.active_search_match_id = 0
     pagerd.mode = :view
 
-    # The visual mode shows the number of selected lines and its own hints.
+    # The visual mode shows the number of selected lines, which are the visual line, the
+    # anchored range, and the marks, and its own hints.
     pagerd.visual_mode = true
+    text = _status_bar_text(pagerd, output)
+    @test text == "VISUAL  1 line" * " "^8 * "M:mark  V:range  y:yank  v:leave   45%"
+    @test textwidth(text) == 60
     push!(pagerd.visual_mode_selected_lines, 3)
     text = _status_bar_text(pagerd, output)
-    @test text == "VISUAL  1 selected" * " "^13 * "M:mark  y:yank  v:leave   45%"
+    @test text == "VISUAL  2 lines" * " "^7 * "M:mark  V:range  y:yank  v:leave   45%"
+    pagerd.visual_anchor = 8
+    @test startswith(_status_bar_text(pagerd, output), "VISUAL  5 lines ")
+    push!(pagerd.visual_mode_selected_lines, 6)
+    @test startswith(_status_bar_text(pagerd, output), "VISUAL  5 lines ")
+    pagerd.visual_anchor = 0
+    @test startswith(_status_bar_text(pagerd, output), "VISUAL  3 lines ")
     pagerd.visual_mode = false
     empty!(pagerd.visual_mode_selected_lines)
 
@@ -390,7 +400,8 @@ end
         @test TerminalPager._status_hint(:normal, true) == "?:help  q:quit"
         @test TerminalPager._status_hint(:normal, false) == "q:quit"
         @test TerminalPager._status_hint(:search, true) == "n:next  N:prev  Esc:clear"
-        @test TerminalPager._status_hint(:visual, true) == "M:mark  y:yank  v:leave"
+        @test TerminalPager._status_hint(:visual, true) ==
+            "M:mark  V:range  y:yank  v:leave"
 
         TerminalPager.delete_keybinding("q")
         @test isnothing(TerminalPager._primary_key(:quit))

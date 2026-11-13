@@ -107,6 +107,113 @@ end
     @test pagerd.redraw == false
 end
 
+@testset "Visual Range" begin
+    lines = ["line $i" for i in 1:8]
+    pagerd = _create_redraw_pagerd(lines; display_size = (10, 20))
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+    pagerd.visual_mode_line = 3
+    @test TerminalPager._pager_action(TerminalPager.Keystroke(; value = "V")) ===
+        :toggle_visual_anchor
+
+    # The anchor starts a range that follows the visual line in both directions.
+    pagerd.redraw = false
+    pagerd.event = :toggle_visual_anchor
+    TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.visual_anchor == 3
+    @test pagerd.redraw
+    @test TerminalPager._selected_line_ids(pagerd) == [3]
+    pagerd.visual_mode_line = 6
+    @test TerminalPager._selected_line_ids(pagerd) == [3, 4, 5, 6]
+    @test TerminalPager._num_selected_lines(pagerd) == 4
+    pagerd.visual_mode_line = 1
+    @test TerminalPager._selected_line_ids(pagerd) == [1, 2, 3]
+
+    # The marks outside the range are added to the selection and counted once.
+    push!(pagerd.visual_mode_selected_lines, 7, 2)
+    @test TerminalPager._selected_line_ids(pagerd) == [1, 2, 3, 7]
+    @test TerminalPager._num_selected_lines(pagerd) == 4
+
+    # Toggling the anchor again drops the range.
+    pagerd.event = :toggle_visual_anchor
+    TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.visual_anchor == 0
+    @test TerminalPager._selected_line_ids(pagerd) == [1, 2, 7]
+    @test TerminalPager._num_selected_lines(pagerd) == 3
+
+    # Marking while anchored commits the range to the marks and drops the anchor.
+    empty!(pagerd.visual_mode_selected_lines)
+    pagerd.visual_mode_line = 3
+    pagerd.event = :toggle_visual_anchor
+    TerminalPager._pager_event_process!(pagerd)
+    pagerd.visual_mode_line = 6
+    push!(pagerd.visual_mode_selected_lines, 4)
+    pagerd.event = :select_visual_mode_line
+    TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.visual_anchor == 0
+    @test sort(pagerd.visual_mode_selected_lines) == [3, 4, 5, 6]
+    @test TerminalPager._assemble_yank_text(
+        pagerd.text_layout, TerminalPager._selected_line_ids(pagerd)
+    ) == ("line 3\nline 4\nline 5\nline 6\n", 4)
+
+    # Leaving the mode drops the anchor, and the anchor does nothing outside the mode.
+    pagerd.event = :toggle_visual_anchor
+    TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.visual_anchor == 6
+    pagerd.event = :toggle_visual_mode
+    TerminalPager._pager_event_process!(pagerd)
+    @test !pagerd.visual_mode
+    @test pagerd.visual_anchor == 0
+    @test isempty(TerminalPager._selected_line_ids(pagerd))
+    pagerd.event = :toggle_visual_anchor
+    TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.visual_anchor == 0
+
+    # The range rows carry the marked background and the visual line keeps its own.
+    pagerd = _create_redraw_pagerd(lines; display_size = (10, 20), color = true)
+    pagerd.features = [:visual_mode]
+    pagerd.visual_mode = true
+    pagerd.visual_anchor = 2
+    pagerd.visual_mode_line = 4
+    TerminalPager._view!(pagerd)
+    frame = split(String(take!(copy(pagerd.buf.io))), '\n')
+    active = pagerd.display_config.visual_active_line
+    selected = pagerd.display_config.visual_line
+    @test !occursin("\e[$(selected)m", frame[1])
+    @test occursin("\e[$(selected)m", frame[2])
+    @test occursin("\e[$(selected)m", frame[3])
+    @test occursin("\e[$(active)m", frame[4])
+    @test !occursin("\e[$(selected)m", frame[4])
+    @test !occursin("\e[$(selected)m", frame[5])
+
+    # A range beyond the view is clamped to the visible rows.
+    pagerd.visual_anchor = 1
+    pagerd.start_row = 3
+    pagerd.visual_mode_line = 2
+    TerminalPager._view!(pagerd)
+    frame = split(String(take!(copy(pagerd.buf.io))), '\n')
+    @test occursin("\e[$(selected)m", frame[1])
+    @test occursin("\e[$(active)m", frame[2])
+    @test !occursin("\e[$(selected)m", frame[3])
+end
+
+@testset "Yank All" begin
+    lines = ["line $i" for i in 1:3]
+    @test TerminalPager._pager_action(TerminalPager.Keystroke(; value = "Y")) === :yank_all
+
+    # The whole text is copied from any mode; the clipboard may be unavailable in CI.
+    pagerd = _create_modal_pagerd(lines, "")
+    pagerd.event = :yank_all
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.message in ("3 lines copied", "Could not copy to the system clipboard")
+
+    pagerd = _create_modal_pagerd(String[], "")
+    pagerd.event = :yank_all
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.message == "Nothing to copy"
+    @test pagerd.message_kind === :error
+end
+
 @testset "Active Visual Line Highlight" begin
     # The active line is listed first, and `StringManipulation` keeps the first background it
     # sees for a line. Hence, marking the active line must not hide its own highlight.

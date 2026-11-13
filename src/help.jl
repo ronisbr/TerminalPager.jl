@@ -166,6 +166,7 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:toggle_column_ruler, "Toggle the column ruler on top of the view."),
             ActionHelp(:toggle_scrollbar, "Toggle the scrollbar."),
             ActionHelp(:show_position, "Show the visible lines and columns."),
+            ActionHelp(:yank_all, "Copy the whole text to the clipboard."),
         ],
     ),
     HelpSection(
@@ -228,11 +229,14 @@ const _HELP_SECTIONS = HelpSection[
     HelpSection(
         "Visual Mode",
         "The visual line is highlighted, and it can be copied to the clipboard together " *
-            "with the marked lines. Marks are cleared when the mode is left.",
+            "with the marked lines and the range anchored at a line. Marking while a " *
+            "range is anchored marks the whole range. Marks are cleared when the mode is " *
+            "left.",
         :visual_mode,
         ActionHelp[
             ActionHelp(:toggle_visual_mode, "Toggle the visual mode."),
             ActionHelp(:select_visual_mode_line, "Mark or unmark the visual line."),
+            ActionHelp(:toggle_visual_anchor, "Anchor a range at the visual line."),
             ActionHelp(:mouse_select, "Move or mark the clicked line."),
             ActionHelp(:yank, "Copy the visual and the marked lines."),
         ],
