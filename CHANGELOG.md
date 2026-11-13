@@ -44,6 +44,11 @@ Version 0.9.0
   shows it; the pager renders it only when no display accepts it. The new preference
   `"repl_mode_display"` set to `"pager"` restores the previous behavior. (Issue
   [#48][gh-issue-48])
+- ![Feature][badge-feature] The new preference `"replace_help_mode"` makes the regular
+  `help?>` prompt show its answers in the pager when they do not fit the display, like the
+  `pager?>` prompt does. (Issue [#74][gh-issue-74])
+- ![Feature][badge-feature] `Alt+p` in the `pager>` prompt appends ` |> pager` to the
+  command line without submitting it. (Issue [#47][gh-issue-47])
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the
@@ -622,8 +627,10 @@ Version 0.0.1
 [gh-issue-32]: https://github.com/ronisbr/TerminalPager.jl/issues/32
 [gh-issue-40]: https://github.com/ronisbr/TerminalPager.jl/issues/40
 [gh-issue-46]: https://github.com/ronisbr/TerminalPager.jl/issues/46
+[gh-issue-47]: https://github.com/ronisbr/TerminalPager.jl/issues/47
 [gh-issue-48]: https://github.com/ronisbr/TerminalPager.jl/issues/48
 [gh-issue-54]: https://github.com/ronisbr/TerminalPager.jl/issues/54
+[gh-issue-74]: https://github.com/ronisbr/TerminalPager.jl/issues/74
 [gh-issue-82]: https://github.com/ronisbr/TerminalPager.jl/issues/82
 [gh-issue-89]: https://github.com/ronisbr/TerminalPager.jl/issues/89
 

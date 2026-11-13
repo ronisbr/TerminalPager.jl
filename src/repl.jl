@@ -237,8 +237,16 @@ Initialize pager and pager-help modes in `repl`.
 # Arguments
 
 - `repl::AbstractREPL`: REPL whose interface receives the pager modes.
+
+# Keywords
+
+- `replace_help_mode::Bool`: Page the answers of the regular `help?>` prompt too.
+    (**Default**: the value of the preference `"replace_help_mode"`)
 """
-function _init_pager_repl_mode(repl::AbstractREPL)
+function _init_pager_repl_mode(
+    repl::AbstractREPL;
+    replace_help_mode::Bool = _get_preference("replace_help_mode")::Bool,
+)
     # Get the main REPL mode (julia prompt).
     main_mode = repl.interface.modes[1]
 
@@ -251,6 +259,9 @@ function _init_pager_repl_mode(repl::AbstractREPL)
     # The shortcuts, such as the help ones, can be registered before this mode exists, for
     # example by a REPL hook that runs first. Hence, the mode applies them itself.
     _apply_shortcut_registrars!(tp_mode)
+
+    # The regular help mode pages its answers if the user asked for it.
+    replace_help_mode && _replace_help_mode!(repl)
 
     # Assign `|` as the key map to switch to pager mode.
     keymap = Dict{Any, Any}(
@@ -272,6 +283,131 @@ function _init_pager_repl_mode(repl::AbstractREPL)
     main_mode.keymap_dict = LineEdit.keymap_merge(main_mode.keymap_dict, keymap)
 
     return nothing
+end
+
+############################################################################################
+#                                 Paged Regular Help Mode                                  #
+############################################################################################
+
+"""
+    struct PagedHelpOnDone <: Function
+
+Replacement of the `on_done` callback of the regular `help?>` prompt that pages its answers.
+It is a `Function`, because the field of the prompt is typed so.
+
+The answers of the regular help mode never pass through `stdout`: they go to the REPL
+display. Hence, the callback evaluates the help itself, like the `pager?>` prompt does, and
+pages the result when it does not fit the display. The original callback is kept, so that
+it can be restored.
+
+# Fields
+
+- `repl::Any`: REPL that owns the prompt.
+- `main::LineEdit.Prompt`: Main Julia prompt the help mode returns to.
+- `original::Any`: Original `on_done` callback of the prompt.
+"""
+struct PagedHelpOnDone <: Function
+    repl::Any
+    main::LineEdit.Prompt
+    original::Any
+end
+
+function (h::PagedHelpOnDone)(s, buf, ok)
+    ok || return REPL.transition(s, :abort)
+
+    input = String(take!(buf))
+    REPL.reset(h.repl)
+    _paged_help_do_cmd(h.repl, input, s.active_module)
+    REPL.prepare_next(h.repl)
+    REPL.reset_state(s)
+
+    return s.current_mode.sticky ? true : REPL.transition(s, h.main)
+end
+
+"""
+    _paged_help_do_cmd(repl::Any, input::String, mod::Module) -> Nothing
+
+Render the help of `input` in `mod` and show it in the pager when it does not fit the
+display, reporting the errors on the error stream of `repl` instead of throwing.
+
+# Arguments
+
+- `repl::Any`: REPL that owns the help prompt.
+- `input::String`: Help query typed by the user.
+- `mod::Module`: Module in which the query is evaluated.
+"""
+function _paged_help_do_cmd(repl, input::String, mod::Module)
+    try
+        pager(_get_help(strip(input), mod); auto = true)
+    catch err
+        Base.display_error(repl.t.err_stream, err, Base.catch_backtrace())
+    end
+
+    return nothing
+end
+
+"""
+    _help_prompt_string() -> String
+
+Return the prompt of the regular help mode of the REPL.
+"""
+_help_prompt_string() = isdefined(REPL, :HELP_PROMPT) ? String(REPL.HELP_PROMPT) : "help?> "
+
+"""
+    _find_help_mode(repl::Any) -> Union{Nothing, LineEdit.Prompt}
+
+Return the regular help prompt of `repl`, found by its prompt string, or `nothing` if the
+REPL has no such prompt.
+
+# Arguments
+
+- `repl::Any`: REPL whose prompts are searched.
+"""
+function _find_help_mode(repl)
+    hasproperty(repl, :interface) || return nothing
+    prompt = _help_prompt_string()
+
+    for mode in repl.interface.modes
+        (mode isa LineEdit.Prompt) || continue
+        (LineEdit.prompt_string(mode.prompt) == prompt) && return mode
+    end
+
+    return nothing
+end
+
+"""
+    _replace_help_mode!(repl::Any) -> Bool
+
+Make the regular help prompt of `repl` page its answers and return whether the prompt was
+found. A prompt already replaced is left as it is.
+
+# Arguments
+
+- `repl::Any`: REPL whose help prompt is replaced.
+"""
+function _replace_help_mode!(repl)
+    mode = _find_help_mode(repl)
+    isnothing(mode) && return false
+    (mode.on_done isa PagedHelpOnDone) && return true
+    mode.on_done = PagedHelpOnDone(repl, first(repl.interface.modes), mode.on_done)
+    return true
+end
+
+"""
+    _restore_help_mode!(repl::Any) -> Bool
+
+Restore the original callback of the regular help prompt of `repl` and return whether it
+was replaced.
+
+# Arguments
+
+- `repl::Any`: REPL whose help prompt is restored.
+"""
+function _restore_help_mode!(repl)
+    mode = _find_help_mode(repl)
+    (isnothing(mode) || !(mode.on_done isa PagedHelpOnDone)) && return false
+    mode.on_done = mode.on_done.original
+    return true
 end
 
 ############################################################################################

@@ -87,6 +87,8 @@ PrecompileTools.@setup_workload begin
             _init_pager_repl_mode(mock_repl)
             _register_help_shortcuts(mock_repl)
             _register_history_shortcuts(mock_repl)
+            _register_pipe_shortcuts(mock_repl)
+            TerminalPager._replace_help_mode!(mock_repl)
 
             # The public entry point prints the text when the standard streams are not
             # terminals, which is the case here. Hence, the workload renders the object

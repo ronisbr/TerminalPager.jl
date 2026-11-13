@@ -83,6 +83,48 @@ function _capture_stdout(f::Function)
     end
 end
 
+@testset "Paged Help Mode" begin
+    term = REPL.Terminals.TTYTerminal("", IOBuffer(), IOBuffer(), IOBuffer())
+    repl = REPL.LineEditREPL(term, true)
+    repl.interface = REPL.setup_interface(repl)
+
+    # The help prompt is found by its prompt string, wrapped once, and restored.
+    help_mode = TerminalPager._find_help_mode(repl)
+    @test help_mode === repl.interface.modes[3]
+    @test REPL.LineEdit.prompt_string(help_mode.prompt) == "help?> "
+    original = help_mode.on_done
+
+    @test TerminalPager._replace_help_mode!(repl)
+    @test help_mode.on_done isa TerminalPager.PagedHelpOnDone
+    @test help_mode.on_done.original === original
+    @test help_mode.on_done.main === first(repl.interface.modes)
+    wrapped = help_mode.on_done
+    @test TerminalPager._replace_help_mode!(repl)
+    @test help_mode.on_done === wrapped
+    @test TerminalPager._restore_help_mode!(repl)
+    @test help_mode.on_done === original
+    @test !TerminalPager._restore_help_mode!(repl)
+
+    # The pager mode initialization replaces the prompt only when asked.
+    TerminalPager._init_pager_repl_mode(repl; replace_help_mode = false)
+    @test help_mode.on_done === original
+    repl = REPL.LineEditREPL(term, true)
+    repl.interface = REPL.setup_interface(repl)
+    TerminalPager._init_pager_repl_mode(repl; replace_help_mode = true)
+    @test TerminalPager._find_help_mode(repl).on_done isa TerminalPager.PagedHelpOnDone
+
+    # A REPL without the help prompt is left alone.
+    @test isnothing(TerminalPager._find_help_mode((; interface = (; modes = Any[]))))
+    @test !TerminalPager._replace_help_mode!((; interface = (; modes = Any[])))
+    @test !TerminalPager._replace_help_mode!("not a REPL")
+
+    # The help is rendered and printed when the pager cannot run.
+    output = _capture_stdout(() -> TerminalPager._paged_help_do_cmd(repl, " read ", Main))
+    @test occursin("read", output)
+
+    @test_throws ArgumentError TerminalPager.set_preference!("replace_help_mode", "yes")
+end
+
 struct _RationalDisplay <: AbstractDisplay
     shown::Vector{Any}
 end

@@ -51,6 +51,11 @@ The available preferences are:
     the display stack like in the regular REPL, so that a display pushed by a package, such
     as a plot window, shows it; the pager renders it only when no display accepts it. If it
     is `"pager"`, the value is always rendered into the pager. (**Default** = `"stack"`)
+- `"replace_help_mode"`: If `true`, the answers of the regular `help?>` prompt are shown in
+    the pager when they do not fit the display, like the ones of the `pager?>` prompt.
+    Notice that this change only takes effect when a new Julia session is initialized, and
+    that it replaces the callback of the prompt, so other packages hooking it are bypassed.
+    (**Default** = `false`)
 - `"show_column_ruler"`: If `true`, the pager shows a two-row ruler with the column numbers
     on top of the view unless the keyword `show_column_ruler` says otherwise.
     (**Default** = `false`)

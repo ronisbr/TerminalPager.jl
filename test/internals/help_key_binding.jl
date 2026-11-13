@@ -77,6 +77,38 @@ REPL.LineEdit.input_string(state::CursorState) = String(take!(copy(state.buf)))
     @test timedwait(() -> istaskdone(task), 10.0) == :ok
 end
 
+@testset "Pipe Shortcut" begin
+    function create_mode(prompt = "julia> ")
+        escapes = Dict{Char, Any}('O' => Dict{Char, Any}())
+        return (; prompt = prompt, keymap_dict = Dict{Char, Any}('\e' => escapes))
+    end
+
+    # The shortcut is registered in the pager prompt only, because the main prompt binds
+    # `<Alt> + p` to the previous history entry.
+    regular_mode = create_mode()
+    pager_mode = create_mode(TerminalPager._tp_mode_prompt)
+    repl = (; interface = (; modes = [regular_mode, pager_mode]))
+    fetch(TerminalPager._register_pipe_shortcuts(repl))
+    @test pager_mode.keymap_dict['\e']['p'] === TerminalPager._append_pager_pipe
+    @test !haskey(regular_mode.keymap_dict['\e'], 'p')
+
+    # The text is appended at the end of the line, wherever the cursor is, and nothing is
+    # appended to an empty line.
+    term = REPL.Terminals.TTYTerminal("", IOBuffer(), IOBuffer(), IOBuffer())
+    repl = REPL.LineEditREPL(term, true)
+    repl.interface = REPL.setup_interface(repl)
+    s = REPL.LineEdit.init_state(term, repl.interface)
+    REPL.LineEdit.edit_insert(s, "rand(3)")
+    seek(REPL.LineEdit.buffer(s), 3)
+    @test TerminalPager._append_pager_pipe(s, nothing, nothing) === :ok
+    @test REPL.LineEdit.input_string(s) == "rand(3) |> pager"
+
+    s = REPL.LineEdit.init_state(term, repl.interface)
+    REPL.LineEdit.edit_insert(s, "  ")
+    @test TerminalPager._append_pager_pipe(s, nothing, nothing) === :ok
+    @test REPL.LineEdit.input_string(s) == "  "
+end
+
 """
     _test_shortcut(s::Any, key::Any, context::Any) -> Symbol
 

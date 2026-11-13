@@ -164,6 +164,11 @@ The user can define custom preferences using the function
     as a plot window, shows it; the pager renders it only when no display accepts it. If it
     is `"pager"`, the value is always rendered into the pager.
     (**Default**: `"stack"`)
+- `"replace_help_mode"`: If `true`, the answers of the regular `help?>` prompt are shown
+    in the pager when they do not fit the display, like the ones of the `pager?>` prompt.
+    Notice that this change only takes effect when a new Julia session is initialized, and
+    that it replaces the callback of the prompt, so other packages hooking it are bypassed.
+    (**Default**: `false`)
 - `"show_scrollbar"`: If `true`, the pager shows a scrollbar at the right edge of the view
     unless the keyword `show_scrollbar` says otherwise.
     (**Default**: `false`)
@@ -383,6 +388,7 @@ function __init__()
 
             _register_help_shortcuts(repl)
             _register_history_shortcuts(repl)
+            _register_pipe_shortcuts(repl)
         end
     else
         atreplinit(_init_repl_integrations)
@@ -411,6 +417,7 @@ function _init_repl_integrations(repl)
 
         _register_help_shortcuts(repl)
         _register_history_shortcuts(repl)
+        _register_pipe_shortcuts(repl)
     end
 
     return nothing

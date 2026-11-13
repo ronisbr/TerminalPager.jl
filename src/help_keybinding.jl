@@ -205,6 +205,53 @@ function _register_help_escapes!(escapes)
 end
 
 """
+    _register_pipe_shortcuts(repl::Any) -> Task
+
+Register `<Alt> + p`, which appends ` |> pager` to the command line, in the pager prompts of
+the REPL.
+
+# Arguments
+
+- `repl::Any`: REPL instance whose keymaps are updated asynchronously.
+"""
+function _register_pipe_shortcuts(repl)
+    return _register_shortcuts(_register_pipe_escapes!, repl; main_mode = false)
+end
+
+"""
+    _register_pipe_escapes!(escapes::AbstractDict) -> Nothing
+
+Bind `<Alt> + p` in the escape key map `escapes` to [`_append_pager_pipe`](@ref).
+
+# Arguments
+
+- `escapes::AbstractDict`: Escape key map of a REPL prompt.
+"""
+function _register_pipe_escapes!(escapes)
+    escapes['p'] = _append_pager_pipe
+    return nothing
+end
+
+"""
+    _append_pager_pipe(s::Any, _key::Any, _context::Any) -> Symbol
+
+Append ` |> pager` to the end of the command line of the REPL state `s` without submitting
+it. An empty command line is left as it is.
+
+# Arguments
+
+- `s::Any`: Current REPL line-edit state.
+- `_key::Any`: Keybinding callback key, which is ignored.
+- `_context::Any`: Keybinding callback context, which is ignored.
+"""
+function _append_pager_pipe(s, _key, _context)
+    isempty(strip(input_string(s))) && return :ok
+    LineEdit.move_input_end(s)
+    LineEdit.edit_insert(s, " |> pager")
+    return :ok
+end
+
+"""
     _register_shortcuts(f::Any, repl::Any; main_mode::Bool = true) -> Task
 
 Register escape shortcuts in the REPL by calling `f(escapes)`, where `escapes` is the escape
