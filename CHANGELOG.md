@@ -47,7 +47,7 @@ Version 0.9.0
 - ![Feature][badge-feature] The new preference `"replace_help_mode"` makes the regular
   `help?>` prompt show its answers in the pager when they do not fit the display, like the
   `pager?>` prompt does. (Issue [#74][gh-issue-74])
-- ![Feature][badge-feature] `Alt+p` in the `pager>` prompt appends ` |> pager` to the
+- ![Feature][badge-feature] `Alt+|` in the `pager>` prompt appends ` |> pager` to the
   command line without submitting it. (Issue [#47][gh-issue-47])
 - ![Feature][badge-feature] `&` (action `:filter`) shows only the lines matching a regular
   expression, previewed while the pattern is typed, and `!pattern` hides them instead. The

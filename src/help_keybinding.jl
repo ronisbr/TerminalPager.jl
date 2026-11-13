@@ -207,8 +207,9 @@ end
 """
     _register_pipe_shortcuts(repl::Any) -> Task
 
-Register `<Alt> + p`, which appends ` |> pager` to the command line, in the pager prompts of
-the REPL.
+Register `<Alt> + |`, which appends ` |> pager` to the command line, in the pager prompts of
+the REPL. **REPL.jl** binds `<Alt> + p` to the previous history entry in every prompt, hence
+the shortcut uses the pipe character itself.
 
 # Arguments
 
@@ -221,14 +222,14 @@ end
 """
     _register_pipe_escapes!(escapes::AbstractDict) -> Nothing
 
-Bind `<Alt> + p` in the escape key map `escapes` to [`_append_pager_pipe`](@ref).
+Bind `<Alt> + |` in the escape key map `escapes` to [`_append_pager_pipe`](@ref).
 
 # Arguments
 
 - `escapes::AbstractDict`: Escape key map of a REPL prompt.
 """
 function _register_pipe_escapes!(escapes)
-    escapes['p'] = _append_pager_pipe
+    escapes['|'] = _append_pager_pipe
     return nothing
 end
 
