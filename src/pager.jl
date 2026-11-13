@@ -742,11 +742,7 @@ function _pager!(
             _update_display_size!(pagerd)
 
             # Check if we need to redraw the screen.
-            if pagerd.redraw
-                _view!(pagerd)
-                _redraw!(pagerd)
-                _redraw_status_bar!(pagerd)
-            end
+            pagerd.redraw && _paint!(pagerd)
 
             # Wait for user input. A change of the display size interrupts the wait, and the
             # screen is repainted at the top of the loop.
@@ -1709,11 +1705,7 @@ function _run_selection!(
 
     try
         while true
-            if pagerd.redraw
-                _view!(pagerd)
-                _redraw!(pagerd)
-                _redraw_status_bar!(pagerd)
-            end
+            pagerd.redraw && _paint!(pagerd)
 
             # A change of the display size repaints the view without waiting for a
             # keystroke. The selection must stay inside the new view.
@@ -3015,6 +3007,38 @@ function _redraw!(pagerd::Pager)
     # Indicate that the redraw request was accomplished.
     pagerd.redraw = false
 
+    return nothing
+end
+
+"""
+    _paint_view!(pagerd::Pager) -> Nothing
+
+Render the viewport of `pagerd` and write the rows that changed to the terminal, leaving the
+status line as it is.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to paint.
+"""
+function _paint_view!(pagerd::Pager)
+    _view!(pagerd)
+    _redraw!(pagerd)
+    return nothing
+end
+
+"""
+    _paint!(pagerd::Pager) -> Nothing
+
+Render the viewport of `pagerd`, write the rows that changed to the terminal, and redraw the
+status line.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to paint.
+"""
+function _paint!(pagerd::Pager)
+    _paint_view!(pagerd)
+    _redraw_status_bar!(pagerd)
     return nothing
 end
 

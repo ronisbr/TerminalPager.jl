@@ -120,8 +120,7 @@ function _prompt_key!(pagerd::Pager, prompt::String)
         # the keystroke.
         if !_wait_for_input!(pagerd)
             _update_display_size!(pagerd)
-            _view!(pagerd)
-            _redraw!(pagerd)
+            _paint_view!(pagerd)
             redraw = true
             continue
         end
@@ -930,8 +929,7 @@ function _read_cmd!(
             # for a keystroke.
             if !_wait_for_input!(pagerd)
                 _update_display_size!(pagerd)
-                _view!(pagerd)
-                _redraw!(pagerd)
+                _paint_view!(pagerd)
                 display_size = pagerd.display_size
                 redraw = true
                 continue

@@ -272,8 +272,7 @@ function _preview_filter!(pagerd::Pager, pattern::String, saved::NamedTuple)
         status = isempty(status) ? _LITERAL_TAG : _LITERAL_TAG * " " * status
     end
 
-    _view!(pagerd)
-    _redraw!(pagerd)
+    _paint_view!(pagerd)
 
     return status
 end
