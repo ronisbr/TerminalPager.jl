@@ -27,6 +27,7 @@ function _change_freeze!(pagerd::Pager)
             pagerd.start_row = _clamp_row(pagerd, pagerd.start_row)
             pagerd.visual_mode_line = 1
             _reset_crop!(pagerd)
+            _refilter!(pagerd)
         end
 
         status, frozen_columns = _prompt_number!(
@@ -147,6 +148,7 @@ function _select_on_screen!(pagerd::Pager, mode::Symbol)
     end
 
     _end_selection!(pagerd, start_row, start_column)
+    applied && _refilter!(pagerd)
 
     return nothing
 end
@@ -373,10 +375,26 @@ function _change_title_rows!(pagerd::Pager)
 
     if status === :value
         pagerd.title_rows = max(0, title_rows)
+        _refilter!(pagerd)
         _set_message!(pagerd, "$(pagerd.title_rows) title rows")
     end
 
     _request_redraw!(pagerd)
 
+    return nothing
+end
+
+"""
+    _refilter!(pagerd::Pager) -> Nothing
+
+Rebuild the rows shown by `pagerd` if a filter is active. The filter always shows the frozen
+and the title rows, so that the rows must be computed again when their numbers change.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to update.
+"""
+function _refilter!(pagerd::Pager)
+    isnothing(pagerd.filter_regex) || _rebuild_view_layout!(pagerd)
     return nothing
 end

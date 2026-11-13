@@ -231,6 +231,39 @@ end
     empty!(TerminalPager._LAST_YANK)
 end
 
+@testset "Frozen and Title Rows Changed With a Filter" begin
+    # The frozen and the title rows are always shown. Hence, the visible rows must be the
+    # same whether the rows are frozen before or after the filter is applied.
+    pagerd = _create_modal_pagerd(_FILTER_LINES, "1\n\n")
+    TerminalPager._apply_filter!(pagerd, r"info", false, "info")
+    filtered = copy(pagerd.row_to_line)
+    @test first(filtered) != 1
+
+    pagerd.event = :change_freeze
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.frozen_rows == 1
+    @test pagerd.row_to_line == [1; filtered]
+
+    # Unfreezing the rows hides the ones that do not match again.
+    pagerd.input = TerminalPager.PagerInput(TypedInput("0\n\n"))
+    pagerd.event = :change_freeze
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.row_to_line == filtered
+
+    # The same applies to the title rows.
+    pagerd.input = TerminalPager.PagerInput(TypedInput("1\n"))
+    pagerd.event = :change_title_rows
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.title_rows == 1
+    @test pagerd.row_to_line == [1; filtered]
+
+    # Without a filter, nothing is rebuilt.
+    pagerd = _create_modal_pagerd(_FILTER_LINES, "1\n\n")
+    pagerd.event = :change_freeze
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test isnothing(pagerd.row_to_line)
+end
+
 @testset "Inverted Filter Without a Pattern" begin
     # `!` alone has no pattern. It must keep the lines as they are whether it is typed, in
     # which case it is previewed, or pasted at once.
