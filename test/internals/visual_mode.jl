@@ -390,3 +390,35 @@ end
     @test TerminalPager._pager_event_process!(pagerd)
     @test pagerd.visual_mode_line == 6
 end
+
+@testset "Visual Line When the Display Shrinks" begin
+    lines = ["line $i" for i in 1:100]
+    output = IOContext(IOBuffer(), :displaysize => (12, 40), :color => false)
+    term = REPL.Terminals.TTYTerminal("", IOBuffer(), output, output)
+
+    pagerd = TerminalPager.Pager(;
+        buf = IOContext(IOBuffer(), :color => false),
+        display_size = (24, 40),
+        num_lines = length(lines),
+        term = term,
+        text_layout = TerminalPager.ViewLayout(lines),
+        visual_mode = true,
+        visual_mode_line = 20,
+    )
+
+    # The visual line was on the line 20 of the text, which is below the new view with 11
+    # rows. The view is scrolled so that it stays on that line.
+    TerminalPager._update_display_size!(pagerd)
+    @test pagerd.display_size == (12, 40)
+    @test pagerd.visual_mode_line == 11
+    @test TerminalPager._visual_line_index(pagerd) == 20
+    @test pagerd.start_row == 10
+
+    # A visual line that is still inside the view is not moved.
+    pagerd.display_size = (24, 40)
+    pagerd.start_row = 1
+    pagerd.visual_mode_line = 5
+    TerminalPager._update_display_size!(pagerd)
+    @test pagerd.start_row == 1
+    @test pagerd.visual_mode_line == 5
+end

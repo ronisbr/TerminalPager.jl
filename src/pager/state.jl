@@ -377,6 +377,21 @@ function _update_display_size!(p::Pager)
         p.display_size = newdsize
         _clamp_viewport!(p)
 
+        # If the display shrinks, the visual line can be below the last row of the view.
+        # In this case, the view is scrolled so that the visual line stays on the same line
+        # of the text, at the last row. Otherwise, it would not be shown, and the commands
+        # would not agree on which line it is.
+        if p.visual_mode
+            overflow = p.visual_mode_line - max(_view_rows(p), 1)
+
+            if overflow > 0
+                p.start_row += overflow
+                p.visual_mode_line -= overflow
+            end
+
+            _clamp_visual_line!(p)
+        end
+
         # The terminal dropped or revealed rows, so we no longer know what is on screen.
         _invalidate_frame!(p)
         _request_redraw!(p)
