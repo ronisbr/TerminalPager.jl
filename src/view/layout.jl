@@ -5,14 +5,6 @@
 #
 ############################################################################################
 
-# This regex matches every ANSI escape sequence that defines a decoration. An OSC 8
-# hyperlink is terminated by ST (`\e\\`) or BEL (`\a`), and its URL cannot contain control
-# characters, so that a sequence that was never terminated does not consume the rest of the
-# text.
-const _ANSI_SEQUENCE_REGEX = Regex(
-    raw"\x1B(?:]8;;[^\x00-\x1F\x7F]*(?:\x1B\\|\a)|[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
-)
-
 """
     struct ViewLayout <: AbstractVector{String}
 
@@ -72,11 +64,7 @@ function ViewLayout(input_lines::AbstractVector{<:AbstractString})
 
             # Only the lines with an escape byte can change the state. Notice that `0x1b`
             # cannot be part of a multi-byte UTF-8 sequence.
-            if 0x1b in codeunits(line)
-                for m in eachmatch(_ANSI_SEQUENCE_REGEX, line)
-                    state = update_decoration(state, String(m.match))
-                end
-            end
+            (0x1b in codeunits(line)) && (state = update_decoration(state, line))
         end
     end
 
