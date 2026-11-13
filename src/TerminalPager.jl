@@ -74,9 +74,10 @@ include("./help_keybinding.jl")
 export pager
 
 """
-    pager(obj::Any; kwargs...) -> Nothing
+    pager(obj::Any; kwargs...) -> Union{Nothing, PagerResult}
 
-Call the pager to show the output of the object `obj`.
+Call the pager to show the output of the object `obj`. Return `nothing`, or the
+[`PagerResult`](@ref) of the session when the keyword `return_selection` is `true`.
 
 # Arguments
 
@@ -88,6 +89,9 @@ Call the pager to show the output of the object `obj`.
     Some of the default values shown here can be modified by user-defined preferences.
 
 - `auto::Bool`: Show the pager only when the output does not fit in the display.
+    (**Default**: `false`)
+- `return_selection::Bool`: Return the [`PagerResult`](@ref) of the session, with the lines
+    copied by the last yank, the viewport, and the search pattern, instead of `nothing`.
     (**Default**: `false`)
 - `change_freeze::Bool`: If `true`, then the user can change the number of frozen rows and
     columns inside the pager.
@@ -224,7 +228,7 @@ For more information, see: [`TerminalPager.set_face!`](@ref) and
 pager(obj::Any; kwargs...) = pager(_render_object(obj); kwargs...)
 
 """
-    pager(obj::AbstractString; kwargs...) -> Nothing
+    pager(obj::AbstractString; kwargs...) -> Union{Nothing, PagerResult}
 
 Show the text in `obj` using the terminal pager.
 
@@ -237,9 +241,12 @@ redirected or in a notebook, the text is printed instead.
 
 # Keywords
 
+- `return_selection::Bool`: Return the [`PagerResult`](@ref) of the session instead of
+    `nothing`. The result of a printed text is empty.
+    (**Default**: `false`)
 - `kwargs...`: Pager options documented by [`pager(::Any; kwargs...)`](@ref).
 """
-function pager(obj::AbstractString; kwargs...)
+function pager(obj::AbstractString; return_selection::Bool = false, kwargs...)
     # If we have a context key called `bypass_pager` with the value `true`, we must not call
     # the pager because we are in the pager> REPL mode. Otherwise, the pager locks the
     # screen until the user types CTRL-D. For more information, see:
@@ -248,7 +255,7 @@ function pager(obj::AbstractString; kwargs...)
     #
     if get(stdout, :bypass_pager, false)
         print(obj)
-        return nothing
+        return return_selection ? PagerResult(String[], 1, 1, "") : nothing
     end
 
     # Without a terminal on both ends, the pager can neither read keystrokes nor paint the
@@ -256,12 +263,12 @@ function pager(obj::AbstractString; kwargs...)
     # the redirected output and then throw when the input reached its end.
     if !(_is_terminal(stdin) && _is_terminal(stdout))
         print(obj)
-        return nothing
+        return return_selection ? PagerResult(String[], 1, 1, "") : nothing
     end
 
     # `_pager` requires a `String`. The conversion is a no-op for a `String`, whereas any
     # other subtype, such as a `SubString`, must be copied.
-    return _pager(String(obj); kwargs...)
+    return _pager(String(obj); return_selection = return_selection, kwargs...)
 end
 
 const less = pager
@@ -317,6 +324,7 @@ function __init__()
     # starts without the patterns of another one.
     empty!(_SEARCH_HISTORY)
     empty!(_SAVE_HISTORY)
+    empty!(_LAST_YANK)
 
     # The faces live in the registry of StyledStrings.jl, which is not serialized with this
     # package. Hence, they must be registered at every session start, and only then can the

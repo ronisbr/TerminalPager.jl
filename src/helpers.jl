@@ -41,7 +41,8 @@ end
     @stdout_to_pager(ex, kwargs...)
 
 Capture the standard output written by the expression `ex` and show it in a pager, returning
-`nothing`.
+`nothing`, or the [`PagerResult`](@ref) of the session when the keyword `return_selection`
+is `true`.
 
 See also [`pager`](@ref).
 

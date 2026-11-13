@@ -14,7 +14,7 @@ const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("k", false, false, false) => :up,
     ("<down>", false, false, false) => :down,
     ("j", false, false, false) => :down,
-    ("<enter>", false, false, false) => :down,
+    ("<enter>", false, false, false) => :yank_quit,
     ("<left>", false, false, false) => :left,
     ("h", false, false, false) => :left,
     ("<right>", false, false, false) => :right,
@@ -140,6 +140,7 @@ const _ACTIONS = Symbol[
     :toggle_visual_anchor,
     :yank_all,
     :save,
+    :yank_quit,
 ]
 
 # Name of the preference that stores the persisted key bindings.

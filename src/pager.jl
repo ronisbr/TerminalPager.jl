@@ -257,6 +257,9 @@ Open an interactive pager for `str`, or print it directly when automatic mode fi
 
 - `auto::Bool`: Print fitting text without creating a layout or terminal session.
     (**Default**: `false`)
+- `return_selection::Bool`: Return the [`PagerResult`](@ref) of the session instead of
+    `nothing`.
+    (**Default**: `false`)
 - `_display_config_loader::Any`: Callable object that creates the session
     display configuration.
     (**Default**: `_display_config`)
@@ -276,6 +279,7 @@ Open an interactive pager for `str`, or print it directly when automatic mode fi
 function _pager(
     str::String;
     auto::Bool = false,
+    return_selection::Bool = false,
     _display_config_loader = _display_config,
     _input_factory = PagerInput,
     _layout_factory = ViewLayout,
@@ -290,7 +294,7 @@ function _pager(
     display_size = displaysize(stdout)::Tuple{Int, Int}
     if auto && _pager_content_fits(lines, display_size)
         print(str)
-        return nothing
+        return return_selection ? PagerResult(String[], 1, 1, "") : nothing
     end
 
     text_layout = _layout_factory(lines)
@@ -302,7 +306,7 @@ function _pager(
 
     # Switch the terminal to raw mode so that every keystroke is passed immediately instead
     # of waiting for <return>.
-    _raw_runner(term) do
+    result = _raw_runner(term) do
         _pager!(
             term,
             str;
@@ -314,7 +318,7 @@ function _pager(
         )
     end
 
-    return nothing
+    return return_selection ? result : nothing
 end
 
 """
@@ -350,9 +354,11 @@ function _with_raw_mode(f, term; raw_function = REPL.Terminals.raw!)
 end
 
 """
-    _pager!(term::REPL.Terminals.TTYTerminal, str::String; kwargs...) -> Nothing
+    _pager!(term::REPL.Terminals.TTYTerminal, str::String; kwargs...) -> PagerResult
 
-Run the interactive pager for `str` using a terminal that is already in raw mode.
+Run the interactive pager for `str` using a terminal that is already in raw mode, and return
+what the session left: the last yanked lines, the viewport, and the search pattern. The
+result of a text printed by the automatic mode is empty.
 
 # Arguments
 
@@ -444,7 +450,7 @@ function _pager!(
 
     if auto && _pager_content_fits(source_lines, dsize)
         print(str)
-        return nothing
+        return PagerResult(String[], 1, 1, "")
     end
 
     # Like the prompts that change them, the numbers of frozen and title rows and columns
@@ -470,6 +476,7 @@ function _pager!(
     cursor_hidden = false
     mouse_enabled = false
     owns_waiter = false
+    local pagerd
     try
         if manage_cursor_key_mode
             cursor_key_mode_enabled = true
@@ -590,7 +597,9 @@ function _pager!(
         end
     end
 
-    return nothing
+    return PagerResult(
+        pagerd.yanked, pagerd.start_row, pagerd.start_column, pagerd.search_pattern
+    )
 end
 
 """
@@ -743,7 +752,7 @@ function _pager_key_process!(pagerd::Pager, k::Keystroke)
     frozen_rows = pagerd.frozen_rows
     num_lines = pagerd.num_lines
 
-    action = _pager_action(k)
+    action = _resolve_action(pagerd, k)
 
     # The position of a mouse event is kept for the events that need it.
     if (k.x > 0) && (k.y > 0)
@@ -997,6 +1006,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :toggle_visual_anchor => :visual_mode,
     :yank_all => nothing,
     :save => nothing,
+    :yank_quit => :visual_mode,
 )
 
 """
@@ -1011,6 +1021,24 @@ Resolve the configured pager action for keystroke `k`.
 function _pager_action(k::Keystroke)
     key = (k.value, k.alt, k.ctrl, k.shift)
     return get(_KEYBINDINGS, key, nothing)
+end
+
+"""
+    _resolve_action(pagerd::Pager, k::Keystroke) -> Union{Nothing, Symbol}
+
+Resolve the pager action for keystroke `k` in the state of `pagerd`. The action
+`:yank_quit`, which copies the selection and quits, is one line down outside the visual
+mode, so that Enter keeps scrolling the text there.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state used to resolve the action.
+- `k::Keystroke`: Keystroke to resolve.
+"""
+function _resolve_action(pagerd::Pager, k::Keystroke)
+    action = _pager_action(k)
+    ((action === :yank_quit) && !pagerd.visual_mode) && return :down
+    return action
 end
 
 """
@@ -1085,7 +1113,7 @@ function _coalesce_navigation!(
     while count < max_actions && time_ns() - start_time < max_ns
         key = _try_read_keystroke!(pagerd.input)
         isnothing(key) && break
-        action = _pager_action(key)
+        action = _resolve_action(pagerd, key)
         if _navigation_group(action) !== group
             pagerd.input.pending = key
             break
@@ -1167,6 +1195,9 @@ function _pager_event_process!(pagerd::Pager)
         _yank_all!(pagerd)
     elseif event == :save
         _save!(pagerd)
+    elseif event == :yank_quit
+        _yank!(pagerd)
+        return false
     end
 
     # Some events move the view, such as going to a line or to a search match. The visual
@@ -2116,7 +2147,15 @@ not available.
 - `line_ids::AbstractVector{<:Integer}`: Lines to copy.
 """
 function _copy_lines!(pagerd::Pager, line_ids::AbstractVector{<:Integer})
-    yanked_text, num_yanked_lines = _assemble_yank_text(pagerd.text_layout, line_ids)
+    yanked_lines = _undecorated_lines(pagerd.text_layout, line_ids)
+    num_yanked_lines = length(yanked_lines)
+    yanked_text = _join_lines(yanked_lines)
+
+    # The lines are kept before the clipboard is tried, so that they are returned by the
+    # session and by `yanked` even where there is no clipboard.
+    pagerd.yanked = yanked_lines
+    empty!(_LAST_YANK)
+    append!(_LAST_YANK, yanked_lines)
 
     # `clipboard` throws when no system clipboard provider is available, for example in a
     # headless session. The error must not tear down the pager.
@@ -2162,16 +2201,80 @@ selected-line count. The decorations are removed unless `keep_decorations` is `t
 function _assemble_yank_text(
     lines::AbstractVector{<:AbstractString}, line_ids; keep_decorations::Bool = false
 )
-    ids = sort!(unique!(collect(Int, line_ids)))
-    sizehint = sum(id -> sizeof(lines[id]) + 1, ids; init = 0)
-    buf = IOBuffer(; sizehint = sizehint)
+    selected = _undecorated_lines(lines, line_ids; keep_decorations = keep_decorations)
+    return _join_lines(selected), length(selected)
+end
 
-    for id in ids
-        write(buf, keep_decorations ? lines[id] : remove_decorations(lines[id]), '\n')
+"""
+    _undecorated_lines(
+        lines::AbstractVector{<:AbstractString},
+        line_ids::AbstractVector{<:Integer};
+        kwargs...
+    ) -> Vector{String}
+
+Return the lines `line_ids` of `lines`, sorted and deduplicated, without their decorations
+unless `keep_decorations` is `true`.
+
+# Arguments
+
+- `lines::AbstractVector{<:AbstractString}`: Canonical line sequence.
+- `line_ids::AbstractVector{<:Integer}`: One-based line indices to sort and deduplicate.
+
+# Keywords
+
+- `keep_decorations::Bool`: Keep the escape sequences of the lines.
+    (**Default**: `false`)
+"""
+function _undecorated_lines(
+    lines::AbstractVector{<:AbstractString}, line_ids; keep_decorations::Bool = false
+)
+    ids = sort!(unique!(collect(Int, line_ids)))
+    selected = Vector{String}(undef, length(ids))
+
+    for (i, id) in enumerate(ids)
+        line = lines[id]
+        selected[i] = keep_decorations ? String(line) : remove_decorations(line)
     end
 
-    return String(take!(buf)), length(ids)
+    return selected
 end
+
+"""
+    _join_lines(lines::Vector{String}) -> String
+
+Join `lines` with a newline after each one of them.
+
+# Arguments
+
+- `lines::Vector{String}`: Lines to join.
+"""
+function _join_lines(lines::Vector{String})
+    buf = IOBuffer(; sizehint = sum(sizeof, lines; init = 0) + length(lines))
+
+    for line in lines
+        write(buf, line, '\n')
+    end
+
+    return String(take!(buf))
+end
+
+# Lines copied by the last yank of the session, returned by `yanked`.
+const _LAST_YANK = String[]
+
+"""
+    yanked() -> Vector{String}
+
+Return a copy of the lines copied by the last yank of the current Julia session, without
+their decorations, or an empty vector if nothing was copied yet. The lines are kept even
+when the system clipboard is not available.
+
+# Examples
+
+```julia
+julia> lines = TerminalPager.yanked()
+```
+"""
+yanked() = copy(_LAST_YANK)
 
 """
     _save!(pagerd::Pager) -> Nothing

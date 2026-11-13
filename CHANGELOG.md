@@ -17,6 +17,12 @@ Version 0.9.0
 - ![Feature][badge-feature] `S` (action `:save`) saves the whole text, or the selection in
   the visual mode, to a file without the decorations. A path starting with `!` keeps them,
   `~` is expanded, and an existing file is overwritten only after a confirmation.
+- ![Feature][badge-feature] `pager(x; return_selection = true)` returns a `PagerResult`
+  with the lines copied by the last yank, the viewport, and the search pattern when the
+  session quits, and `TerminalPager.yanked()` returns the lines of the last copy of the
+  session. The copied lines are kept even when the system clipboard is not available.
+- ![Enhancement][badge-enhancement] `Enter` (action `:yank_quit`) copies the selection and
+  quits the pager in the visual mode. Outside it, `Enter` still moves one line down.
 - ![Feature][badge-feature] The frozen rows and columns can be selected on the screen with
   `F` (action `:select_freeze`). The view moves to the top-left corner with the title rows
   frozen, two guide lines drawn with the new face `freeze_guide` mark the rows and the

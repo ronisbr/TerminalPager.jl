@@ -170,6 +170,11 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, "q")
             wait(t)
 
+            # Pager returning the selection copied by Enter in the visual mode.
+            t = @async _pager(str; return_selection = true)
+            write(stdin_wr, "vM\n")
+            wait(t)
+
             # Pager with auto mode, which exercises the `printable_textwidth` code path.
             # This is important because the REPL mode always uses `auto = true`.
             t = @async _pager(str; auto = true)

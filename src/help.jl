@@ -240,6 +240,7 @@ const _HELP_SECTIONS = HelpSection[
             ActionHelp(:toggle_visual_anchor, "Anchor a range at the visual line."),
             ActionHelp(:mouse_select, "Move or mark the clicked line."),
             ActionHelp(:yank, "Copy the visual and the marked lines."),
+            ActionHelp(:yank_quit, "Copy the selection and quit; one line down otherwise."),
         ],
     ),
 ]

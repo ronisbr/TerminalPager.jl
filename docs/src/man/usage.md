@@ -52,8 +52,19 @@ shows the range next to the matches.
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
 move. `M` marks the visual line, `V` anchors a range that follows the visual line until `V`
 is pressed again or `M` marks the whole range, and `y` copies the visual line, the range,
-and the marked lines to the clipboard. `Y` copies the whole text from any mode. The status
-line shows how many lines are selected.
+and the marked lines to the clipboard. `Enter` copies the selection and quits the pager. `Y`
+copies the whole text from any mode. The status line shows how many lines are selected.
+
+The copied lines are also returned to Julia: `TerminalPager.yanked()` returns the lines of
+the last copy of the session, and `pager(x; return_selection = true)` returns a
+`TerminalPager.PagerResult` with the selection, the viewport, and the search pattern when
+the pager quits:
+
+```julia-repl
+julia> result = pager(rand(100, 100); return_selection = true);
+
+julia> result.selection
+```
 
 `S` saves the whole text, or the selection in the visual mode, to a file without the
 decorations; a path starting with `!` keeps them, `~` is expanded, and an existing file is

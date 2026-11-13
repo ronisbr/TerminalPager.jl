@@ -266,7 +266,7 @@ end
         @test timedwait(wrote("TerminalPager.jl"), 5.0) == :ok
         write(pipe.in, "q")
         write(pipe.in, "q")
-        @test isnothing(_fetch_within(session, 5))
+        @test _fetch_within(session, 5) isa TerminalPager.PagerResult
     finally
         istaskdone(session) || close(pipe)
     end

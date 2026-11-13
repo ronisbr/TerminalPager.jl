@@ -310,6 +310,7 @@ function _search!(pagerd::Pager)
             _set_message!(pagerd, "Invalid regex: $pattern"; kind = :error)
         else
             _push_history!(_SEARCH_HISTORY, cmd_input)
+            pagerd.search_pattern = cmd_input
 
             # The viewport before the prompt is the position to return to.
             pagerd.last_position = (saved.start_row, saved.start_column)
@@ -347,6 +348,7 @@ function _search_state(pagerd::Pager)
         ordered_search_matches = pagerd.ordered_search_matches,
         active_search_match_id = pagerd.active_search_match_id,
         search_columns = pagerd.search_columns,
+        search_pattern = pagerd.search_pattern,
         start_row = pagerd.start_row,
         start_column = pagerd.start_column,
         mode = pagerd.mode,
@@ -368,6 +370,7 @@ function _restore_search_state!(pagerd::Pager, saved::NamedTuple)
     pagerd.ordered_search_matches = saved.ordered_search_matches
     pagerd.active_search_match_id = saved.active_search_match_id
     pagerd.search_columns = saved.search_columns
+    pagerd.search_pattern = saved.search_pattern
     pagerd.mode = saved.mode
     _restore_viewport!(pagerd, saved)
     return nothing
@@ -569,6 +572,7 @@ function _quit_search!(pagerd::Pager)
     empty!(pagerd.ordered_search_matches)
     pagerd.active_search_match_id = 0
     pagerd.search_columns = _UNRESTRICTED_COLUMNS
+    pagerd.search_pattern = ""
     pagerd.mode = :view
     _request_redraw!(pagerd)
     return nothing

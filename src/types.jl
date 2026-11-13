@@ -182,6 +182,27 @@ struct SearchMatch
 end
 
 """
+    struct PagerResult
+
+Store what a pager session leaves when it quits.
+
+# Fields
+
+- `selection::Vector{String}`: Lines copied by the last yank of the session, without their
+    decorations, or an empty vector if nothing was copied.
+- `start_row::Int`: First visible row when the session quit.
+- `start_column::Int`: First visible printable column when the session quit.
+- `search_pattern::String`: Pattern of the active search when the session quit, or an empty
+    string.
+"""
+struct PagerResult
+    selection::Vector{String}
+    start_row::Int
+    start_column::Int
+    search_pattern::String
+end
+
+"""
     FrameCache
 
 Store what was last painted on the screen so that a redraw only emits the rows that changed.
@@ -243,6 +264,9 @@ Store the mutable state for one pager session.
 - `active_search_match_id::Int`: Active match index in navigation order.
 - `search_columns::UnitRange{Int}`: Printable columns in which a match must start, or
     `1:typemax(Int)` when the search is not restricted.
+- `search_pattern::String`: Input of the active search, or an empty string.
+- `yanked::Vector{String}`: Lines copied by the last yank of the session, without their
+    decorations.
 - `redraw::Bool`: Whether the viewport needs to be redrawn.
 - `message::String`: Message shown on the command line until the next keystroke, or an
     empty string.
@@ -302,6 +326,8 @@ Base.@kwdef mutable struct Pager
     ordered_search_matches::Vector{SearchMatch} = SearchMatch[]
     active_search_match_id::Int = 0
     search_columns::UnitRange{Int} = 1:typemax(Int)
+    search_pattern::String = ""
+    yanked::Vector{String} = String[]
     redraw::Bool = true
     message::String = ""
     message_kind::Symbol = :info
