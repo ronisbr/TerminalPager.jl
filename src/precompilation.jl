@@ -98,6 +98,15 @@ PrecompileTools.@setup_workload begin
             # Precompile everything called in __init__.
             __init__()
 
+            # The workload must not depend on the user. `__init__` applied the key bindings
+            # stored in the preferences, which can rebind the keys that the sessions below
+            # type. With `q` deleted, for example, a session would never quit and the
+            # precompilation would never end. Hence, the default key bindings are restored.
+            # The stored ones are applied again by `__init__` when the package is loaded.
+            empty!(_KEYBINDINGS)
+            merge!(_KEYBINDINGS, _DEFAULT_KEYBINDINGS)
+            _keybindings_changed!()
+
             # Create a mock REPL to precompile the REPL integration functions.
             mock_repl = REPL.LineEditREPL(
                 REPL.Terminals.TTYTerminal("", stdin, stdout, stderr), true
