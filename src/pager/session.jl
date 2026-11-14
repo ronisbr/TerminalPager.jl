@@ -286,6 +286,9 @@ function _pager!(
         restore = options._restore
         isnothing(restore) || _restore_state!(pagerd, restore)
 
+        # A session can start with bookmarks, like the chapters of the extended help.
+        merge!(pagerd.bookmarks, options._bookmarks)
+
         # The waiter lets a change of the display size interrupt the wait for the input, so
         # that the screen is repainted without a keystroke. A nested session, such as the
         # help, shares the waiter of its parent through the input.

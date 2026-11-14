@@ -655,6 +655,9 @@ all those functions again for each combination of keywords used in a Julia sessi
 - `_restore::Union{Nothing, PagerResult}`: Result of a previous session over the text whose
     viewport and search are restored, or `nothing` to start at the top.
     (**Default**: `nothing`)
+- `_bookmarks::Dict{Char, Tuple{Int, Int}}`: Bookmarks the session starts with, which are
+    the line and the column of each letter, like the chapters of the extended help.
+    (**Default**: no bookmarks)
 """
 Base.@kwdef mutable struct SessionOptions
     auto::Bool = false
@@ -682,4 +685,5 @@ Base.@kwdef mutable struct SessionOptions
     _raw_runner::Any = _with_raw_mode
     _waiter_factory::Any = _default_input_waiter
     _restore::Union{Nothing, PagerResult} = nothing
+    _bookmarks::Dict{Char, Tuple{Int, Int}} = Dict{Char, Tuple{Int, Int}}()
 end

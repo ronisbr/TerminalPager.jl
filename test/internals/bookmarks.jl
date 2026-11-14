@@ -186,3 +186,19 @@ end
     @test TerminalPager._pager_event_process!(pagerd)
     @test pagerd.start_row == 57
 end
+
+@testset "Session Started With Bookmarks" begin
+    # A session can start with bookmarks, like the chapters of the extended help.
+    lines = ["line $i" for i in 1:100]
+    input = TypedInput(["'", "z", "q"])
+    output = IOBuffer()
+    term = REPL.Terminals.TTYTerminal("", input, output, output)
+    result = TerminalPager._pager!(
+        term,
+        join(lines, '\n');
+        input = TerminalPager.PagerInput(input),
+        use_alternate_screen_buffer = false,
+        _bookmarks = Dict('z' => (40, 1)),
+    )
+    @test result.start_row == 40
+end
