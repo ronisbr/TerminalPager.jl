@@ -49,6 +49,19 @@ columns 12 to 20, which is handy to search one column of a table; `@12 14` and `
 leave one end open, and the column ruler (`R`) helps picking the columns. The status line
 shows the range next to the matches.
 
+While the range is typed, its columns are highlighted in the view with the face
+`search_columns`, and the column ruler marks them. The range can also be selected on the
+screen: typing a second `@` right after the first one, as in `/@@`, enters the column
+selection. A cursor marks one column, the left and right movement keys move it, scrolling
+the view when it leaves it, and `0` and `\$` take it to the first and to the last column of
+the text. The first `ENTER` fixes the column under the cursor, the movements then extend the
+range from it, and the second `ENTER` writes the range in the prompt, as `@12:20 `, ready
+for the pattern. With the mouse, pressing on a column fixes it and dragging extends the
+range. `ESC` leaves the selection and goes back to the prompt. Typing `@` right after the
+`@` of a search that is being edited selects its columns again and keeps its pattern.
+Since the second `@` is taken by the selection, a pattern that begins with `@@` must be
+written as `\@@`.
+
 !!! note
     The `Alt` shortcuts of this manual need the terminal to send `ESC` followed by the key
     when `Alt` is held. Terminals on macOS compose a character by default instead, so that

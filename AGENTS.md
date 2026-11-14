@@ -4,8 +4,8 @@
 
 - `src/TerminalPager.jl` defines the module, public `pager` entry point, initialization hooks, and includes the implementation files.
 - `src/input/` contains key-code, keybinding, and input handling.
-- `src/pager/` contains the pager session, split by subject: the session and its options (`session.jl`), the state helpers (`state.jl`), the key and event processing (`events.jl`), the frozen and title rows (`freeze.jl`), the positions and bookmarks (`position.jl`), the toggles (`toggles.jl`), the visual mode (`visual.jl`), and the copy, edit, and save commands (`yank.jl`).
-- `src/view/` contains the layout of the text (`layout.jl`), the view renderer (`render.jl`), and the incremental redraw (`redraw.jl`); `src/view.jl` assembles the frame with the column ruler, the freeze guides, and the scrollbar.
+- `src/pager/` contains the pager session, split by subject: the session and its options (`session.jl`), the state helpers (`state.jl`), the on-screen selection of the search columns (`columns.jl`), the key and event processing (`events.jl`), the frozen and title rows (`freeze.jl`), the positions and bookmarks (`position.jl`), the toggles (`toggles.jl`), the visual mode (`visual.jl`), and the copy, edit, and save commands (`yank.jl`).
+- `src/view/` contains the layout of the text (`layout.jl`), the view renderer (`render.jl`), and the incremental redraw (`redraw.jl`); `src/view.jl` assembles the frame with the column ruler, the freeze guides, the highlighted search columns, and the scrollbar.
 - `test/runtests.jl` is the test entry point; focused internal tests are in `test/internals/`.
 - `ext/TerminalPagerAboutExt.jl` is the `About` weak-dependency extension registered as `TerminalPagerAboutExt` in `Project.toml`, and `ext/TerminalPagerDataFramesExt.jl` is the `DataFrames` one, registered as `TerminalPagerDataFramesExt`, which defines the pager recipe of data frames and has no tests.
 - `docs/` is a Documenter environment with its own `Project.toml`, build script, and sources.
