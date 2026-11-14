@@ -155,6 +155,7 @@ include("./internals/debug.jl")
 include("./internals/freeze_selection.jl")
 include("./internals/title_selection.jl")
 include("./internals/column_selection.jl")
+include("./internals/extended_help.jl")
 
 # The filter tests use the status bar helpers, so they come last.
 include("./internals/filter.jl")

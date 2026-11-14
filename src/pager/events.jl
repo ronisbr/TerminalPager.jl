@@ -265,6 +265,7 @@ const _EVENT_FEATURES = Dict{Symbol, Union{Nothing, Symbol}}(
     :toggle_column_ruler => nothing,
     :toggle_scrollbar => nothing,
     :help => :help,
+    :extended_help => :help,
     :change_freeze => :change_freeze,
     :select_freeze => :change_freeze,
     :change_title_rows => :change_freeze,
@@ -422,6 +423,12 @@ function _pager_event_process!(pagerd::Pager)
         return false
     elseif event == :help
         _help!(pagerd)
+    elseif event == :extended_help
+        # NOTE: The call is not resolved statically on purpose. Otherwise, the renderer and
+        # the text of the manual are compiled into the image of the package, which makes
+        # every load 3 ms slower on Julia 1.13 for something most sessions never open.
+        # Compiling them when the manual is opened for the first time takes about 10 ms.
+        Base.invokelatest(_extended_help!, pagerd)
     elseif event == :search
         _search!(pagerd)
     elseif event == :filter

@@ -10,6 +10,7 @@
 const _DEFAULT_KEYBINDINGS = Dict{Tuple{String, Bool, Bool, Bool}, Symbol}(
     ("q", false, false, false) => :quit,
     ("?", false, false, false) => :help,
+    ("H", false, false, false) => :extended_help,
     ("<up>", false, false, false) => :up,
     ("k", false, false, false) => :up,
     ("<down>", false, false, false) => :down,
@@ -102,6 +103,7 @@ const _ACTIONS = Symbol[
     :quit,
     :quit_eot,
     :help,
+    :extended_help,
     :up,
     :down,
     :left,

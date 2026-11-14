@@ -58,6 +58,8 @@ const _HYPERLINK_CLOSE = _HYPERLINK_OPEN * _HYPERLINK_END
 
 include("./command_line.jl")
 include("./debug.jl")
+include("./extended_help.jl")
+include("./extended_help_content.jl")
 include("./faces.jl")
 include("./filter.jl")
 include("./help.jl")
@@ -263,6 +265,20 @@ available faces are listed as follows:
 - `"help_key"`: Keys of the help screen.
     (**Default**: cyan)
 - `"help_action"`: Action names of the help screen.
+    (**Default**: bold yellow)
+- `"help_chapter"`: Chapter titles of the extended help.
+    (**Default**: bold cyan)
+- `"help_keycap"`: Keys of the extended help, drawn as key caps.
+    (**Default**: black on cyan)
+- `"help_code"`: Code, commands, and names in the extended help.
+    (**Default**: green)
+- `"help_border"`: Rules and box borders of the extended help.
+    (**Default**: bright black)
+- `"help_tip"`: Tip boxes of the extended help.
+    (**Default**: bold green)
+- `"help_note"`: Note boxes of the extended help.
+    (**Default**: bold blue)
+- `"help_warning"`: Warning boxes of the extended help.
     (**Default**: bold yellow)
 
 For more information, see: [`TerminalPager.set_face!`](@ref) and

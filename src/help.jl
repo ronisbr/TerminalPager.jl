@@ -159,7 +159,8 @@ const _HELP_SECTIONS = HelpSection[
         "",
         nothing,
         ActionHelp[
-            ActionHelp(:help, "Show this screen.", :help),
+            ActionHelp(:help, "Show this cheat sheet.", :help),
+            ActionHelp(:extended_help, "Show the extended help, a full manual.", :help),
             ActionHelp(:quit, "Quit the pager."),
             ActionHelp(:quit_eot, "Quit the search, or the pager."),
             ActionHelp(:toggle_ruler, "Toggle the line number ruler."),
@@ -256,7 +257,7 @@ Assemble the pager help screen from `_HELP_SECTIONS` and the current key binding
 
 The screen is a cheat sheet with one row per action: the keys, the description, and the
 action name to use with [`set_keybinding`](@ref). Long key lists and descriptions continue
-on the following rows.
+on the following rows. Its introduction points to the extended help if a key is bound to it.
 
 # Arguments
 
@@ -290,6 +291,17 @@ function _help_string(use_color::Bool, display_config::DisplayConfig = DisplayCo
         "  an action marked with a feature is only available when the feature is enabled,\n",
         "  which depends on how the pager was called.\n",
     )
+
+    # The cheat sheet points to the manual, which explains what it only lists.
+    manual_key = _primary_key(:extended_help)
+
+    if !isnothing(manual_key)
+        print(
+            buf,
+            "\n  ", _c, manual_key, _d, " opens the extended help, a manual that explains ",
+            "every feature in detail.\n",
+        )
+    end
 
     for section in _HELP_SECTIONS
         title = section.title

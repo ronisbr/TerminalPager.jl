@@ -40,6 +40,13 @@ const _FACES = Pair{Symbol, Face}[
     :help_description => Face(; foreground = :bright_black),
     :help_key => Face(; foreground = :cyan),
     :help_action => Face(; weight = :bold, foreground = :yellow),
+    :help_chapter => Face(; weight = :bold, foreground = :cyan),
+    :help_keycap => Face(; foreground = :black, background = :cyan),
+    :help_code => Face(; foreground = :green),
+    :help_border => Face(; foreground = :bright_black),
+    :help_tip => Face(; weight = :bold, foreground = :green),
+    :help_note => Face(; weight = :bold, foreground = :blue),
+    :help_warning => Face(; weight = :bold, foreground = :yellow),
 ]
 
 const _DEFAULT_FACES = Dict{Symbol, Face}(_FACES)
@@ -156,6 +163,20 @@ See also: [`drop_face!`](@ref).
 - `"help_key"`: Keys of the help screen.
     (**Default**: cyan)
 - `"help_action"`: Action names of the help screen.
+    (**Default**: bold yellow)
+- `"help_chapter"`: Chapter titles of the extended help.
+    (**Default**: bold cyan)
+- `"help_keycap"`: Keys of the extended help, drawn as key caps.
+    (**Default**: black on cyan)
+- `"help_code"`: Code, commands, and names in the extended help.
+    (**Default**: green)
+- `"help_border"`: Rules and box borders of the extended help.
+    (**Default**: bright black)
+- `"help_tip"`: Tip boxes of the extended help.
+    (**Default**: bold green)
+- `"help_note"`: Note boxes of the extended help.
+    (**Default**: bold blue)
+- `"help_warning"`: Warning boxes of the extended help.
     (**Default**: bold yellow)
 
 ## Throws
@@ -397,6 +418,13 @@ function _display_config(face_of::F = _current_face) where {F <: Function}
         sgr(:help_description),
         sgr(:help_key),
         sgr(:help_action),
+        sgr(:help_chapter),
+        sgr(:help_keycap),
+        sgr(:help_code),
+        sgr(:help_border),
+        sgr(:help_tip),
+        sgr(:help_note),
+        sgr(:help_warning),
     )
 end
 

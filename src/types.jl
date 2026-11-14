@@ -225,6 +225,13 @@ which hold only the SGR parameters of the background, as [`ViewOptions`](@ref) e
 - `help_description::String`: Section descriptions and feature tags of the help screen.
 - `help_key::String`: Keys of the help screen.
 - `help_action::String`: Action names of the help screen.
+- `help_chapter::String`: Chapter titles of the extended help.
+- `help_keycap::String`: Keys of the extended help, drawn as key caps.
+- `help_code::String`: Code, commands, and names in the extended help.
+- `help_border::String`: Rules and box borders of the extended help.
+- `help_tip::String`: Tip boxes of the extended help.
+- `help_note::String`: Note boxes of the extended help.
+- `help_warning::String`: Warning boxes of the extended help.
 """
 struct DisplayConfig
     status_bar::String
@@ -251,6 +258,13 @@ struct DisplayConfig
     help_description::String
     help_key::String
     help_action::String
+    help_chapter::String
+    help_keycap::String
+    help_code::String
+    help_border::String
+    help_tip::String
+    help_note::String
+    help_warning::String
 end
 
 """
