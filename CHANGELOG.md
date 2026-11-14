@@ -97,6 +97,84 @@ Version 0.9.0
   pattern like `@12:20 14` keeps only the matches starting in the columns 12 to 20, and
   `@12 14` or `@:20 14` leave one end open. The status line shows the range next to the
   matches. (Issue [#21][gh-issue-21])
+- ![Enhancement][badge-enhancement] The functions that start a pager session are not
+  compiled again for each type of object nor for each combination of keywords, and what a
+  session needs at first use is precompiled: `pager(obj)`, the callbacks and the key
+  bindings of the `pager>` and `pager?>` prompts, and the write of a frame to a terminal. On
+  Julia 1.13, the first `pager` of a string takes 7 ms instead of 16 ms, the first `pager`
+  of an object of a new type does not take 40 ms to 60 ms of compilation anymore, and
+  neither do the first `pager>` command (about 110 ms) and the first `|` (about 50 ms).
+- ![Enhancement][badge-enhancement] The view renderer was simplified: the view is described
+  by the structure `ViewOptions` instead of 17 keywords, and a single function writes any
+  row. The code of `src/pager.jl` was split by subject into the directory `src/pager/`, and
+  the options of a session are collected into the structure `SessionOptions`.
+- ![Enhancement][badge-enhancement] **StringManipulation.jl** 0.7 is supported. The search
+  highlights, the crops, and the layout are two to four times faster with it.
+- ![Bugfix][badge-bugfix] The lines are cleaned before they are shown: a tab is expanded to
+  the next tab stop, which are eight columns apart, and the other control characters, like
+  the carriage return of the texts with CRLF line endings, and the escape sequences that are
+  not SGR nor hyperlinks, like the ones that move the cursor, are removed. Those characters
+  were sent to the terminal, so that the lines with tabs wrapped and scrolled the screen.
+  The commands that copy, edit, and save the text still use the original lines.
+- ![Bugfix][badge-bugfix] A decoration that begins in a line and ends in another one is
+  shown in every row it reaches, whichever rows were painted before. It used to depend on
+  the redraw: the rows were decorated after scrolling but not after a full repaint.
+- ![Bugfix][badge-bugfix] A text that ends with a newline does not get an empty last line
+  anymore, which was shown, counted, copied, and saved.
+- ![Bugfix][badge-bugfix] `S` reports on the status line the paths that cannot be expanded
+  or accessed, like `~name` or a directory without permission, instead of ending the
+  session.
+- ![Bugfix][badge-bugfix] A regular expression that fails while it is matched, for example
+  by exceeding the match limit of PCRE, is reported by the search and by the filter instead
+  of ending the session.
+- ![Bugfix][badge-bugfix] Huge numbers typed by the user do not overflow anymore: a column
+  range of the search that does not fit in an integer is reported as invalid, a number of
+  frozen or title rows equal to `typemax(Int)` does not throw when a filter is applied, and
+  a very large offset in the `:` prompt goes to the bottom of the text instead of to the
+  top.
+- ![Bugfix][badge-bugfix] A stored preference with a value that is not valid does not
+  prevent the package from being loaded: the default value is used with a warning.
+- ![Bugfix][badge-bugfix] The package is not precompiled forever if a key binding stored
+  with `persist = true` rebinds or deletes `q`, `v`, or Enter. The precompilation ran pager
+  sessions with the stored key bindings, so that those sessions never quit.
+- ![Bugfix][badge-bugfix] The precompilation and the tests do not replace the system
+  clipboard anymore.
+- ![Bugfix][badge-bugfix] Only the texts shown by the pager are kept in the history. The
+  texts that the automatic mode printed were also recorded, so that a few short `pager>`
+  commands removed from the history the texts that were really paged.
+- ![Bugfix][badge-bugfix] A session reopened from the history keeps its search when the
+  filter changes, has an active match, and starts at the same line of the text even if the
+  previous session quit with a filter. For the latter, `PagerResult.start_row` is now the
+  line of the text at the first visible row.
+- ![Bugfix][badge-bugfix] The output that a `pager>` command printed is shown even if the
+  value of the command cannot be shown.
+- ![Bugfix][badge-bugfix] The rows shown by a filter are computed again when the number of
+  frozen or title rows changes, so that those rows are always the first lines of the text.
+- ![Bugfix][badge-bugfix] `''` returns to the same line of the text after the filter
+  changes.
+- ![Bugfix][badge-bugfix] The filter input `!` alone, an inverted filter without a pattern,
+  is ignored also when it is pasted. It used to hide every line.
+- ![Bugfix][badge-bugfix] The visual line stays on the same line of the text when the
+  display shrinks, instead of being left below the view.
+- ![Bugfix][badge-bugfix] The text at the right of the vertical guide of the freeze
+  selection keeps its decoration when the line-number ruler is shown.
+- ![Bugfix][badge-bugfix] A prompt wider than the display is cropped instead of wrapping the
+  last row and scrolling the screen.
+- ![Bugfix][badge-bugfix] Hiding the line-number ruler or the scrollbar does not scroll the
+  view to the left when the visible lines are short but the text is not.
+- ![Bugfix][badge-bugfix] `e` keeps the temporary file until the session ends. It was
+  removed when the editor returned, which is before the file is opened for the editors that
+  do not block the terminal.
+- ![Bugfix][badge-bugfix] Marking a large range in the visual mode takes a time proportional
+  to its number of lines, instead of freezing the pager for seconds.
+- ![Bugfix][badge-bugfix] `TerminalPager.drop_all_preferences!` restores the default key
+  bindings also when the preference `"pager_mode"` was `"vi"`.
+- ![Bugfix][badge-bugfix] A byte that begins a multi-byte character but is not followed by a
+  continuation byte does not hold back the next key.
+- ![Bugfix][badge-bugfix] `@help` searches for the documentation in the module where it is
+  called.
+- ![Bugfix][badge-bugfix] The label of an entry of the history menu whose first line fits
+  exactly in the available width is not cropped.
 
 Version 0.8.0
 -------------
