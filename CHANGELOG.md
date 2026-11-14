@@ -97,6 +97,13 @@ Version 0.9.0
   pattern like `@12:20 14` keeps only the matches starting in the columns 12 to 20, and
   `@12 14` or `@:20 14` leave one end open. The status line shows the range next to the
   matches. (Issue [#21][gh-issue-21])
+- ![Feature][badge-feature] The columns of a search range are highlighted in the view, with
+  the new face `search_columns`, and marked on the column ruler while the range is typed at
+  the search prompt. Typing a second `@` right after the first one, as in `/@@`, selects the
+  range on the screen: a cursor moved with the movement keys marks a column, the first
+  `Enter` fixes it, and the second one writes the range in the prompt, before the pattern.
+  The mouse selects the range by pressing and dragging. A pattern that begins with `@@` must
+  now be written as `\@@`.
 - ![Enhancement][badge-enhancement] The functions that start a pager session are not
   compiled again for each type of object nor for each combination of keywords, and what a
   session needs at first use is precompiled: `pager(obj)`, the callbacks and the key
