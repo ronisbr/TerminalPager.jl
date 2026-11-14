@@ -109,18 +109,18 @@ prefix `terminalpager_`. The available faces are:
 | `scrollbar_track`     | Track of the scrollbar.                                | Bright black.                      |
 | `scrollbar_thumb`     | Thumb of the scrollbar.                                | No attributes.                     |
 | `command_status`      | Status at the right of the command line.               | Bright black.                      |
-| `help_title`          | Title of the help screen.                              | Bold cyan.                         |
+| `help_title`          | Title of the help screens.                             | Bold yellow.                       |
 | `help_section`        | Section titles of the help screen.                     | Bold.                              |
 | `help_description`    | Section descriptions and feature tags of the help.     | Bright black.                      |
-| `help_key`            | Keys of the help screen.                               | Cyan.                              |
-| `help_action`         | Action names of the help screen.                       | Bold yellow.                       |
-| `help_chapter`        | Chapter titles of the extended help.                   | Bold cyan.                         |
-| `help_keycap`         | Keys of the extended help, drawn as key caps.          | Black on cyan.                     |
-| `help_code`           | Code, commands, and names in the extended help.        | Green.                             |
+| `help_key`            | Keys of the tables of the help screens.                | Bold.                              |
+| `help_action`         | Action names of the help screen.                       | Cyan.                              |
+| `help_chapter`        | Chapter titles and marks of the extended help.         | Bold yellow.                       |
+| `help_keycap`         | Keys in the text of the extended help (key caps).      | Bold on bright black.              |
+| `help_code`           | Code, commands, and names in the extended help.        | Cyan.                              |
 | `help_border`         | Rules and box borders of the extended help.            | Bright black.                      |
-| `help_tip`            | Tip boxes of the extended help.                        | Bold green.                        |
-| `help_note`           | Note boxes of the extended help.                       | Bold blue.                         |
-| `help_warning`        | Warning boxes of the extended help.                    | Bold yellow.                       |
+| `help_tip`            | Label of the tip boxes of the extended help.           | Bold green.                        |
+| `help_note`           | Label of the note boxes of the extended help.          | Bold bright blue.                  |
+| `help_warning`        | Label of the warning boxes of the extended help.       | Bold red.                          |
 
 A face can be customized with [`TerminalPager.set_face!`](@ref), which accepts the keywords
 of `StyledStrings.Face` (`foreground`, `background`, `weight`, `slant`, `underline`,

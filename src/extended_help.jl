@@ -107,12 +107,15 @@ terminal has no color support.
 - `strong::String`: Section titles and strong text.
 - `key::String`: Keys of the key tables.
 - `keycap::String`: Keys in the text, drawn as key caps.
+- `keycap_filled::Bool`: Whether the face of the key caps has a background or is reversed,
+    in which case a key cap is the key between two blanks with that face. Otherwise, it is
+    the key between two brackets drawn as the borders.
 - `code::String`: Code, commands, and names.
 - `dim::String`: Comments, labels, and secondary text.
 - `border::String`: Rules and box borders.
-- `tip::String`: Tip boxes.
-- `note::String`: Note boxes.
-- `warning::String`: Warning boxes.
+- `tip::String`: Label of the tip boxes.
+- `note::String`: Label of the note boxes.
+- `warning::String`: Label of the warning boxes.
 - `reset::String`: Reset of the attributes.
 """
 struct ManualStyle
@@ -121,6 +124,7 @@ struct ManualStyle
     strong::String
     key::String
     keycap::String
+    keycap_filled::Bool
     code::String
     dim::String
     border::String
@@ -142,7 +146,13 @@ decorations if `use_color` is `false`.
 - `display_config::DisplayConfig`: Session display configuration with the help faces.
 """
 function ManualStyle(use_color::Bool, display_config::DisplayConfig)
-    use_color || return ManualStyle("", "", "", "", "", "", "", "", "", "", "", "")
+    use_color ||
+        return ManualStyle("", "", "", "", "", false, "", "", "", "", "", "", "")
+
+    # A face that paints the cell of a key is drawn as a filled key cap.
+    keycap = parse_decoration(display_config.help_keycap)
+    keycap_filled =
+        !isempty(keycap.background) || (keycap.reversed == StringManipulation.active)
 
     return ManualStyle(
         display_config.help_title,
@@ -150,6 +160,7 @@ function ManualStyle(use_color::Bool, display_config::DisplayConfig)
         display_config.help_section,
         display_config.help_key,
         display_config.help_keycap,
+        keycap_filled,
         display_config.help_code,
         display_config.help_description,
         display_config.help_border,
@@ -810,8 +821,8 @@ end
     ) -> Nothing
 
 Append to `lines` the remark `block`, which is a tip, a note, or a warning: a rounded box
-`width` columns wide with the name of the kind on its top border, both in the color of the
-kind, and the wrapped text inside it.
+`width` columns wide with the name of the kind, in the color of the kind, on its top border,
+and the wrapped text inside it.
 
 # Arguments
 
@@ -832,18 +843,37 @@ function _manual_box!(
     text_width = width - 4
     top_rule = "─"^max(width - textwidth(title) - 5, 0)
 
-    push!(lines, string(margin, color, "╭─ ", title, " ", top_rule, "╮", style.reset))
+    border = style.border
+    reset = style.reset
+
+    push!(
+        lines,
+        string(
+            margin,
+            border,
+            "╭─ ",
+            reset,
+            color,
+            title,
+            reset,
+            border,
+            " ",
+            top_rule,
+            "╮",
+            reset,
+        ),
+    )
 
     for row in _wrap_manual_atoms(_manual_atoms(block.text), text_width)
         buf = IOBuffer()
-        write(buf, margin, color, "│", style.reset, " ")
+        write(buf, margin, border, "│", reset, " ")
         used = _write_manual_atoms!(buf, row, style)
         _write_blanks(buf, text_width - used + 1)
-        write(buf, color, "│", style.reset)
+        write(buf, border, "│", reset)
         push!(lines, String(take!(buf)))
     end
 
-    push!(lines, string(margin, color, "╰", "─"^max(width - 2, 0), "╯", style.reset))
+    push!(lines, string(margin, border, "╰", "─"^max(width - 2, 0), "╯", reset))
 
     return nothing
 end
@@ -1113,8 +1143,9 @@ Write `atoms` to `io` in one line, decorated with `style`, and return the printa
 that was written. A piece that is not glued to the previous one is preceded by a blank, but
 for the first one.
 
-A key is drawn as a key cap, which is the key between two blanks with the background of the
-face. Without colors, it is written between brackets instead, with the same width.
+A key is drawn as a key cap with the same width in every case: the key between two blanks,
+all with the face of the key caps, if the face fills its cells, the key between two brackets
+drawn as the borders otherwise, and the key between plain brackets without colors.
 
 # Arguments
 
@@ -1137,8 +1168,12 @@ function _write_manual_atoms!(io::IO, atoms::Vector{ManualAtom}, style::ManualSt
         if kind === :key
             if isempty(style.keycap)
                 write(io, UInt8('['), text, UInt8(']'))
-            else
+            elseif style.keycap_filled
                 write(io, style.keycap, UInt8(' '), text, UInt8(' '), style.reset)
+            else
+                write(io, style.border, UInt8('['), style.reset)
+                write(io, style.keycap, text, style.reset)
+                write(io, style.border, UInt8(']'), style.reset)
             end
         elseif kind === :plain
             write(io, text)

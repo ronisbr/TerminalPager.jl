@@ -35,18 +35,18 @@ const _FACES = Pair{Symbol, Face}[
     :scrollbar_track => Face(; foreground = :bright_black),
     :scrollbar_thumb => Face(),
     :command_status => Face(; foreground = :bright_black),
-    :help_title => Face(; weight = :bold, foreground = :cyan),
+    :help_title => Face(; weight = :bold, foreground = :yellow),
     :help_section => Face(; weight = :bold),
     :help_description => Face(; foreground = :bright_black),
-    :help_key => Face(; foreground = :cyan),
-    :help_action => Face(; weight = :bold, foreground = :yellow),
-    :help_chapter => Face(; weight = :bold, foreground = :cyan),
-    :help_keycap => Face(; foreground = :black, background = :cyan),
-    :help_code => Face(; foreground = :green),
+    :help_key => Face(; weight = :bold),
+    :help_action => Face(; foreground = :cyan),
+    :help_chapter => Face(; weight = :bold, foreground = :yellow),
+    :help_keycap => Face(; weight = :bold, background = :bright_black),
+    :help_code => Face(; foreground = :cyan),
     :help_border => Face(; foreground = :bright_black),
     :help_tip => Face(; weight = :bold, foreground = :green),
-    :help_note => Face(; weight = :bold, foreground = :blue),
-    :help_warning => Face(; weight = :bold, foreground = :yellow),
+    :help_note => Face(; weight = :bold, foreground = :bright_blue),
+    :help_warning => Face(; weight = :bold, foreground = :red),
 ]
 
 const _DEFAULT_FACES = Dict{Symbol, Face}(_FACES)
@@ -154,30 +154,32 @@ See also: [`drop_face!`](@ref).
 - `"command_status"`: Status shown at the right of the command line, like the number of
     matches while searching.
     (**Default**: bright black)
-- `"help_title"`: Title of the help screen.
-    (**Default**: bold cyan)
+- `"help_title"`: Title of the help screen and of the extended help.
+    (**Default**: bold yellow)
 - `"help_section"`: Section titles of the help screen.
     (**Default**: bold)
 - `"help_description"`: Section descriptions and feature tags of the help screen.
     (**Default**: bright black)
-- `"help_key"`: Keys of the help screen.
-    (**Default**: cyan)
+- `"help_key"`: Keys of the help screen and of the tables of the extended help.
+    (**Default**: bold)
 - `"help_action"`: Action names of the help screen.
+    (**Default**: cyan)
+- `"help_chapter"`: Chapter titles, title marks, and list bullets of the extended help.
     (**Default**: bold yellow)
-- `"help_chapter"`: Chapter titles of the extended help.
-    (**Default**: bold cyan)
-- `"help_keycap"`: Keys of the extended help, drawn as key caps.
-    (**Default**: black on cyan)
+- `"help_keycap"`: Keys in the text of the extended help. A face with a background, or with
+    `inverse = true`, draws them as filled key caps. Otherwise, they are written between
+    brackets.
+    (**Default**: bold on bright black)
 - `"help_code"`: Code, commands, and names in the extended help.
-    (**Default**: green)
+    (**Default**: cyan)
 - `"help_border"`: Rules and box borders of the extended help.
     (**Default**: bright black)
-- `"help_tip"`: Tip boxes of the extended help.
+- `"help_tip"`: Label of the tip boxes of the extended help.
     (**Default**: bold green)
-- `"help_note"`: Note boxes of the extended help.
-    (**Default**: bold blue)
-- `"help_warning"`: Warning boxes of the extended help.
-    (**Default**: bold yellow)
+- `"help_note"`: Label of the note boxes of the extended help.
+    (**Default**: bold bright blue)
+- `"help_warning"`: Label of the warning boxes of the extended help.
+    (**Default**: bold red)
 
 ## Throws
 

@@ -220,18 +220,19 @@ which hold only the SGR parameters of the background, as [`ViewOptions`](@ref) e
 - `scrollbar_track::String`: Track of the scrollbar.
 - `scrollbar_thumb::String`: Thumb of the scrollbar.
 - `command_status::String`: Status shown at the right of the command line.
-- `help_title::String`: Title of the help screen.
+- `help_title::String`: Title of the help screen and of the extended help.
 - `help_section::String`: Section titles of the help screen.
 - `help_description::String`: Section descriptions and feature tags of the help screen.
-- `help_key::String`: Keys of the help screen.
+- `help_key::String`: Keys of the help screen and of the tables of the extended help.
 - `help_action::String`: Action names of the help screen.
-- `help_chapter::String`: Chapter titles of the extended help.
-- `help_keycap::String`: Keys of the extended help, drawn as key caps.
+- `help_chapter::String`: Chapter titles, title marks, and list bullets of the extended
+    help.
+- `help_keycap::String`: Keys in the text of the extended help.
 - `help_code::String`: Code, commands, and names in the extended help.
 - `help_border::String`: Rules and box borders of the extended help.
-- `help_tip::String`: Tip boxes of the extended help.
-- `help_note::String`: Note boxes of the extended help.
-- `help_warning::String`: Warning boxes of the extended help.
+- `help_tip::String`: Label of the tip boxes of the extended help.
+- `help_note::String`: Label of the note boxes of the extended help.
+- `help_warning::String`: Label of the warning boxes of the extended help.
 """
 struct DisplayConfig
     status_bar::String

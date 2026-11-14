@@ -57,7 +57,12 @@ end
     @test config.bookmark == "\e[0;33m"
     @test config.scrollbar_track == "\e[0;90m"
     @test config.scrollbar_thumb == "\e[0m"
-    @test config.help_title == "\e[0;36;1m"
+    @test config.help_title == "\e[0;33;1m"
+    @test config.help_chapter == "\e[0;33;1m"
+    @test config.help_key == "\e[0;1m"
+    @test config.help_keycap == "\e[0;100;1m"
+    @test config.help_code == "\e[0;36m"
+    @test config.help_note == "\e[0;94;1m"
 
     @test_throws ArgumentError TerminalPager._face_name("unknown")
     @test TerminalPager._face_name("mode_search") == :terminalpager_mode_search

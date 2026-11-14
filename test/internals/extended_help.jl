@@ -76,6 +76,44 @@ end
     @test occursin(colored.code * "a b" * colored.reset, text)
     @test TerminalPager.remove_decorations(text) == "Press  q , a b."
     @test TerminalPager._manual_atoms_width(atoms) == 15
+
+    # A face that does not fill its cells writes the key between brackets drawn as the
+    # borders, with the same width.
+    bracketed = TerminalPager.ManualStyle(
+        true,
+        TerminalPager._display_config() do name
+            if name === :help_keycap
+                TerminalPager.Face(; weight = :bold, foreground = :yellow)
+            else
+                TerminalPager._default_face(name)
+            end
+        end,
+    )
+    @test colored.keycap_filled
+    @test !bracketed.keycap_filled
+    @test !plain.keycap_filled
+
+    @test TerminalPager._write_manual_atoms!(buf, atoms, bracketed) == 15
+    text = String(take!(buf))
+    border = bracketed.border
+    reset = bracketed.reset
+    @test occursin(
+        border * "[" * reset * bracketed.keycap * "q" * reset * border * "]" * reset, text
+    )
+    @test TerminalPager.remove_decorations(text) == "Press [q], a b."
+
+    # A reversed face fills its cells too.
+    reversed = TerminalPager.ManualStyle(
+        true,
+        TerminalPager._display_config() do name
+            if name === :help_keycap
+                TerminalPager.Face(; inverse = true)
+            else
+                TerminalPager._default_face(name)
+            end
+        end,
+    )
+    @test reversed.keycap_filled
 end
 
 @testset "Extended Help Text Wrapping" begin
@@ -167,6 +205,21 @@ end
     # A figure is written as it is, with its labels.
     block = TerminalPager._manual_figure(["ab  " => "label", "c   " => ""])
     @test _manual_block_lines(block, 40) == ["    ab    label", "    c"]
+
+    # The box of a remark is drawn as the borders, and only its label has the color of
+    # its kind.
+    style = TerminalPager.ManualStyle(true, TerminalPager.DisplayConfig())
+    lines = String[]
+    remark = TerminalPager._manual_remark(:warning, "a")
+    TerminalPager._manual_block!(lines, remark, style, 16)
+    border = style.border
+    reset = style.reset
+    @test lines[1] ==
+        "  " * border * "╭─ " * reset * style.warning * "Warning" * reset * border *
+          " ────╮" * reset
+    @test lines[2] == "  " * border * "│" * reset * " a" * " "^12 * border * "│" * reset
+    @test lines[3] == "  " * border * "╰" * "─"^14 * "╯" * reset
+    @test !occursin(style.warning, lines[2] * lines[3])
 
     unknown = TerminalPager.ManualBlock(:unknown, "", "", Pair{String, String}[])
     @test_throws ArgumentError _manual_block_lines(unknown, 40)

@@ -1097,19 +1097,24 @@ function _manual_faces()
         ]),
         _manual_heading("The help screens"),
         _manual_definitions([
-            "help_title" => "Title of the cheat sheet and of this manual. Bold cyan.",
+            "help_title" => "Title of the cheat sheet and of this manual. Bold yellow.",
             "help_section" => "Section titles and strong text. Bold.",
             "help_description" => "Descriptions, comments, and labels. Bright black.",
-            "help_key" => "Keys of the tables. Cyan.",
-            "help_action" => "Action names of the cheat sheet. Bold yellow.",
-            "help_chapter" => "Chapter titles of this manual. Bold cyan.",
-            "help_keycap" => "Keys in the text of this manual. Black on cyan.",
-            "help_code" => "Code and names in this manual. Green.",
+            "help_key" => "Keys of the tables. Bold.",
+            "help_action" => "Action names of the cheat sheet. Cyan.",
+            "help_chapter" => "Chapter titles and marks of this manual. Bold yellow.",
+            "help_keycap" => "Keys in the text of this manual. Bold on bright black.",
+            "help_code" => "Code and names in this manual. Cyan.",
             "help_border" => "Rules and borders of this manual. Bright black.",
-            "help_tip" => "Tip boxes. Bold green.",
-            "help_note" => "Note boxes. Bold blue.",
-            "help_warning" => "Warning boxes. Bold yellow.",
+            "help_tip" => "Label of the tip boxes. Bold green.",
+            "help_note" => "Label of the note boxes. Bold bright blue.",
+            "help_warning" => "Label of the warning boxes. Bold red.",
         ]),
+        _manual_paragraph(
+            "The keys in the text are drawn as filled key caps, like {Enter}, when the " *
+            "face `help_keycap` has a background or `inverse = true`. With a face that " *
+            "only sets the text, they are written between brackets, like `[Enter]`.",
+        ),
         _manual_remark(
             :tip,
             "The status line has no background by default. `inverse = true` in the face " *
