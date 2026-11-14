@@ -213,12 +213,12 @@ const _HELP_SECTIONS = HelpSection[
     HelpSection(
         "Searching",
         "The search is case-insensitive unless the pattern has an uppercase letter. " *
-            "{Alt-l} at the prompt toggles the literal mode, which searches the pattern " *
-            "as typed. A pattern like `@12:20 x` matches only in the printable columns " *
-            "12 to 20; `@12 x` and `@:20 x` open one end. The columns are highlighted while " *
-            "the range is typed, and `@@` selects them on the screen: move the cursor, " *
-            "press {Enter} on the first column and again on the last one. {Esc} clears " *
-            "the search, and then the filter.",
+            "<kbd>Alt-l</kbd> at the prompt toggles the literal mode, which searches the " *
+            "pattern as typed. A pattern like `@12:20 x` matches only in the printable " *
+            "columns 12 to 20; `@12 x` and `@:20 x` open one end. The columns are " *
+            "highlighted while the range is typed, and `@@` selects them on the screen: " *
+            "move the cursor, press <kbd>Enter</kbd> on the first column and again on " *
+            "the last one. <kbd>Esc</kbd> clears the search, and then the filter.",
         nothing,
         ActionHelp[
             ActionHelp(:search, "Search for a regex."),
@@ -232,12 +232,12 @@ const _HELP_SECTIONS = HelpSection[
     ),
     HelpSection(
         "Freezing Data",
-        "Frozen rows and columns stay visible while scrolling. Title rows are frozen rows " *
-            "that do not scroll horizontally either. The selections on the screen are " *
-            "moved with the movement keys or the mouse, applied with {Enter}, and " *
-            "cancelled with {Esc}. The features `:change_frozen_rows` and " *
-            "`:change_frozen_columns` tell which of them can be changed, and the title " *
-            "rows need the former.",
+        "Frozen rows and columns stay visible while scrolling. Title rows are frozen " *
+            "rows that do not scroll horizontally either. The selections on the screen " *
+            "are moved with the movement keys or the mouse, applied with " *
+            "<kbd>Enter</kbd>, and cancelled with <kbd>Esc</kbd>. The features " *
+            "`:change_frozen_rows` and `:change_frozen_columns` tell which of them can " *
+            "be changed, and the title rows need the former.",
         :change_freeze,
         ActionHelp[
             ActionHelp(:change_freeze, "Set the frozen rows and columns."),
@@ -302,8 +302,8 @@ function _help_string(use_color::Bool, display_config::DisplayConfig = DisplayCo
         push!(lines, "")
         _help_text!(
             lines,
-            "{:extended_help} opens the extended help, a manual that explains every " *
-            "feature in detail.",
+            "<kbd>:extended_help</kbd> opens the extended help, a manual that explains " *
+            "every feature in detail.",
             style,
             "",
             "",
@@ -581,15 +581,21 @@ function _help_text!(
     return nothing
 end
 
+# Characters that a backslash writes as they are in a marked text, which are the punctuation
+# characters of ASCII, as in GitHub Flavored Markdown.
+const _HELP_ESCAPABLE = "!\"#\$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+
 """
     _help_atoms(text::AbstractString) -> Vector{HelpAtom}
 
 Split the marked `text` of a help screen into its unbreakable pieces.
 
-The words are separated by blanks. A text between backticks is one piece of code, in which
-nothing else is marked. `{:action}` is the shortest key bound to the action, or `unbound` if
-there is none, and `{Key}` is the key with that name, both drawn as key caps. The words
-between asterisks are strong.
+The words are separated by blanks, and the marks are those of GitHub Flavored Markdown. A
+text between backticks is one piece of code, in which nothing else is marked.
+`<kbd>:action</kbd>` is the shortest key bound to the action, or `unbound` if there is none,
+and `<kbd>Key</kbd>` is the key with that name, both drawn as key caps. The words between
+two pairs of asterisks are strong. A backslash before a punctuation character writes the
+character as it is. No other mark is known, so a single asterisk is an asterisk.
 
 # Arguments
 
@@ -605,36 +611,41 @@ function _help_atoms(text::AbstractString)
 
     while i <= last_index
         c = text[i]
-        mark = (c == '`') || (c == '{')
-        stop = mark ? findnext(c == '`' ? '`' : '}', text, nextind(text, i)) : nothing
+        next = nextind(text, i)
 
-        # The word read so far ends at a blank and at a mark. Notice that an unbalanced
-        # mark is a character of the word.
-        if (position(word) > 0) && (isspace(c) || (c == '*') || !isnothing(stop))
+        if (c == '\\') && (next <= last_index) && (text[next] in _HELP_ESCAPABLE)
+            write(word, string(text[next]))
+            i = nextind(text, next)
+            continue
+        end
+
+        # Notice that an unbalanced mark is a character of the word.
+        kind, first_index, stop = _help_mark(text, i)
+
+        # The word read so far ends at a blank and at a mark.
+        if (position(word) > 0) && (isspace(c) || (kind !== :plain))
             push!(atoms, HelpAtom(String(take!(word)), strong ? :strong : :plain, glued))
             glued = true
         end
 
         if isspace(c)
             glued = false
-        elseif c == '*'
+        elseif kind === :strong
             strong = !strong
-        elseif !isnothing(stop)
-            content = SubString(text, nextind(text, i), prevind(text, stop))
-
-            if c == '`'
-                push!(atoms, HelpAtom(String(content), :code, glued))
-            else
-                push!(atoms, HelpAtom(_help_key_name(content), :key, glued))
-            end
-
+        elseif kind === :code
+            content = SubString(text, first_index, prevind(text, stop))
+            push!(atoms, HelpAtom(String(content), :code, glued))
             glued = true
-            i = stop
+        elseif kind === :key
+            # The mark that ends the key has six characters.
+            content = SubString(text, first_index, prevind(text, stop - 5))
+            push!(atoms, HelpAtom(_help_key_name(content), :key, glued))
+            glued = true
         else
-            write(word, c)
+            write(word, string(c))
         end
 
-        i = nextind(text, i)
+        i = kind === :plain ? next : nextind(text, stop)
     end
 
     (position(word) > 0) &&
@@ -644,9 +655,41 @@ function _help_atoms(text::AbstractString)
 end
 
 """
+    _help_mark(text::AbstractString, i::Int) -> Symbol, Int, Int
+
+Return the kind of the mark that begins at the index `i` of the marked `text` of a help
+screen, the index of the first character of its content, and the index of its last
+character. The kind is `:code` for a text between backticks, `:key` for one between `<kbd>`
+and `</kbd>`, `:strong` for two asterisks, which have no content, and `:plain` if no mark
+begins at `i` or if the mark is not closed.
+
+# Arguments
+
+- `text::AbstractString`: Marked text.
+- `i::Int`: Index of a character of `text`.
+"""
+function _help_mark(text::AbstractString, i::Int)
+    c = text[i]
+    next = nextind(text, i)
+
+    if c == '`'
+        stop = findnext('`', text, next)
+        isnothing(stop) || return :code, next, stop
+    elseif (c == '<') && startswith(SubString(text, i), "<kbd>")
+        closing = findnext("</kbd>", text, i + 5)
+        isnothing(closing) || return :key, i + 5, Base.last(closing)
+    elseif (c == '*') && (next <= lastindex(text)) && (text[next] == '*')
+        return :strong, next, next
+    end
+
+    return :plain, i, i
+end
+
+"""
     _help_key_name(key::AbstractString) -> String
 
-Return the name of the key marked as `{key}` in a text of a help screen: the shortest key
+Return the name of the key marked as `<kbd>key</kbd>` in a text of a help screen: the
+shortest key
 bound to the action if `key` is written as `:action`, or `unbound` if there is none, and
 `key` itself otherwise.
 

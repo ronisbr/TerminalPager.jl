@@ -1,9 +1,9 @@
 ## Description #############################################################################
 #
 # Extended help: a manual of the pager, shown inside the pager itself. This file contains
-# the renderer that lays out the text of the manual, which is in
-# `extended_help_content.jl`, and the session that shows the result. The style, the banner,
-# the section titles, and the marked text are shared with the help screen in `help.jl`.
+# the renderer that lays out the text of the manual, which is the Markdown file
+# `extended_help.md`, and the session that shows the result. The style, the banner, the
+# section titles, and the marked text are shared with the help screen in `help.jl`.
 #
 ############################################################################################
 
@@ -18,6 +18,26 @@ const _MANUAL_TERM_WIDTH = 24
 
 # Number of keys of an action shown in a key table.
 const _MANUAL_MAX_KEYS = 3
+
+# Text of the manual, which is written in GitHub Flavored Markdown as described in
+# `_manual_lines`. The last chapter, with the reference of the actions, is generated from
+# the table of the help screen.
+#
+# NOTE: The file is read when the package is precompiled. Hence, the manual adds one string
+# to the image of the package, nothing but the renderer must be compiled to show it, and the
+# file is not needed afterwards. The line endings are normalized because Git can check the
+# file out with the ones of Windows.
+const _MANUAL_SOURCE = let file = joinpath(@__DIR__, "extended_help.md")
+    # The content of the file is tracked, when possible, so that a package image moved with
+    # its depot stays valid.
+    @static if VERSION >= v"1.11"
+        include_dependency(file; track_content = true)
+    else
+        include_dependency(file)
+    end
+
+    replace(read(file, String), "\r\n" => "\n")
+end
 
 """
     struct ManualCache
@@ -157,10 +177,14 @@ function _manual_source()
 
     for section in _HELP_SECTIONS
         write(buf, "\n## ", _help_section_title(section), "\n\n")
+        write(buf, "| Key | Action |\n|:--|:--|\n")
 
         for entry in section.actions
             action = String(entry.action)
-            write(buf, "+ :", action, "  ", entry.description, " `:", action, "`\n")
+
+            # A bar in a cell of a table must be escaped.
+            description = replace(entry.description, "|" => "\\|")
+            write(buf, "| <kbd>:", action, "</kbd> | ", description, " `:", action, "` |\n")
         end
     end
 
@@ -179,24 +203,31 @@ Lay out the `source` of the extended help, decorated with `style`, and return it
 together with the line and the column of the title of each chapter, keyed by the letter the
 table of contents gives to it.
 
-The source is a text whose blocks are separated by blank lines. The first line of a block
-tells what it is:
+The source is written in GitHub Flavored Markdown, but only the following blocks are laid
+out. They must be separated by blank lines, and the first line of a block tells what it is:
 
 - `# Title` begins a chapter, and `## Title` is a section title.
-- `+ key  description` is a row of a key table, where the key is an action written as
-    `:action` or the name of a key.
-- `: term  description` is an item of a list of terms, which are written as code.
-- `- text` is an item of a bulleted list, and `1. text` is an item of a numbered one.
-- `!tip text`, `!note text`, and `!warning text` are boxed remarks.
-- A line with three backticks and a title begins an example, which ends at a line with
-    three backticks. Each line between them is code, followed by `  ## ` and a comment.
-- A line with three tildes begins a figure, which ends at another one. Each line between
-    them is written as it is, followed by `  ## ` and a label.
+- A line that begins with `|` begins a table with two columns. Its first two rows, which are
+    the header and the delimiter, are not shown. If the first column has keys, written as
+    `<kbd>Key</kbd>` or as `<kbd>:action</kbd>`, it is a key table. Otherwise, it is a list
+    of terms, which are written as code. A bar inside a cell is written as `\\|`.
+- `- text` is an item of a bulleted list, and `1. text` is an item of a numbered one. A line
+    that begins with a blank continues the previous item.
+- A line that begins with `>` begins a boxed remark, in which every line begins with `>`.
+    Its first line can be an alert, `[!TIP]`, `[!NOTE]`, `[!IMPORTANT]`, `[!WARNING]`, or
+    `[!CAUTION]`, which names the box and selects its color.
+- A line that begins with three backticks begins an example, which ends at a line with only
+    three backticks. A title written as `title="..."` after the language is shown on the
+    box. Each line between them is code, which can be followed by two blanks and `# ` with
+    a comment.
+- A line that begins with three tildes begins a figure, which ends at a line with only three
+    tildes. Each line between them is written as it is, and it can be followed by two
+    blanks and `# ` with a label.
+- A line that begins with `<!--` begins a comment, which ends at a line that ends with
+    `-->` and is not shown.
 - Anything else is a paragraph.
 
-A key or a term ends at the first two blanks. In a block of rows or items, a line that
-begins with a blank continues the previous one. The texts, except the code and the figures,
-have the marks of [`_help_atoms`](@ref).
+The texts, except the code and the figures, have the marks of [`_help_atoms`](@ref).
 
 The manual begins with a banner and the blocks before the first chapter, which are followed
 by the table of contents. No line is wider than `_HELP_WIDTH`, unless a word, a line of
@@ -249,8 +280,9 @@ end
     _manual_blocks(source::AbstractString) -> Vector{Vector{String}}
 
 Split the `source` of the extended help into its blocks, each one with its lines. The blocks
-are separated by blank lines, but an example and a figure go from the line that begins them
-to the line that ends them, with the blank lines between.
+are separated by blank lines, but an example, a figure, and a comment go from the line that
+begins them to the line that ends them, with the blank lines between. The comments are not
+returned.
 
 # Arguments
 
@@ -259,30 +291,40 @@ to the line that ends them, with the blank lines between.
 function _manual_blocks(source::AbstractString)
     blocks = Vector{String}[]
     block = String[]
-    fence = ""
+
+    # Text that ends the example, the figure, or the comment being read.
+    closing = ""
 
     for line in eachsplit(source, '\n')
-        if !isempty(fence)
-            # The line with only the fence ends the example or the figure.
+        if isempty(closing) && isempty(block)
+            if startswith(line, "```") || startswith(line, "~~~")
+                closing = String(first(line, 3))
+                push!(block, String(line))
+                continue
+            elseif startswith(line, "<!--")
+                closing = "-->"
+            end
+        end
+
+        if !isempty(closing)
+            # An example and a figure end at the line with only the fence, and a comment
+            # ends at the line that ends with its closing mark.
             push!(block, String(line))
-            line == fence || continue
-            fence = ""
-        elseif isempty(block) && (startswith(line, "```") || startswith(line, "~~~"))
-            fence = String(first(line, 3))
-            push!(block, String(line))
-            continue
+            ended = closing == "-->" ? endswith(rstrip(line), closing) : line == closing
+            ended || continue
+            closing = ""
         elseif !isempty(line)
             push!(block, String(line))
             continue
         end
 
         if !isempty(block)
-            push!(blocks, block)
+            startswith(first(block), "<!--") || push!(blocks, block)
             block = String[]
         end
     end
 
-    isempty(block) || push!(blocks, block)
+    isempty(block) || startswith(first(block), "<!--") || push!(blocks, block)
 
     return blocks
 end
@@ -390,10 +432,14 @@ function _manual_block!(lines::Vector{String}, block::Vector{String}, style::Hel
     if startswith(head, "## ")
         title = SubString(head, 4)
         push!(lines, string(" "^_HELP_MARGIN, section, "▌ ", title, reset))
-    elseif startswith(head, "+ ")
-        _manual_keys!(lines, _manual_pairs(block), style)
-    elseif startswith(head, ": ")
-        _manual_definitions!(lines, _manual_pairs(block), style)
+    elseif startswith(head, '|')
+        rows = _manual_table(block)
+
+        if !isempty(rows) && startswith(first(rows)[1], "<kbd>")
+            _manual_keys!(lines, rows, style)
+        else
+            _manual_definitions!(lines, rows, style)
+        end
     elseif startswith(head, "- ")
         for item in _manual_rows(block, 2)
             _help_text!(lines, item, style, string("  ", section, "• ", reset), "    ")
@@ -402,13 +448,13 @@ function _manual_block!(lines::Vector{String}, block::Vector{String}, style::Hel
         for (i, item) in enumerate(_manual_rows(block, 3))
             _help_text!(lines, item, style, string("  ", section, i, ". ", reset), "     ")
         end
-    elseif startswith(head, '!')
-        _manual_box!(lines, join(block, ' '), style)
+    elseif startswith(head, '>')
+        _manual_box!(lines, block, style)
     elseif startswith(head, "```")
         _manual_example!(lines, block, style)
     elseif startswith(head, "~~~")
         for i in 2:(length(block) - 1)
-            art, label = _manual_split(block[i], "  ## ")
+            art, label = _manual_split(block[i], "  # ")
             buf = IOBuffer()
             _write_blanks(buf, _HELP_MARGIN + 2)
             write(buf, art)
@@ -447,9 +493,9 @@ end
 """
     _manual_rows(block::Vector{String}, prefix::Int) -> Vector{String}
 
-Return the rows of `block`, which is a table or a list in the source of the extended help.
-A row begins at a line that does not begin with a blank, without its first `prefix`
-characters, and it continues on the following lines that do.
+Return the items of `block`, which is a list in the source of the extended help. An item
+begins at a line that does not begin with a blank, without its first `prefix` characters,
+and it continues on the following lines that do.
 
 # Arguments
 
@@ -471,35 +517,121 @@ function _manual_rows(block::Vector{String}, prefix::Int)
 end
 
 """
-    _manual_pairs(block::Vector{String}) -> Vector{Tuple{String, String}}
+    _manual_table(block::Vector{String}) -> Vector{Tuple{String, String}}
 
-Return the rows of `block`, which is a key table or a list of terms in the source of the
-extended help, each one split at its first two blanks into a key or a term and its
-description.
+Return the rows of `block`, which is a table in the source of the extended help, each one
+with its first two cells. The first two lines, which are the header and the delimiter of
+the table, are skipped. A term written as code, in the first cell, loses its backticks.
 
 # Arguments
 
 - `block::Vector{String}`: Lines of the block in the source.
 """
-function _manual_pairs(block::Vector{String})
-    return Tuple{String, String}[_manual_split(row, "  ") for row in _manual_rows(block, 2)]
+function _manual_table(block::Vector{String})
+    rows = Tuple{String, String}[]
+
+    for i in 3:length(block)
+        cells = _manual_cells(block[i])
+        isempty(cells) && continue
+
+        head = first(cells)
+        description = length(cells) > 1 ? cells[2] : ""
+
+        if (ncodeunits(head) > 1) && startswith(head, '`') && endswith(head, '`')
+            head = String(chop(head; head = 1, tail = 1))
+        end
+
+        push!(rows, (head, description))
+    end
+
+    return rows
 end
 
 """
-    _manual_key_names(key::String) -> String
+    _manual_cells(row::AbstractString) -> Vector{String}
 
-Return the names shown in a key table for `key`, which is the name of a key or an action
-written as `:action`. An action shows its shortest keys, at most `_MANUAL_MAX_KEYS` and as
-many as fit in the key column, or a dash if no key is bound to it.
+Return the cells of `row`, which is a line of a table in the source of the extended help,
+without the blanks around them. The cells are separated by bars, the bars that begin and
+end the row are optional, and `\\|` is a bar inside a cell.
 
 # Arguments
 
-- `key::String`: Name of a key, or an action written as `:action`.
+- `row::AbstractString`: Line of the table.
 """
-function _manual_key_names(key::String)
-    startswith(key, ':') || return key
+function _manual_cells(row::AbstractString)
+    cells = String[]
+    cell = IOBuffer()
+    line = strip(row)
+    escaped = false
 
-    names = _keyboard_keys(Symbol(SubString(key, 2)))
+    for c in line
+        if escaped
+            # The backslash is kept unless it escapes a bar.
+            (c == '|') || write(cell, "\\")
+            write(cell, string(c))
+            escaped = false
+        elseif c == '\\'
+            escaped = true
+        elseif c == '|'
+            push!(cells, String(strip(String(take!(cell)))))
+        else
+            write(cell, string(c))
+        end
+    end
+
+    escaped && write(cell, "\\")
+    rest = String(strip(String(take!(cell))))
+    isempty(rest) || push!(cells, rest)
+
+    # The bar that begins the row has nothing before it.
+    startswith(line, '|') && !isempty(cells) && popfirst!(cells)
+
+    return cells
+end
+
+"""
+    _manual_key_names(cell::String) -> String
+
+Return the names shown in a key table for `cell`, which has keys written as `<kbd>Key</kbd>`
+and actions written as `<kbd>:action</kbd>`, separated by commas. A text without those marks
+is returned as it is.
+
+# Arguments
+
+- `cell::String`: First cell of a row of a key table.
+"""
+function _manual_key_names(cell::String)
+    buf = IOBuffer()
+    i = firstindex(cell)
+
+    while true
+        opening = findnext("<kbd>", cell, i)
+        isnothing(opening) && break
+        closing = findnext("</kbd>", cell, Base.last(opening) + 1)
+        isnothing(closing) && break
+
+        key = SubString(cell, Base.last(opening) + 1, prevind(cell, first(closing)))
+        (position(buf) > 0) && write(buf, ", ")
+        write(buf, startswith(key, ':') ? _manual_action_keys(key) : String(key))
+        i = Base.last(closing) + 1
+    end
+
+    return position(buf) > 0 ? String(take!(buf)) : cell
+end
+
+"""
+    _manual_action_keys(action::AbstractString) -> String
+
+Return the keys shown in a key table for `action`, which is written as `:action`: its
+shortest keys, at most `_MANUAL_MAX_KEYS` and as many as fit in the key column, or a dash
+if no key is bound to it.
+
+# Arguments
+
+- `action::AbstractString`: Action written as `:action`.
+"""
+function _manual_action_keys(action::AbstractString)
+    names = _keyboard_keys(Symbol(SubString(action, 2)))
     isempty(names) && return "—"
 
     shown = names[1]
@@ -526,8 +658,8 @@ half the width. Otherwise, it has one key per row and the descriptions are wrapp
 # Arguments
 
 - `lines::Vector{String}`: Lines of the manual, which are appended.
-- `rows::Vector{Tuple{String, String}}`: Keys, which are actions written as `:action` or
-    the names of keys, and their descriptions.
+- `rows::Vector{Tuple{String, String}}`: Cells with the keys, as
+    [`_manual_key_names`](@ref) receives them, and their descriptions.
 - `style::HelpStyle`: Escape sequences that decorate the manual.
 """
 function _manual_keys!(
@@ -629,22 +761,43 @@ function _manual_definitions!(
 end
 
 """
-    _manual_box!(lines::Vector{String}, remark::AbstractString, style::HelpStyle) -> Nothing
+    _manual_box!(lines::Vector{String}, block::Vector{String}, style::HelpStyle) -> Nothing
 
-Append to `lines` the `remark`, which is `!tip`, `!note`, or `!warning` followed by its
-text: a rounded box with the name of the kind, in the color of the kind, on its top border,
-and the wrapped text inside it.
+Append to `lines` the remark in `block`, whose lines begin with `>`: a rounded box with the
+wrapped text inside it. If the first line is an alert, like `[!TIP]`, the top border has its
+name in the color of its kind: `TIP` is a tip, `WARNING` and `CAUTION` are warnings, and
+every other one is a note.
 
 # Arguments
 
 - `lines::Vector{String}`: Lines of the manual, which are appended.
-- `remark::AbstractString`: Kind of the remark and its marked text.
+- `block::Vector{String}`: Lines of the remark in the source.
 - `style::HelpStyle`: Escape sequences that decorate the manual.
 """
-function _manual_box!(lines::Vector{String}, remark::AbstractString, style::HelpStyle)
-    kind, text = _manual_split(remark, " ")
-    color = kind == "!tip" ? style.tip : (kind == "!note" ? style.note : style.warning)
-    title = kind == "!tip" ? "Tip" : (kind == "!note" ? "Note" : "Warning")
+function _manual_box!(lines::Vector{String}, block::Vector{String}, style::HelpStyle)
+    kind = ""
+    text = ""
+
+    for (i, line) in enumerate(block)
+        quoted = startswith(line, '>') ? chop(line; head = 1, tail = 0) : line
+        content = String(strip(quoted))
+
+        if (i == 1) && startswith(content, "[!") && endswith(content, ']')
+            kind = String(chop(content; head = 2, tail = 1))
+        elseif !isempty(content)
+            text = isempty(text) ? content : string(text, ' ', content)
+        end
+    end
+
+    color = if kind == "TIP"
+        style.tip
+    elseif (kind == "WARNING") || (kind == "CAUTION")
+        style.warning
+    else
+        style.note
+    end
+
+    title = uppercasefirst(lowercase(kind))
 
     # The text has one blank between it and each border.
     width = _HELP_WIDTH - 2 * _HELP_MARGIN
@@ -654,8 +807,14 @@ function _manual_box!(lines::Vector{String}, remark::AbstractString, style::Help
 
     buf = IOBuffer()
     _write_blanks(buf, _HELP_MARGIN)
-    write(buf, border, "╭─ ", reset, color, title, reset, border, " ")
-    write(buf, "─"^(width - textwidth(title) - 5), "╮", reset)
+
+    if isempty(title)
+        write(buf, border, "╭", "─"^(width - 2), "╮", reset)
+    else
+        write(buf, border, "╭─ ", reset, color, title, reset, border, " ")
+        write(buf, "─"^(width - textwidth(title) - 5), "╮", reset)
+    end
+
     push!(lines, String(take!(buf)))
 
     for row in _wrap_help_atoms(_help_atoms(text), text_width)
@@ -676,8 +835,9 @@ end
     _manual_example!(lines::Vector{String}, block::Vector{String}, style::HelpStyle) ->
         Nothing
 
-Append to `lines` the example in `block`: its title, and its lines of code at the right of a
-border, each one followed by its comment. The comments are aligned in a column.
+Append to `lines` the example in `block`: its title, which is written as `title="..."` in
+the line that begins it, and its lines of code at the right of a border, each one followed
+by its comment. The comments are aligned in a column.
 
 # Arguments
 
@@ -690,18 +850,22 @@ function _manual_example!(lines::Vector{String}, block::Vector{String}, style::H
     margin = " "^_HELP_MARGIN
     border = style.border
     reset = style.reset
-    title = SubString(first(block), 4)
+    title = _manual_example_title(first(block))
     code_width = 0
 
     for i in 2:(length(block) - 1)
-        code = rstrip(_manual_split(block[i], "  ## ")[1])
+        code = rstrip(_manual_split(block[i], "  # ")[1])
         code_width = max(code_width, textwidth(code))
     end
 
-    push!(lines, string(margin, border, "┌ ", reset, style.strong, title, reset))
+    if isempty(title)
+        push!(lines, string(margin, border, "┌", reset))
+    else
+        push!(lines, string(margin, border, "┌ ", reset, style.strong, title, reset))
+    end
 
     for i in 2:(length(block) - 1)
-        padded_code, comment = _manual_split(block[i], "  ## ")
+        padded_code, comment = _manual_split(block[i], "  # ")
         code = String(rstrip(padded_code))
         buf = IOBuffer()
         write(buf, margin, border, "│", reset)
@@ -721,4 +885,26 @@ function _manual_example!(lines::Vector{String}, block::Vector{String}, style::H
     push!(lines, string(margin, border, "└", reset))
 
     return nothing
+end
+
+"""
+    _manual_example_title(head::AbstractString) -> String
+
+Return the title of the example that begins at the line `head` of the source of the extended
+help, which is written as `title="..."` after the language, or an empty string if it has
+none.
+
+# Arguments
+
+- `head::AbstractString`: Line that begins the example.
+"""
+function _manual_example_title(head::AbstractString)
+    opening = findfirst("title=\"", head)
+    isnothing(opening) && return ""
+
+    start = Base.last(opening) + 1
+    stop = findnext('"', head, start)
+    isnothing(stop) && return ""
+
+    return String(SubString(head, start, prevind(head, stop)))
 end

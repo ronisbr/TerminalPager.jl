@@ -52,7 +52,9 @@ end
 end
 
 @testset "Help Text Marks" begin
-    atoms = TerminalPager._help_atoms("Press {:quit}, `a b` or *very strong* {Enter}.")
+    atoms = TerminalPager._help_atoms(
+        "Press <kbd>:quit</kbd>, `a b` or **very strong** <kbd>Enter</kbd>."
+    )
     @test [atom.text for atom in atoms] ==
         ["Press", "q", ",", "a b", "or", "very", "strong", "Enter", "."]
     @test [atom.style for atom in atoms] ==
@@ -61,26 +63,54 @@ end
         [false, false, true, false, false, false, false, false, true]
 
     # Nothing is marked inside code, and an unbalanced mark is written as it is.
-    atoms = TerminalPager._help_atoms("`{:quit} *x*` and `open {x")
-    @test [(atom.text, atom.style) for atom in atoms] ==
-        [("{:quit} *x*", :code), ("and", :plain), ("`open", :plain), ("{x", :plain)]
+    atoms = TerminalPager._help_atoms("`<kbd>:quit</kbd> **x**` and `open <kbd>x")
+    @test [(atom.text, atom.style) for atom in atoms] == [
+        ("<kbd>:quit</kbd> **x**", :code),
+        ("and", :plain),
+        ("`open", :plain),
+        ("<kbd>x", :plain),
+    ]
+
+    # A single asterisk is not a mark, a backslash writes the punctuation character after
+    # it as it is, and the name of a key can have blanks and wide characters.
+    atoms = TerminalPager._help_atoms(
+        "a * b \\*\\*c\\*\\* \\<kbd> <kbd>↑</kbd><kbd>a b</kbd> c:\\d **`e`**"
+    )
+    @test [(atom.text, atom.style) for atom in atoms] == [
+        ("a", :plain),
+        ("*", :plain),
+        ("b", :plain),
+        ("**c**", :plain),
+        ("<kbd>", :plain),
+        ("↑", :key),
+        ("a b", :key),
+        ("c:\\d", :plain),
+        ("e", :code),
+    ]
 
     # An action without a key is named as such.
     @test TerminalPager._help_key_name(":not_an_action") == "unbound"
     @test TerminalPager._help_key_name("Enter") == "Enter"
-    @test TerminalPager._manual_key_names(":not_an_action") == "—"
-    @test TerminalPager._manual_key_names("Alt-l") == "Alt-l"
+    @test TerminalPager._manual_key_names("<kbd>:not_an_action</kbd>") == "—"
+    @test TerminalPager._manual_key_names("<kbd>Alt-l</kbd>") == "Alt-l"
 
     # The keys are preferred to the mouse events, and the tables show the shortest ones.
     @test TerminalPager._help_key_name(":fastleft") == "Shift-←"
-    @test TerminalPager._manual_key_names(":up") == "k, ↑"
-    @test TerminalPager._manual_key_names(":wheel_up") == "Wheel↑"
+    @test TerminalPager._manual_key_names("<kbd>:up</kbd>") == "k, ↑"
+    @test TerminalPager._manual_key_names("<kbd>:wheel_up</kbd>") == "Wheel↑"
+
+    # A cell of a key table can have several keys, and one without them is kept.
+    @test TerminalPager._manual_key_names("<kbd>Home</kbd>, <kbd>Ctrl-A</kbd>") ==
+        "Home, Ctrl-A"
+    @test TerminalPager._manual_key_names("<kbd>←</kbd> or <kbd>:quit</kbd>") == "←, q"
+    @test TerminalPager._manual_key_names("plain") == "plain"
+    @test TerminalPager._manual_key_names("<kbd>open") == "<kbd>open"
 
     # A key cap has one column at each side of the key: brackets without colors, and
     # blanks with the face of the key caps if the face fills its cells.
     plain = TerminalPager.HelpStyle(false, TerminalPager.DisplayConfig())
     filled = _keycap_style(TerminalPager.Face(; background = :bright_black))
-    atoms = TerminalPager._help_atoms("Press {:quit}, `a b`.")
+    atoms = TerminalPager._help_atoms("Press <kbd>:quit</kbd>, `a b`.")
     @test TerminalPager._help_atoms_width(atoms) == 15
     @test filled.keycap_filled
     @test !plain.keycap_filled
@@ -113,7 +143,7 @@ end
 end
 
 @testset "Help Text Wrapping" begin
-    atoms = TerminalPager._help_atoms("one two (`three four`), five {Esc}. six")
+    atoms = TerminalPager._help_atoms("one two (`three four`), five <kbd>Esc</kbd>. six")
     plain = TerminalPager.HelpStyle(false, TerminalPager.DisplayConfig())
 
     function rows(width)
@@ -142,48 +172,121 @@ end
 
 @testset "Extended Help Source" begin
     source = """
+    <!-- A comment
+    with
+
+    a blank line. -->
+
     intro one
     intro two
 
+    <!-- A comment in one line. -->
     # First
 
-    + a  b
-      c
-    + d  e
+    | Key | Action |
+    |:--|:--|
+    | <kbd>a</kbd> | b |
 
-    ```Title
+    > [!TIP]
+    > text
+
+    ```julia title="Title"
     code
 
-    more  ## comment
+    more  # comment
     ```
 
-    ~~~
+    ~~~text
     art
 
     ~~~
     """
 
-    # The blocks are separated by blank lines, but for the examples and the figures.
+    # The blocks are separated by blank lines, but for the examples, the figures, and the
+    # comments, which are not returned.
     @test TerminalPager._manual_blocks(source) == [
         ["intro one", "intro two"],
         ["# First"],
-        ["+ a  b", "  c", "+ d  e"],
-        ["```Title", "code", "", "more  ## comment", "```"],
-        ["~~~", "art", "", "~~~"],
+        ["| Key | Action |", "|:--|:--|", "| <kbd>a</kbd> | b |"],
+        ["> [!TIP]", "> text"],
+        ["```julia title=\"Title\"", "code", "", "more  # comment", "```"],
+        ["~~~text", "art", "", "~~~"],
     ]
     @test isempty(TerminalPager._manual_blocks("\n\n"))
+    @test TerminalPager._manual_blocks("text\n\n<!-- open\n\nhidden") == [["text"]]
 
-    # A row continues on the lines that begin with a blank, and it is split at its first
-    # two blanks.
-    block = ["+ a  b", "  c  d", "+ e"]
-    @test TerminalPager._manual_rows(block, 2) == ["a  b c  d", "e"]
-    @test TerminalPager._manual_pairs(block) == [("a", "b c  d"), ("e", "")]
-    @test TerminalPager._manual_split("code  ## note", "  ## ") == ("code", "note")
-    @test TerminalPager._manual_split("code   ", "  ## ") == ("code", "")
+    # The cells of a row are separated by bars, and an escaped bar belongs to the cell.
+    @test TerminalPager._manual_cells("| a | b c |") == ["a", "b c"]
+    @test TerminalPager._manual_cells("a|b") == ["a", "b"]
+    @test TerminalPager._manual_cells("|  | b |") == ["", "b"]
+    @test TerminalPager._manual_cells("| `a \\| b` | c\\d \\\\ |") ==
+        ["`a | b`", "c\\d \\\\"]
+    @test isempty(TerminalPager._manual_cells("|"))
+
+    # The header and the delimiter of a table are skipped, and a term loses its backticks.
+    block = [
+        "| Term | Meaning |",
+        "|:--|:--|",
+        "| `a b` | c  d |",
+        "| e |",
+        "| <kbd>x</kbd> | `y` |",
+    ]
+    @test TerminalPager._manual_table(block) ==
+        [("a b", "c  d"), ("e", ""), ("<kbd>x</kbd>", "`y`")]
+    @test isempty(TerminalPager._manual_table(["| a | b |", "|--|--|"]))
+
+    # An item of a list continues on the lines that begin with a blank.
+    @test TerminalPager._manual_rows(["- a  b", "  c  d", "- e"], 2) == ["a  b c  d", "e"]
+
+    # A comment follows two blanks, and the title of an example follows its language.
+    @test TerminalPager._manual_split("code  # note", "  # ") == ("code", "note")
+    @test TerminalPager._manual_split("code   ", "  # ") == ("code", "")
+    @test TerminalPager._manual_example_title("```julia title=\"A b\"") == "A b"
+    @test TerminalPager._manual_example_title("```julia") == ""
+    @test TerminalPager._manual_example_title("```julia title=\"open") == ""
+end
+
+@testset "Extended Help File" begin
+    # The manual is the Markdown file of the package, embedded when it is precompiled.
+    file = joinpath(pkgdir(TerminalPager), "src", "extended_help.md")
+    @test TerminalPager._MANUAL_SOURCE == replace(read(file, String), "\r\n" => "\n")
+    @test startswith(TerminalPager._MANUAL_SOURCE, "<!--")
+
+    # Every block is written as GitHub and the renderer understand it.
+    blocks = TerminalPager._manual_blocks(TerminalPager._manual_source())
+    kinds = Set{Char}()
+
+    for block in blocks
+        head = first(block)
+        push!(kinds, first(head))
+
+        if startswith(head, '|')
+            # A table has a header, a delimiter, and rows with two cells.
+            @test length(block) > 2
+            @test occursin(r"^\|(:?-+:?\|){2}$", block[2])
+            @test all(row -> length(TerminalPager._manual_cells(row)) == 2, block)
+        elseif startswith(head, '>')
+            @test occursin(r"^> \[!(TIP|NOTE|IMPORTANT|WARNING|CAUTION)\]$", head)
+            @test all(line -> startswith(line, "> "), block)
+        elseif startswith(head, "```")
+            @test occursin(r"^```\w+ title=\"[^\"]+\"$", head)
+            @test last(block) == "```"
+        elseif startswith(head, "~~~")
+            @test occursin(r"^~~~\w+$", head)
+            @test last(block) == "~~~"
+        elseif startswith(head, '#')
+            @test occursin(r"^##? \S", head)
+            @test length(block) == 1
+        end
+    end
+
+    # The manual has every kind of block.
+    @test issubset(['|', '>', '`', '~', '#', '-', '1'], kinds)
 end
 
 @testset "Extended Help Blocks" begin
     width = TerminalPager._HELP_WIDTH
+    table(rows...) = "| A | B |\n|:--|:--|\n" * join(rows, '\n')
 
     # A paragraph is wrapped after the margin, with its lines joined.
     lines = _manual_block_lines("aaa bbb\nccc " * "x"^85 * " ddd")
@@ -192,26 +295,40 @@ end
     @test _manual_block_lines("## Title") == ["  ▌ Title"]
 
     # A key table has two columns when every description fits in half the width.
-    @test _manual_block_lines("+ Enter  Apply.\n+ :quit  Quit.\n+ Esc  Cancel it.") ==
+    lines = _manual_block_lines(
+        table(
+            "| <kbd>Enter</kbd> | Apply. |",
+            "| <kbd>:quit</kbd> | Quit. |",
+            "| <kbd>Esc</kbd> | Cancel it. |",
+        ),
+    )
+    @test lines ==
         ["    Enter  Apply." * " "^31 * "q      Quit.", "    Esc    Cancel it."]
-    @test _manual_block_lines("+ Enter  Apply.") == ["    Enter  Apply."]
+    @test _manual_block_lines(table("| <kbd>Enter</kbd> | Apply. |")) ==
+        ["    Enter  Apply."]
 
     # Otherwise, the descriptions are wrapped at the side of the keys.
     long = join(fill("word", 20), ' ')
-    lines = _manual_block_lines("+ Esc  " * long * "\n+ x  short")
+    lines = _manual_block_lines(
+        table("| <kbd>Esc</kbd> | " * long * " |", "| <kbd>x</kbd> | short |")
+    )
     @test lines == [
         "    Esc  " * join(fill("word", 16), ' '),
         "         " * join(fill("word", 4), ' '),
         "    x    short",
     ]
 
-    # The descriptions are at the side of short terms and below long ones.
-    @test _manual_block_lines(": ab  aaa bbb\n: c  ddd") ==
+    # A table without keys is a list of terms, whose descriptions are at the side of short
+    # terms and below long ones.
+    @test _manual_block_lines(table("| `ab` | aaa bbb |", "| `c` | ddd |")) ==
         ["    ab  aaa bbb", "    c   ddd"]
 
     term = "x"^30
-    @test _manual_block_lines(": " * term * "  aaa bbb\n: c  ddd") ==
+    @test _manual_block_lines(table("| `" * term * "` | aaa bbb |", "| `c` | ddd |")) ==
         ["    " * term, "        aaa bbb", "", "    c", "        ddd"]
+
+    # A bar is written in a cell with a backslash.
+    @test _manual_block_lines(table("| `a \\| b` | c `\\|> d` |")) == ["    a | b  c |> d"]
 
     # The lists hang their items after the bullet or the number, and an item can have two
     # blanks in it.
@@ -221,21 +338,32 @@ end
         ["    • " * "x"^50, "      " * "y"^50]
     @test _manual_block_lines("1. aaa\n2. bbb") == ["    1. aaa", "    2. bbb"]
 
-    # A remark is a box with the width of the content.
-    lines = _manual_block_lines("!tip aaa bbb\n  ccc")
+    # A remark is a box with the width of the content, named by its alert.
+    lines = _manual_block_lines("> [!TIP]\n> aaa bbb\n> ccc")
     @test lines == [
         "  ╭─ Tip " * "─"^(width - 12) * "╮",
         "  │ aaa bbb ccc" * " "^(width - 18) * "│",
         "  ╰" * "─"^(width - 6) * "╯",
     ]
     @test all(line -> textwidth(line) == width - 2, lines)
-    @test startswith(_manual_block_lines("!note a")[1], "  ╭─ Note ─")
-    @test startswith(_manual_block_lines("!warning a")[1], "  ╭─ Warning ─")
+    @test startswith(_manual_block_lines("> [!NOTE]\n> a")[1], "  ╭─ Note ─")
+    @test startswith(
+        _manual_block_lines("> [!IMPORTANT]\n> a")[1], "  ╭─ Important ─"
+    )
+    @test startswith(_manual_block_lines("> [!WARNING]\n> a")[1], "  ╭─ Warning ─")
+    @test startswith(_manual_block_lines("> [!CAUTION]\n> a")[1], "  ╭─ Caution ─")
+
+    # A quote without an alert is a box without a name.
+    @test _manual_block_lines("> aaa\n>\n> bbb") == [
+        "  ╭" * "─"^(width - 6) * "╮",
+        "  │ aaa bbb" * " "^(width - 14) * "│",
+        "  ╰" * "─"^(width - 6) * "╯",
+    ]
 
     # The box is drawn as the borders, and only its label has the color of its kind.
     style = TerminalPager.HelpStyle(true, TerminalPager.DisplayConfig())
     lines = String[]
-    TerminalPager._manual_block!(lines, ["!warning a"], style)
+    TerminalPager._manual_block!(lines, ["> [!WARNING]", "> a"], style)
     border = style.border
     reset = style.reset
     @test startswith(
@@ -245,12 +373,28 @@ end
         "  " * border * "│" * reset * " a" * " "^(width - 8) * border * "│" * reset
     @test !occursin(style.warning, lines[2] * lines[3])
 
-    # The comments of an example are aligned at the side of the code.
-    @test _manual_block_lines("```Calls\nf(x)          ## call\n\nlong_name(x)\n```") ==
+    for (alert, color) in (
+        ("TIP", style.tip),
+        ("NOTE", style.note),
+        ("IMPORTANT", style.note),
+        ("CAUTION", style.warning),
+    )
+        lines = String[]
+        TerminalPager._manual_block!(lines, ["> [!$alert]", "> a"], style)
+        @test occursin(color * uppercasefirst(lowercase(alert)) * reset, lines[1])
+    end
+
+    # The comments of an example are aligned at the side of the code, and its title is
+    # optional.
+    lines = _manual_block_lines(
+        "```julia title=\"Calls\"\nf(x)          # call\n\nlong_name(x)\n```"
+    )
+    @test lines ==
         ["  ┌ Calls", "  │ f(x)           call", "  │", "  │ long_name(x)", "  └"]
+    @test _manual_block_lines("```julia\nf(x)\n```") == ["  ┌", "  │ f(x)", "  └"]
 
     # A figure is written as it is, with its labels.
-    @test _manual_block_lines("~~~\nab    ## label\n c\n~~~") ==
+    @test _manual_block_lines("~~~text\nab    # label\n c\n~~~") ==
         ["    ab    label", "     c"]
 end
 
@@ -334,19 +478,19 @@ end
 
     # Every action named in the manual exists, so that a renamed action cannot leave a key
     # shown as unbound. The empty action is the example of an unbound one.
-    for m in eachmatch(r"\{:(\w+)\}", source)
+    for m in eachmatch(r"<kbd>:(\w+)</kbd>", source)
         @test Symbol(m[1]) in actions
     end
 
-    for m in eachmatch(r"^\+ :(\w+)  "m, source)
-        @test Symbol(m[1]) in actions
-    end
+    # The marks of the previous language of the manual are not used.
+    @test !occursin(r"\{:?[\w-]*\}(?![^`\n]*`)", source)
+    @test !occursin(r"^(\+ |: |!\w)"m, source)
 
     # The last chapter lists every action of the cheat sheet with its name.
     reference = source[last(findfirst("# Action reference", source)):end]
 
     for section in TerminalPager._HELP_SECTIONS, entry in section.actions
-        @test occursin("+ :$(entry.action)  ", reference)
+        @test occursin("| <kbd>:$(entry.action)</kbd> | ", reference)
         @test occursin("`:$(entry.action)`", reference)
     end
 
