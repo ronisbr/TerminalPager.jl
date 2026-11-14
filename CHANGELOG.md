@@ -106,15 +106,17 @@ Version 0.9.0
   now be written as `\@@`.
 - ![Feature][badge-feature] `H` (action `:extended_help`) opens the extended help, a manual
   of the pager shown inside the pager itself. It explains every feature in detail in 18
-  chapters, with key tables, examples, tips, and a reference of the actions. It is laid out
-  for the width of the terminal, the keys it shows follow the key bindings, and each chapter
-  is a bookmark, so that `'` and the letter of the table of contents jump to it. The new
-  faces `help_chapter`, `help_keycap`, `help_code`, `help_border`, `help_tip`, `help_note`,
-  and `help_warning` style it, and the cheat sheet opened by `?` points to it.
-- ![Enhancement][badge-enhancement] The help screens have a new default palette with one
-  accent color: the titles are bold yellow (`help_title`), the keys are bold (`help_key`),
-  and the action names of the cheat sheet are cyan (`help_action`), instead of bold cyan,
-  cyan, and bold yellow.
+  chapters, with key tables, examples, tips, and a reference of the actions. It is 92
+  columns wide, the keys it shows follow the key bindings, and each chapter is a bookmark,
+  so that `'` and the letter of the table of contents jump to it. The new faces
+  `help_keycap`, `help_code`, `help_border`, `help_tip`, `help_note`, and `help_warning`
+  style it.
+- ![Enhancement][badge-enhancement] The help screen opened by `?` has the look of the
+  extended help, and it points to it: a banner, section titles on rules, 92 columns, and a
+  new default palette in which each color has one role. The titles and the section titles
+  are bold yellow (`help_title` and `help_section`), the keys are bold magenta (`help_key`),
+  and the action names are cyan (`help_action`), instead of bold cyan, bold, cyan, and bold
+  yellow.
 - ![Enhancement][badge-enhancement] The functions that start a pager session are not
   compiled again for each type of object nor for each combination of keywords, and what a
   session needs at first use is precompiled: `pager(obj)`, the callbacks and the key
