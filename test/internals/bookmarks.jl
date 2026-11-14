@@ -24,7 +24,7 @@
     @test pagerd.message == "Mark a set"
     @test pagerd.message_kind === :info
     @test pagerd.redraw
-    @test occursin("\e[10;1H\e[0Km", String(take!(pagerd.term.out_stream)))
+    @test occursin("\e[10;1H\e[0KSet mark:", String(take!(pagerd.term.out_stream)))
 
     # Jumping shows the bookmark at the top and remembers the position before the jump.
     pagerd.input = TerminalPager.PagerInput(TypedInput("a"))
@@ -35,7 +35,7 @@
     @test pagerd.start_row == 7
     @test pagerd.start_column == 3
     @test pagerd.last_position == (1, 1)
-    @test occursin("\e[10;1H\e[0K'", String(take!(pagerd.term.out_stream)))
+    @test occursin("\e[10;1H\e[0KGoto mark:", String(take!(pagerd.term.out_stream)))
 
     # `''` returns to the position before the jump, and again to the one before that.
     pagerd.input = TerminalPager.PagerInput(TypedInput("'"))

@@ -196,7 +196,8 @@ a horizontal wheel, scrolls ten columns at a time.
 ## Bookmarks
 
 A bookmark is a letter that remembers a line and the first visible column. The lowercase and
-the uppercase letters are different bookmarks, and they last until the pager quits.
+the uppercase letters are different bookmarks, and they last until the pager quits. While
+the pager waits for the letter, the status line shows `Set mark:` or `Goto mark:`.
 
 | Key | Action |
 |:--|:--|

@@ -127,16 +127,16 @@ end
 """
     _set_bookmark!(pagerd::Pager) -> Nothing
 
-Prompt for a letter and bookmark the first visible row of `pagerd`, or the visual line in
-the visual mode, together with the first visible column. A cancelled prompt keeps the
-bookmarks, and a key that is not a letter is reported.
+Prompt for a letter with `Set mark:` and bookmark the first visible row of `pagerd`, or the
+visual line in the visual mode, together with the first visible column. A cancelled prompt
+keeps the bookmarks, and a key that is not a letter is reported.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
 """
 function _set_bookmark!(pagerd::Pager)
-    c = _prompt_key!(pagerd, "m")
+    c = _prompt_key!(pagerd, "Set mark:")
     _request_redraw!(pagerd)
     isnothing(c) && return nothing
 
@@ -155,16 +155,16 @@ end
 """
     _goto_bookmark!(pagerd::Pager) -> Nothing
 
-Prompt for a letter and move the view of `pagerd` to its bookmark, or back to the position
-before the last jump when the key is `'`. The bookmarked line is shown at the top of the
-view, where the visual line is placed too. A missing bookmark is reported.
+Prompt for a letter with `Goto mark:` and move the view of `pagerd` to its bookmark, or back
+to the position before the last jump when the key is `'`. The bookmarked line is shown at
+the top of the view, where the visual line is placed too. A missing bookmark is reported.
 
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
 """
 function _goto_bookmark!(pagerd::Pager)
-    c = _prompt_key!(pagerd, "'")
+    c = _prompt_key!(pagerd, "Goto mark:")
     _request_redraw!(pagerd)
     isnothing(c) && return nothing
 
