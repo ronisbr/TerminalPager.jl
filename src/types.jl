@@ -491,7 +491,9 @@ anchor, and the bookmarks store source lines, so that they survive a change of t
 - `last_position::Tuple{Int, Int}`: Line of the text at the first visible row and first
     visible column before the last jump, or `(0, 0)` if there was none.
 - `event::Union{Nothing, Symbol}`: Pending pager event.
-- `features::Vector{Symbol}`: Features enabled for the session.
+- `features::Vector{Symbol}`: Features enabled for the session, which are
+    `:change_freeze`, `:change_frozen_columns`, `:change_frozen_rows`, `:filter`, `:help`,
+    and `:visual_mode`.
 - `frozen_columns::Int`: Number of frozen leading columns.
 - `frozen_rows::Int`: Number of frozen leading rows.
 - `freeze_selection_rows::Int`: Number of rows selected in the freeze and title selection
@@ -611,7 +613,14 @@ all those functions again for each combination of keywords used in a Julia sessi
 - `return_selection::Bool`: Return the [`PagerResult`](@ref) of the session instead of
     `nothing`.
     (**Default**: `false`)
-- `change_freeze::Bool`: Enable the commands that change the frozen rows and columns.
+- `change_freeze::Bool`: Enable the commands that change the frozen rows and columns and
+    the title rows.
+    (**Default**: `true`)
+- `change_frozen_columns::Bool`: Let the commands enabled by `change_freeze` change the
+    frozen columns.
+    (**Default**: `true`)
+- `change_frozen_rows::Bool`: Let the commands enabled by `change_freeze` change the frozen
+    rows and the title rows.
     (**Default**: `true`)
 - `frozen_columns::Int`: Number of leading columns to freeze.
     (**Default**: `0`)
@@ -619,6 +628,8 @@ all those functions again for each combination of keywords used in a Julia sessi
     (**Default**: `0`)
 - `title_rows::Int`: Number of leading title rows.
     (**Default**: `0`)
+- `has_filter::Bool`: Enable the line filter.
+    (**Default**: `true`)
 - `has_help::Bool`: Enable the pager help.
     (**Default**: `true`)
 - `has_visual_mode::Bool`: Enable the visual selection mode.
@@ -677,9 +688,12 @@ Base.@kwdef mutable struct SessionOptions
     auto::Bool = false
     return_selection::Bool = false
     change_freeze::Bool = true
+    change_frozen_columns::Bool = true
+    change_frozen_rows::Bool = true
     frozen_columns::Int = 0
     frozen_rows::Int = 0
     title_rows::Int = 0
+    has_filter::Bool = true
     has_help::Bool = true
     has_visual_mode::Bool = true
     show_ruler::Bool = false

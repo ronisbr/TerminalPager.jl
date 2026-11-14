@@ -925,6 +925,7 @@ end
     @test TerminalPager._pager_event_process!(pagerd)
     @test pagerd.mode == :searching
 
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     set_modal_input!(pagerd, "1\n2\n")
     pagerd.event = :change_freeze
     @test TerminalPager._pager_event_process!(pagerd)

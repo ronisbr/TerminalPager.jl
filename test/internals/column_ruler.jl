@@ -160,6 +160,7 @@ end
     # The freeze selection puts the guides on the pointer, below the ruler.
     pagerd = _create_redraw_pagerd(lines; display_size = (10, 20))
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     press(x, y) = TerminalPager._move_freeze_selection!(
         pagerd, nothing, TerminalPager.Keystroke(; value = "<mouse_press>", x = x, y = y)
     )

@@ -20,7 +20,7 @@ end
     @test TerminalPager._pager_action(k) === :select_title_rows
 
     pagerd = _create_redraw_pagerd(_FREEZE_LINES)
-    pagerd.features = [:change_freeze]
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     TerminalPager._pager_key_process!(pagerd, k)
     @test pagerd.event === :select_title_rows
 

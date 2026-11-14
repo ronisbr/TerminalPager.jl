@@ -36,7 +36,7 @@ function _create_freeze_pagerd(
     pagerd = TerminalPager.Pager(;
         buf = IOContext(IOBuffer(), :color => false),
         display_size = display_size,
-        features = [:change_freeze],
+        features = [:change_freeze, :change_frozen_columns, :change_frozen_rows],
         input = TerminalPager.PagerInput(input),
         num_lines = length(lines),
         term = term,
@@ -82,7 +82,7 @@ const _FREEZE_LINES = [
     @test TerminalPager._pager_action(k) === :select_freeze
 
     pagerd = _create_redraw_pagerd(_FREEZE_LINES)
-    pagerd.features = [:change_freeze]
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     TerminalPager._pager_key_process!(pagerd, k)
     @test pagerd.event === :select_freeze
 
@@ -212,6 +212,7 @@ end
 @testset "Freeze Selection Fast Moves and Jumps" begin
     pagerd = _create_redraw_pagerd(_FREEZE_LINES; display_size = (10, 40))
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
 
     move!(action, value; kwargs...) = TerminalPager._move_freeze_selection!(
         pagerd, action, TerminalPager.Keystroke(; value = value, kwargs...)
@@ -325,6 +326,7 @@ end
 
     pagerd = _create_redraw_pagerd(lines; display_size = (5, 12), color = true)
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.freeze_selection_rows = 1
     pagerd.freeze_selection_columns = 2
     TerminalPager._view!(pagerd)
@@ -352,6 +354,7 @@ end
     # row.
     pagerd = _create_redraw_pagerd(["ab", "\e[1mcdef\e[0m"]; display_size = (3, 12), color = true)
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.freeze_selection_columns = 2
     TerminalPager._view!(pagerd)
     rows = split(String(take!(copy(pagerd.buf.io))), '\n')
@@ -369,6 +372,7 @@ end
     # A wide character under the vertical guide is replaced by blanks on both sides.
     pagerd = _create_redraw_pagerd(["a漢b"]; display_size = (3, 12), color = true)
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.freeze_selection_rows = 1
     pagerd.freeze_selection_columns = 1
     TerminalPager._view!(pagerd)
@@ -379,6 +383,7 @@ end
     # of the text leave its columns blank.
     pagerd = _create_redraw_pagerd(lines; display_size = (5, 12), color = true)
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.show_ruler = true
     pagerd.freeze_selection_rows = 1
     pagerd.freeze_selection_columns = 2
@@ -409,6 +414,7 @@ end
     pagerd.visual_mode_line = 2
     TerminalPager._apply_search!(pagerd, r"kl")
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.freeze_selection_rows = 2
     pagerd.freeze_selection_columns = 2
     TerminalPager._view!(pagerd)
@@ -421,6 +427,7 @@ end
     # and painted as a single run.
     pagerd = _create_redraw_pagerd(_FREEZE_LINES; display_size = (10, 40), color = true)
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.freeze_selection_rows = 1
     pagerd.freeze_selection_columns = 2
     _paint!(pagerd)
@@ -440,6 +447,7 @@ end
     pagerd.frozen_rows = 2
     pagerd.frozen_columns = 3
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.freeze_selection_rows = 3
     pagerd.freeze_selection_columns = 4
 
@@ -465,6 +473,7 @@ end
     # The mode name has its own face.
     pagerd, output = _create_status_pagerd(_FREEZE_LINES; color = true, display_size = (10, 60))
     pagerd.mode = :freeze_selection
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     TerminalPager._redraw_status_bar!(pagerd)
     @test occursin(pagerd.display_config.mode_freeze * "FREEZE", String(take!(output)))
 
@@ -485,12 +494,144 @@ end
     guide = face * TerminalPager._FREEZE_GUIDE_VERTICAL * "\e[0m"
 
     out = IOBuffer()
-    TerminalPager._draw_freeze_guides_row!(out, text, 1, 5, 3, 0, 40, face, true)
+    TerminalPager._draw_freeze_guides_row!(out, text, 1, 5, 3, 0, 40, face, true, true)
     @test String(take!(out)) == "\e[31mred" * guide * "\e[31mred red\e[0m plain"
 
     ruler = "\e[0;90m 1 │\e[0m"
-    TerminalPager._draw_freeze_guides_row!(out, ruler * text, 1, 5, 3, 4, 40, face, true)
+    TerminalPager._draw_freeze_guides_row!(
+        out, ruler * text, 1, 5, 3, 4, 40, face, true, true
+    )
     row = String(take!(out))
     @test startswith(row, ruler * "\e[31mred" * guide)
     @test endswith(row, "\e[31mred red\e[0m plain")
+end
+
+@testset "Freeze Keywords" begin
+    # The keywords tell what the commands that change the freeze can change. The prompts
+    # ask only for that, and the title rows follow the rows.
+    text = join(_FREEZE_LINES, '\n')
+    rows = "Frozen rows [0] › "
+    columns = "Frozen columns [0] › "
+    titles = "Title rows [0] › "
+
+    output = _session_output(text, "f2\r3\rt1\rq")
+    @test occursin(rows, output)
+    @test occursin(columns, output)
+    @test occursin(titles, output)
+    @test occursin("Frozen 2 rows × 3 columns", output)
+
+    output = _session_output(text, "f2\rt1\rq"; change_frozen_columns = false)
+    @test occursin(rows, output)
+    @test !occursin(columns, output)
+    @test occursin(titles, output)
+    @test occursin("Frozen 2 rows × 0 columns", output)
+
+    output = _session_output(text, "f3\rtq"; change_frozen_rows = false)
+    @test !occursin(rows, output)
+    @test occursin(columns, output)
+    @test !occursin(titles, output)
+    @test occursin("Frozen 0 rows × 3 columns", output)
+
+    # Without anything to change, the commands are disabled like with `change_freeze`.
+    for keywords in (
+        (; change_freeze = false),
+        (; change_frozen_rows = false, change_frozen_columns = false),
+        (; change_freeze = false, change_frozen_rows = true, change_frozen_columns = true),
+    )
+        output = _session_output(text, "ftFTq"; keywords...)
+        @test !occursin("Frozen", output)
+        @test !occursin("Title rows", output)
+        @test !occursin("FREEZE", output)
+        @test !occursin("TITLES", output)
+    end
+
+    features = [:change_freeze, :change_frozen_columns]
+    @test TerminalPager._action_event(:change_freeze, features) === :change_freeze
+    @test TerminalPager._action_event(:select_freeze, features) === :select_freeze
+    @test TerminalPager._action_event(:change_title_rows, features) === nothing
+    @test TerminalPager._action_event(:select_title_rows, features) === nothing
+
+    features = [:change_freeze, :change_frozen_rows]
+    @test TerminalPager._action_event(:change_title_rows, features) === :change_title_rows
+    @test TerminalPager._action_event(:select_title_rows, features) === :select_title_rows
+end
+
+@testset "Freeze Prompt Cancelled With One Number" begin
+    # A cancelled or invalid number shows no result, whichever number is asked for.
+    for (features, keys) in (
+        ([:change_freeze, :change_frozen_rows], "\e"),
+        ([:change_freeze, :change_frozen_rows], "x\r"),
+        ([:change_freeze, :change_frozen_columns], "x\r"),
+    )
+        pagerd = _create_modal_pagerd(_FREEZE_LINES, keys)
+        pagerd.features = features
+        pagerd.event = :change_freeze
+        @test TerminalPager._pager_event_process!(pagerd)
+        @test pagerd.frozen_rows == 0
+        @test pagerd.frozen_columns == 0
+        @test !startswith(pagerd.message, "Frozen")
+    end
+
+    # An empty number keeps the value and shows it.
+    pagerd = _create_modal_pagerd(_FREEZE_LINES, "\r")
+    pagerd.features = [:change_freeze, :change_frozen_rows]
+    pagerd.frozen_rows = 2
+    pagerd.frozen_columns = 4
+    pagerd.event = :change_freeze
+    @test TerminalPager._pager_event_process!(pagerd)
+    @test pagerd.message == "Frozen 2 rows × 4 columns"
+end
+
+@testset "Freeze Selection of the Rows or the Columns Only" begin
+    # A session that can change only the rows moves and draws only the horizontal guide,
+    # and the frozen columns are kept. The mouse cannot move the other guide either.
+    rows_only = [:change_freeze, :change_frozen_rows]
+    pagerd = _create_freeze_pagerd(
+        _FREEZE_LINES, "jjll\$\r"; features = rows_only, frozen_columns = 3
+    )
+    output = _run_select_freeze!(pagerd)
+    @test pagerd.frozen_rows == 2
+    @test pagerd.frozen_columns == 3
+    @test pagerd.message == "Frozen 2 rows × 3 columns"
+    @test occursin(TerminalPager._FREEZE_GUIDE_HORIZONTAL, output)
+    @test !occursin(TerminalPager._FREEZE_GUIDE_VERTICAL, output)
+    @test !occursin(TerminalPager._FREEZE_GUIDE_CROSSING, output)
+
+    pagerd = _create_freeze_pagerd(
+        _FREEZE_LINES, ["\e[<0;7;4M", "\r"]; features = rows_only, frozen_columns = 3
+    )
+    _run_select_freeze!(pagerd)
+    @test pagerd.frozen_rows == 3
+    @test pagerd.frozen_columns == 3
+
+    # The same holds for the columns.
+    columns_only = [:change_freeze, :change_frozen_columns]
+    pagerd = _create_freeze_pagerd(
+        _FREEZE_LINES, "jjGll\r"; features = columns_only, frozen_rows = 4
+    )
+    output = _run_select_freeze!(pagerd)
+    @test pagerd.frozen_rows == 4
+    @test pagerd.frozen_columns == 2
+    @test pagerd.message == "Frozen 4 rows × 2 columns"
+    @test !occursin(TerminalPager._FREEZE_GUIDE_HORIZONTAL, output)
+    @test occursin(TerminalPager._FREEZE_GUIDE_VERTICAL, output)
+    @test !occursin(TerminalPager._FREEZE_GUIDE_CROSSING, output)
+
+    pagerd = _create_freeze_pagerd(
+        _FREEZE_LINES, ["\e[<0;7;4M", "\r"]; features = columns_only, frozen_rows = 4
+    )
+    _run_select_freeze!(pagerd)
+    @test pagerd.frozen_rows == 4
+    @test pagerd.frozen_columns == 6
+
+    # A cancelled selection changes nothing.
+    pagerd = _create_freeze_pagerd(_FREEZE_LINES, "jjq"; features = rows_only)
+    _run_select_freeze!(pagerd)
+    @test pagerd.frozen_rows == 0
+
+    @test TerminalPager._freeze_selection_guides(pagerd) == (true, false)
+    pagerd.features = columns_only
+    @test TerminalPager._freeze_selection_guides(pagerd) == (false, true)
+    pagerd.mode = :title_selection
+    @test TerminalPager._freeze_selection_guides(pagerd) == (true, false)
 end

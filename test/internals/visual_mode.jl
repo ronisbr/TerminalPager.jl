@@ -12,7 +12,7 @@
 
     for action in ("j", "G", "\e[B")
         pagerd = _create_redraw_pagerd(lines; display_size = (10, 20))
-        pagerd.features = [:visual_mode, :change_freeze]
+        pagerd.features = [:visual_mode, :change_freeze, :change_frozen_columns, :change_frozen_rows]
         pagerd.visual_mode = true
         pagerd.frozen_rows = 2
         pagerd.start_row = 10

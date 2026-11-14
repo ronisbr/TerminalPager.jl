@@ -169,7 +169,7 @@ end
 
     # Cancelling the frozen rows prompt skips the frozen columns prompt as well.
     pagerd = _create_modal_pagerd(["line"], "\e")
-    pagerd.features = [:change_freeze]
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.event = :change_freeze
     @test TerminalPager._pager_event_process!(pagerd)
     @test (pagerd.frozen_rows, pagerd.frozen_columns) == (0, 0)
@@ -214,7 +214,7 @@ end
     # The prompts show the current value in brackets, and the freeze events confirm the new
     # values with a message.
     pagerd = _create_modal_pagerd(["a", "b", "c"], "2\n1\n")
-    pagerd.features = [:change_freeze]
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.event = :change_freeze
     @test TerminalPager._pager_event_process!(pagerd)
     output = String(take!(pagerd.term.out_stream))
@@ -224,7 +224,7 @@ end
     @test pagerd.message_kind === :info
 
     pagerd = _create_modal_pagerd(["a", "b", "c"], "1\n")
-    pagerd.features = [:change_freeze]
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     pagerd.event = :change_title_rows
     @test TerminalPager._pager_event_process!(pagerd)
     @test occursin("Title rows [0] › ", String(take!(pagerd.term.out_stream)))

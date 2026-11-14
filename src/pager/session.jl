@@ -255,8 +255,15 @@ function _pager!(
         hascolor = get(term.out_stream, :color, true)::Bool
         buf = IOContext(iobuf, :color => hascolor)
 
+        # The commands that change the freeze need something they are allowed to change.
+        change_columns = options.change_freeze && options.change_frozen_columns
+        change_rows = options.change_freeze && options.change_frozen_rows
+
         features = Symbol[]
-        options.change_freeze && push!(features, :change_freeze)
+        (change_columns || change_rows) && push!(features, :change_freeze)
+        change_columns && push!(features, :change_frozen_columns)
+        change_rows && push!(features, :change_frozen_rows)
+        options.has_filter && push!(features, :filter)
         options.has_help && push!(features, :help)
         options.has_visual_mode && push!(features, :visual_mode)
 

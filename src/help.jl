@@ -216,7 +216,9 @@ const _HELP_SECTIONS = HelpSection[
         nothing,
         ActionHelp[
             ActionHelp(:search, "Search for a regex."),
-            ActionHelp(:filter, "Show only the lines matching a regex; ! inverts it."),
+            ActionHelp(
+                :filter, "Show only the lines matching a regex; ! inverts it.", :filter
+            ),
             ActionHelp(:next_match, "Go to the next match."),
             ActionHelp(:previous_match, "Go to the previous match."),
             ActionHelp(:quit_search, "Quit the search."),
@@ -227,7 +229,9 @@ const _HELP_SECTIONS = HelpSection[
         "Frozen rows and columns stay visible while scrolling. Title rows are frozen rows " *
             "that do not scroll horizontally either. The selections on the screen are " *
             "moved with the movement keys or the mouse, applied with {Enter}, and " *
-            "cancelled with {Esc}.",
+            "cancelled with {Esc}. The features `:change_frozen_rows` and " *
+            "`:change_frozen_columns` tell which of them can be changed, and the title " *
+            "rows need the former.",
         :change_freeze,
         ActionHelp[
             ActionHelp(:change_freeze, "Set the frozen rows and columns."),

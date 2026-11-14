@@ -660,7 +660,8 @@ Copy the view in `frame` to `out`, drawing the guides of the on-screen selection
 
 The horizontal guide replaces the view row after the selected rows, and the vertical guide
 replaces the text column after the selected columns on every other row, with a crossing
-where they meet. The title selection has no columns, so it draws only the horizontal guide.
+where they meet. Only the guides that [`_freeze_selection_guides`](@ref) allows are drawn,
+so the title selection has only the horizontal one.
 The ruler is kept on every row, so both guides start after it. The text under the guides is
 hidden, and the decoration state of the text at the right of the vertical guide is restored.
 Rows missing from `frame`, when the text is shorter than the view, are emitted blank so that
@@ -681,7 +682,7 @@ function _draw_freeze_guides!(
     face = pagerd.display_config.freeze_guide
     selected_rows = pagerd.freeze_selection_rows
     selected_columns = pagerd.freeze_selection_columns
-    vertical = pagerd.mode == :freeze_selection
+    horizontal, vertical = _freeze_selection_guides(pagerd)
     ruler_width = _shown_ruler_width(pagerd)
 
     # The rows after the end of the text only carry the guides.
@@ -701,6 +702,7 @@ function _draw_freeze_guides!(
             ruler_width,
             cols,
             face,
+            horizontal,
             vertical,
         )
     end
@@ -711,12 +713,13 @@ end
 """
     _draw_freeze_guides_row!(out::IOBuffer, line::String, row::Int, selected_rows::Int,
         selected_columns::Int, ruler_width::Int, cols::Int, face::String,
-        vertical::Bool) -> Nothing
+        horizontal::Bool, vertical::Bool) -> Nothing
 
 Write the view row `line`, which is the row `row` of the view, to `out`, replacing its text
-by the horizontal guide if it follows the `selected_rows` first rows, or drawing the
-vertical guide on the column after its `selected_columns` first columns otherwise, if
-`vertical` is set. The `ruler_width` columns of the ruler are kept in both cases.
+by the horizontal guide if it follows the `selected_rows` first rows and `horizontal` is
+set, or drawing the vertical guide on the column after its `selected_columns` first columns
+otherwise, if `vertical` is set. The `ruler_width` columns of the ruler are kept in both
+cases.
 
 # Arguments
 
@@ -728,6 +731,7 @@ vertical guide on the column after its `selected_columns` first columns otherwis
 - `ruler_width::Int`: Number of columns of the ruler, or `0` if it is hidden.
 - `cols::Int`: Number of columns of the view.
 - `face::String`: Escape sequence of the face of the guides.
+- `horizontal::Bool`: Draw the horizontal guide.
 - `vertical::Bool`: Draw the vertical guide.
 """
 function _draw_freeze_guides_row!(
@@ -739,6 +743,7 @@ function _draw_freeze_guides_row!(
     ruler_width::Int,
     cols::Int,
     face::String,
+    horizontal::Bool,
     vertical::Bool,
 )
     # One-based view column of the vertical guide. Without it, the column is placed outside
@@ -760,7 +765,7 @@ function _draw_freeze_guides_row!(
     end
 
     # The row after the selected ones is the horizontal guide.
-    if row == selected_rows + 1
+    if horizontal && (row == selected_rows + 1)
         write(out, face)
 
         for column in (ruler_width + 1):cols
@@ -775,7 +780,7 @@ function _draw_freeze_guides_row!(
         return nothing
     end
 
-    # The vertical guide is outside the view in the title selection, and until the selection
+    # The vertical guide is outside the view when it is not drawn, and until the selection
     # is clamped after a resize.
     if guide_column > cols
         write(out, text)

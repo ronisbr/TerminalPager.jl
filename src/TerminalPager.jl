@@ -121,7 +121,13 @@ keywords passed explicitly win over the recipe.
     copied by the last yank, the viewport, and the search pattern, instead of `nothing`.
     (**Default**: `false`)
 - `change_freeze::Bool`: If `true`, then the user can change the number of frozen rows and
-    columns inside the pager.
+    columns, and of title rows, inside the pager.
+    (**Default**: `true`)
+- `change_frozen_columns::Bool`: If `false`, then the user cannot change the number of
+    frozen columns, even if `change_freeze` is `true`.
+    (**Default**: `true`)
+- `change_frozen_rows::Bool`: If `false`, then the user cannot change the number of frozen
+    rows and of title rows, even if `change_freeze` is `true`.
     (**Default**: `true`)
 - `frozen_columns::Int`: Number of columns to freeze at startup.
     (**Default**: `0`)
@@ -129,6 +135,8 @@ keywords passed explicitly win over the recipe.
     (**Default**: `0`)
 - `title_rows::Int`: Number of frozen rows treated as horizontally fixed titles.
     (**Default**: `0`)
+- `has_filter::Bool`: Allow the user to filter the lines.
+    (**Default**: `true`)
 - `has_help::Bool`: Allow the user to open pager help.
     (**Default**: `true`)
 - `has_visual_mode::Bool`: Allow the user to use visual mode.

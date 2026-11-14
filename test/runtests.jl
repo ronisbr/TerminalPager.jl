@@ -117,6 +117,44 @@ function Base.read(io::TypedInput, ::Type{UInt8})
     return byte
 end
 
+"""
+    _session_output(text::AbstractString, keys::AbstractString; kwargs...) -> String
+
+Run a pager session over `text` that reads the keystrokes of `keys` one at a time, as typed
+keys, and return what it wrote to the terminal without the escape sequences.
+
+# Arguments
+
+- `text::AbstractString`: Pager text.
+- `keys::AbstractString`: Keystrokes the session reads, which must quit it.
+
+# Keywords
+
+- `display_size::NTuple{2, Int}`: Terminal rows and columns.
+    (**Default**: `(24, 100)`)
+- `kwargs...`: Keywords of the session, like those of `pager`.
+"""
+function _session_output(
+    text::AbstractString,
+    keys::AbstractString;
+    display_size::NTuple{2, Int} = (24, 100),
+    kwargs...,
+)
+    input = TypedInput(keys)
+    output = IOContext(IOBuffer(), :displaysize => display_size, :color => false)
+    term = REPL.Terminals.TTYTerminal("", input, output, output)
+
+    TerminalPager._pager!(
+        term,
+        String(text);
+        input = TerminalPager.PagerInput(input),
+        use_alternate_screen_buffer = false,
+        kwargs...,
+    )
+
+    return replace(String(take!(output.io)), r"\e\[[0-9;?]*[A-Za-z]" => "")
+end
+
 # The tests copy text, which must not replace the clipboard of the user. The copied texts
 # are recorded here instead.
 const _TEST_CLIPBOARD = String[]

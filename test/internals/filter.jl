@@ -235,6 +235,7 @@ end
     # The frozen and the title rows are always shown. Hence, the visible rows must be the
     # same whether the rows are frozen before or after the filter is applied.
     pagerd = _create_modal_pagerd(_FILTER_LINES, "1\n\n")
+    pagerd.features = [:change_freeze, :change_frozen_columns, :change_frozen_rows]
     TerminalPager._apply_filter!(pagerd, r"info", false, "info")
     filtered = copy(pagerd.row_to_line)
     @test first(filtered) != 1
@@ -327,4 +328,25 @@ end
     TerminalPager._rebuild_view_layout!(pagerd)
     TerminalPager._redraw_status_bar!(pagerd)
     @test occursin(pagerd.display_config.mode_filter * "FILTER", String(take!(output)))
+end
+
+@testset "Filter Keyword" begin
+    # The filter is a feature of the session, enabled unless the keyword disables it.
+    text = join(("line $i" for i in 1:20), '\n')
+    filtered = r"FILTER 1 11/20"
+
+    @test occursin(filtered, _session_output(text, "&1\rq"))
+    @test occursin(filtered, _session_output(text, "&1\rq"; has_filter = true))
+    @test !occursin(filtered, _session_output(text, "&1\rq"; has_filter = false))
+    @test_throws TypeError _session_output(text, "q"; has_filter = 1)
+
+    @test TerminalPager._action_event(:filter, [:filter]) === :filter
+    @test TerminalPager._action_event(:filter, [:help]) === nothing
+
+    # The search does not need the feature, and the cheat sheet marks the action with it.
+    @test TerminalPager._action_event(:search, Symbol[]) === :search
+    @test occursin(":filter [filter]", TerminalPager._help_string(false))
+
+    # The filter history is shared by the sessions.
+    empty!(TerminalPager._FILTER_HISTORY)
 end

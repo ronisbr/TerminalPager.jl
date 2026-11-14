@@ -315,6 +315,9 @@ regular expression, and the result is previewed while the pattern is typed.
 
 !tip {:quit_search} clears the search first. Pressed again, it clears the filter.
 
+!note The filter needs the feature `:filter`, which is disabled when the pager is called
+  with `has_filter = false`.
+
 # Freezing rows and columns
 
 Frozen rows stay at the top of the view while the text scrolls vertically, and frozen
@@ -359,7 +362,10 @@ pager(matrix; frozen_rows = 1, title_rows = 1)
 ```
 
 !note These actions need the feature `:change_freeze`, which is disabled when the pager is
-  called with `change_freeze = false`.
+  called with `change_freeze = false`. The keywords `change_frozen_rows = false` and
+  `change_frozen_columns = false` disable only the change of the rows, together with the
+  title rows, or of the columns. The prompts and the selection on the screen then ask only
+  for what can be changed.
 
 # Visual mode
 
@@ -516,7 +522,10 @@ the texts that are kept.
   name.
 : show_scrollbar  Show the scrollbar. The default is the preference with the same name.
 : return_selection = false  Return a `PagerResult` instead of `nothing`.
-: change_freeze = true  Allow changing the frozen rows and columns.
+: change_freeze = true  Allow changing the frozen rows and columns and the title rows.
+: change_frozen_rows = true  Allow changing the frozen rows and the title rows.
+: change_frozen_columns = true  Allow changing the frozen columns.
+: has_filter = true  Allow the line filter.
 : has_visual_mode = true  Allow the visual mode.
 : has_help = true  Allow the cheat sheet and this manual.
 : use_alternate_screen_buffer = true  Use the alternate screen of the terminal, which

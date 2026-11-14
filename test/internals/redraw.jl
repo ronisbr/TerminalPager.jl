@@ -465,7 +465,7 @@ end
 
     screens = map((false, true)) do incremental
         pagerd = _create_redraw_pagerd(lines; display_size = display_size, color = true)
-        pagerd.features = [:help, :change_freeze, :visual_mode]
+        pagerd.features = [:help, :change_freeze, :change_frozen_columns, :change_frozen_rows, :visual_mode]
         pagerd.show_ruler = true
         screen = fill("", display_size[1] - 1)
 

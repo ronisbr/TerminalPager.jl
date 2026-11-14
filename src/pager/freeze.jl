@@ -11,15 +11,20 @@
 Prompt for the numbers of frozen rows and columns of `pagerd`, apply them, and request a
 redraw. An invalid or cancelled number of rows also skips the prompt for the columns.
 
+Only the numbers the session can change are prompted for, which are those of the features
+`:change_frozen_rows` and `:change_frozen_columns`.
+
 # Arguments
 
 - `pagerd::Pager`: Pager state to update.
 """
 function _change_freeze!(pagerd::Pager)
-    status, frozen_rows = _prompt_number!(pagerd, "Frozen rows", pagerd.frozen_rows)
+    change_rows, change_columns = _changeable_freeze(pagerd)
+    status = :empty
 
-    # An invalid or cancelled number of rows also skips the prompt for the columns.
-    if status in (:value, :empty)
+    if change_rows
+        status, frozen_rows = _prompt_number!(pagerd, "Frozen rows", pagerd.frozen_rows)
+
         if status === :value
             # The clamped field value must be used here, not the raw parsed one, and the
             # first visible row must stay inside the text.
@@ -29,7 +34,12 @@ function _change_freeze!(pagerd::Pager)
             _reset_crop!(pagerd)
             _refilter!(pagerd)
         end
+    end
 
+    # An invalid or cancelled number of rows also skips the prompt for the columns.
+    answered = status in (:value, :empty)
+
+    if answered && change_columns
         status, frozen_columns = _prompt_number!(
             pagerd, "Frozen columns", pagerd.frozen_columns
         )
@@ -39,18 +49,33 @@ function _change_freeze!(pagerd::Pager)
             pagerd.start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
             _reset_crop!(pagerd)
         end
+    end
 
-        if status !== :invalid
-            _set_message!(
-                pagerd,
-                "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns",
-            )
-        end
+    if answered && (status !== :invalid)
+        _set_message!(
+            pagerd, "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns"
+        )
     end
 
     _request_redraw!(pagerd)
 
     return nothing
+end
+
+"""
+    _changeable_freeze(pagerd::Pager) -> Bool, Bool
+
+Return whether the session of `pagerd` can change the number of frozen rows and whether it
+can change the number of frozen columns, which are the features `:change_frozen_rows` and
+`:change_frozen_columns`.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _changeable_freeze(pagerd::Pager)
+    features = pagerd.features
+    return (:change_frozen_rows in features), (:change_frozen_columns in features)
 end
 
 """
@@ -68,6 +93,9 @@ columns that would be selected are marked by guide lines drawn with the face
 and the mouse move the selection, Enter applies it, and the keys bound to `:quit`,
 `:quit_search`, and `:quit_eot` cancel it. In both cases, the viewport is restored and
 clamped to the frozen region.
+
+A session that cannot change the frozen rows, or the frozen columns, selects only the other
+ones: the number it cannot change is kept, and its guide line is not drawn.
 
 Since the titles are always frozen, applying more title rows than frozen rows freezes them
 as well. Nothing happens, and an error message is shown, if the text is empty, if the view
@@ -139,8 +167,10 @@ function _select_on_screen!(pagerd::Pager, mode::Symbol)
             _set_message!(pagerd, "$title_rows title rows")
         end
     elseif applied
-        pagerd.frozen_rows = pagerd.freeze_selection_rows
-        pagerd.frozen_columns = pagerd.freeze_selection_columns
+        # The number the session cannot change was restored above.
+        change_rows, change_columns = _changeable_freeze(pagerd)
+        change_rows && (pagerd.frozen_rows = pagerd.freeze_selection_rows)
+        change_columns && (pagerd.frozen_columns = pagerd.freeze_selection_columns)
         pagerd.visual_mode_line = 1
         _set_message!(
             pagerd, "Frozen $(pagerd.frozen_rows) rows × $(pagerd.frozen_columns) columns"
@@ -251,6 +281,8 @@ text. The columns are bounded by the view, without the ruler, and by the widest 
 the title selection has no columns. The guides are drawn after the selected rows and
 columns, so the view bounds leave one row and one column for them.
 
+See also: [`_freeze_selection_guides`](@ref)
+
 # Arguments
 
 - `pagerd::Pager`: Pager state to inspect.
@@ -268,6 +300,25 @@ function _freeze_selection_bounds(pagerd::Pager)
     end
 
     return min_rows, max_rows, max_columns
+end
+
+"""
+    _freeze_selection_guides(pagerd::Pager) -> Bool, Bool
+
+Return whether the on-screen selection of `pagerd` moves the horizontal guide, which selects
+the rows, and whether it moves the vertical one, which selects the columns. A guide that
+cannot be moved is not drawn.
+
+The title selection has only the rows. The freeze selection has what the session can change,
+as returned by [`_changeable_freeze`](@ref).
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _freeze_selection_guides(pagerd::Pager)
+    pagerd.mode == :title_selection && return true, false
+    return _changeable_freeze(pagerd)
 end
 
 """
@@ -296,7 +347,8 @@ of the mouse event `k`, and request a redraw if it changed.
 The single movements move the selection by one, the fast ones by five rows or ten columns,
 and `:home`, `:end`, `:bol`, and `:eol` move it to the bounds. A mouse press or drag inside
 the view puts the guides on the pointer, selecting the rows above it and the columns at its
-left, without the ruler. Every other keystroke is ignored.
+left, without the ruler. Every other keystroke is ignored, and so is a movement of a guide
+that [`_freeze_selection_guides`](@ref) does not allow.
 
 # Arguments
 
@@ -346,6 +398,11 @@ function _move_freeze_selection!(pagerd::Pager, action, k::Keystroke)
     elseif action === :eol
         columns = max_columns
     end
+
+    # A guide that cannot be moved keeps its selection.
+    select_rows, select_columns = _freeze_selection_guides(pagerd)
+    select_rows || (rows = pagerd.freeze_selection_rows)
+    select_columns || (columns = pagerd.freeze_selection_columns)
 
     rows = clamp(rows, min_rows, max_rows)
     columns = clamp(columns, 0, max_columns)
