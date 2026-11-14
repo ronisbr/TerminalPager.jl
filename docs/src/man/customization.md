@@ -112,9 +112,9 @@ prefix `terminalpager_`. The available faces are:
 | `help_title`          | Title of the help screens.                             | Bold yellow.                       |
 | `help_section`        | Section and chapter titles of the help screens.        | Bold yellow.                       |
 | `help_description`    | Feature tags, comments, and labels of the help screens. | Bright black.                      |
-| `help_key`            | Keys of the tables of the help screens.                | Bold.                              |
+| `help_key`            | Keys of the tables of the help screens.                | Bold magenta.                      |
 | `help_action`         | Action names of the help screen.                       | Cyan.                              |
-| `help_keycap`         | Keys in the text of the help screens (key caps).       | Bold on bright black.              |
+| `help_keycap`         | Keys in the text of the help screens (key caps).       | Bold magenta on bright black.      |
 | `help_code`           | Code, commands, and names in the extended help.        | Cyan.                              |
 | `help_border`         | Rules and box borders of the extended help.            | Bright black.                      |
 | `help_tip`            | Label of the tip boxes of the extended help.           | Bold green.                        |

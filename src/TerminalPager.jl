@@ -268,13 +268,13 @@ available faces are listed as follows:
     extended help.
     (**Default**: bright black)
 - `"help_key"`: Keys of the help screen and of the tables of the extended help.
-    (**Default**: bold)
+    (**Default**: bold magenta)
 - `"help_action"`: Action names of the help screen.
     (**Default**: cyan)
 - `"help_keycap"`: Keys in the text of the extended help. A face with a background, or with
     `inverse = true`, draws them as filled key caps. Otherwise, they are written between
     brackets.
-    (**Default**: bold on bright black)
+    (**Default**: bold magenta on bright black)
 - `"help_code"`: Code, commands, and names in the extended help.
     (**Default**: cyan)
 - `"help_border"`: Rules and box borders of the extended help.

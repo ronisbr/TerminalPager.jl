@@ -697,9 +697,9 @@ TerminalPager.drop_face!("search_match")
 : help_title  Title of the cheat sheet and of this manual. Bold yellow.
 : help_section  Chapter and section titles, their marks, and the bullets. Bold yellow.
 : help_description  Feature tags, comments, and labels. Bright black.
-: help_key  Keys of the tables. Bold.
+: help_key  Keys of the tables. Bold magenta.
 : help_action  Action names of the cheat sheet. Cyan.
-: help_keycap  Keys in the text. Bold on bright black.
+: help_keycap  Keys in the text. Bold magenta on bright black.
 : help_code  Code and names. Cyan.
 : help_border  Rules and borders. Bright black.
 : help_tip  Label of the tip boxes. Bold green.
