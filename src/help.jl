@@ -204,8 +204,10 @@ const _HELP_SECTIONS = HelpSection[
         "The search is case-insensitive unless the pattern has an uppercase letter. " *
             "Alt-l at the prompt toggles the literal mode, which searches the pattern as " *
             "typed. A pattern like `@12:20 x` matches only in the printable columns 12 " *
-            "to 20; `@12 x` and `@:20 x` open one end. The column ruler helps picking " *
-            "them. Esc clears the search, and then the filter.",
+            "to 20; `@12 x` and `@:20 x` open one end. The columns are highlighted while " *
+            "the range is typed, and `@@` selects them on the screen: move the cursor, " *
+            "press Enter on the first column and again on the last one. Esc clears the " *
+            "search, and then the filter.",
         nothing,
         ActionHelp[
             ActionHelp(:search, "Search for a regex."),

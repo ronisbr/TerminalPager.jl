@@ -51,7 +51,7 @@ function _view!(pagerd::Pager)
         pagerd.start_column = start_column
     end
 
-    # The columns of the search range being typed get a background.
+    # The columns of the search range being typed or selected get a background.
     highlighted_columns = _highlighted_columns(pagerd)
     show_columns = !isempty(highlighted_columns)
 
@@ -487,6 +487,27 @@ function _view_cells(pagerd::Pager, columns::UnitRange{Int}, width::Int, title::
     end
 
     return first_cell:min(last_cell, width)
+end
+
+"""
+    _text_column(pagerd::Pager, cell::Int, width::Int, title::Bool) -> Int
+
+Return the printable column of the text of `pagerd` shown by the cell `cell` of a row of the
+view with `width` cells, which is the inverse of [`_view_cells`](@ref).
+
+# Arguments
+
+- `pagerd::Pager`: Pager state with the viewport.
+- `cell::Int`: One-based cell of the row, counted after the line-number ruler.
+- `width::Int`: Number of cells of the row.
+- `title::Bool`: Whether the row is a title row.
+"""
+function _text_column(pagerd::Pager, cell::Int, width::Int, title::Bool)
+    frozen_columns = clamp(pagerd.frozen_columns, 0, width)
+    (title || (cell <= frozen_columns)) && return cell
+
+    start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
+    return start_column + (cell - frozen_columns) - 1
 end
 
 """

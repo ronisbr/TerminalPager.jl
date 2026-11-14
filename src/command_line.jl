@@ -19,6 +19,7 @@ const _MODE_VISUAL = "VISUAL"
 const _MODE_FREEZE = "FREEZE"
 const _MODE_TITLES = "TITLES"
 const _MODE_FILTER = "FILTER"
+const _MODE_COLUMN = "COLUMN"
 const _MODE_WIDTH = 6
 
 const _NO_MATCH = "no match"
@@ -52,12 +53,14 @@ const _GROUP_GAP = 3
 
 # Key hints of the status line, rebuilt when the key bindings change. The entries are the
 # generation they were built for, and the hints of the normal mode with and without the
-# help action, of the search mode, of the visual mode, of the freeze selection mode, and of
-# the normal mode with an active filter, with and without the help action.
-const _STATUS_HINTS =
-    Ref{Tuple{Int, String, String, String, String, String, String, String}}((
-        -1, "", "", "", "", "", "", ""
-    ))
+# help action, of the search mode, of the visual mode, of the freeze selection mode, of the
+# normal mode with an active filter, with and without the help action, and of the column
+# selection mode before and after its first column is fixed.
+const _STATUS_HINTS = Ref{
+    Tuple{Int, String, String, String, String, String, String, String, String, String}
+}((
+    -1, "", "", "", "", "", "", "", "", ""
+))
 
 # Padding is written directly from the bytes of this string, so that right-aligning the
 # hint does not allocate a full-width string at every frame.
@@ -242,7 +245,8 @@ end
     _status_hint(mode::Symbol, with_help::Bool) -> String
 
 Return the key hints of the status line for `mode`, which is `:normal`, `:search`,
-`:visual`, `:freeze`, or `:filter`, like `?:help  q:quit` or `n:next  N:prev  Esc:clear`.
+`:visual`, `:freeze`, `:filter`, `:column_first`, or `:column_last`, like `?:help  q:quit`
+or `n:next  N:prev  Esc:clear`.
 
 The hints are rebuilt only when the key bindings change, so that the status line does not
 allocate at every frame.
@@ -257,15 +261,11 @@ function _status_hint(mode::Symbol, with_help::Bool)
     cached = _STATUS_HINTS[]
 
     if cached[1] != generation
-        # Enter is not an action in the freeze selection mode, so its hint is assembled by
-        # hand.
-        freeze_apply = _KEY_NAMES["<enter>"] * ":apply"
-        freeze_cancel = _join_hints((:quit_search, "cancel"))
-        freeze_hint = if isempty(freeze_cancel)
-            freeze_apply
-        else
-            freeze_apply * " "^_ITEM_GAP * freeze_cancel
-        end
+        # Enter is not an action in the selection modes, so its hint is assembled by hand.
+        enter = _KEY_NAMES["<enter>"]
+        cancel = _join_hints((:quit_search, "cancel"))
+        isempty(cancel) || (cancel = " "^_ITEM_GAP * cancel)
+        freeze_hint = enter * ":apply" * cancel
 
         cached = (
             generation,
@@ -290,6 +290,8 @@ function _status_hint(mode::Symbol, with_help::Bool)
                 (:quit, "quit"),
             ),
             _join_hints((:filter, "filter"), (:quit_search, "clear"), (:quit, "quit")),
+            enter * ":start" * cancel,
+            enter * ":apply" * cancel,
         )
         _STATUS_HINTS[] = cached
     end
@@ -298,6 +300,8 @@ function _status_hint(mode::Symbol, with_help::Bool)
     mode === :visual && return cached[5]
     mode === :freeze && return cached[6]
     mode === :filter && return with_help ? cached[7] : cached[8]
+    mode === :column_first && return cached[9]
+    mode === :column_last && return cached[10]
     return with_help ? cached[2] : cached[3]
 end
 
@@ -458,14 +462,17 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     in_freeze = pagerd.mode == :freeze_selection
     in_titles = pagerd.mode == :title_selection
     in_selection = in_freeze || in_titles
-    in_visual = pagerd.visual_mode && !in_selection
+    in_columns = pagerd.mode == :column_selection
+    in_visual = pagerd.visual_mode && !in_selection && !in_columns
     in_search = pagerd.mode == :searching
-    show_mode = in_selection || in_visual || in_search
+    show_mode = in_selection || in_columns || in_visual || in_search
     w_mode = show_mode ? _MODE_WIDTH : _PROMPT_WIDTH
     mode_name = if in_freeze
         _MODE_FREEZE
     elseif in_titles
         _MODE_TITLES
+    elseif in_columns
+        _MODE_COLUMN
     elseif in_visual
         _MODE_VISUAL
     elseif in_search
@@ -482,7 +489,8 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     end
 
     # Details of the mode: "r×c", "t", "n lines", "match i/n", or "no match". The search
-    # restricted to a range of columns shows the range, like "@12:20", before the matches.
+    # restricted to a range of columns shows the range, like "@12:20", before the matches,
+    # and the column selection shows both bounds of the selected range.
     selection_rows = pagerd.freeze_selection_rows
     selection_columns = pagerd.freeze_selection_columns
     num_selected = _num_selected_lines(pagerd)
@@ -490,10 +498,13 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     match_id = pagerd.active_search_match_id
     search_columns = pagerd.search_columns
     w_columns = in_search ? _column_range_width(search_columns) : 0
+    selected_columns = pagerd.highlighted_columns
     w_detail = if in_freeze
         ndigits(selection_rows) + 1 + ndigits(selection_columns)
     elseif in_titles
         ndigits(selection_rows)
+    elseif in_columns
+        2 + ndigits(first(selected_columns)) + ndigits(Base.last(selected_columns))
     elseif in_visual
         ndigits(num_selected) + (num_selected == 1 ? 5 : 6)
     elseif in_search
@@ -528,6 +539,8 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
     # Key hints of the current mode.
     hint_mode = if in_selection
         :freeze
+    elseif in_columns
+        pagerd.column_selection_anchor > 0 ? :column_last : :column_first
     elseif in_visual
         :visual
     elseif in_search
@@ -604,6 +617,11 @@ function _write_status_line!(out::IOBuffer, pagerd::Pager, cols::Int, use_color:
             _write_decimal(out, selection_columns)
         elseif in_titles
             _write_decimal(out, selection_rows)
+        elseif in_columns
+            write(out, UInt8('@'))
+            _write_decimal(out, first(selected_columns))
+            write(out, UInt8(':'))
+            _write_decimal(out, Base.last(selected_columns))
         elseif in_visual
             _write_decimal(out, num_selected)
             write(out, num_selected == 1 ? " line" : " lines")

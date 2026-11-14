@@ -211,7 +211,7 @@ which hold only the SGR parameters of the background, as [`ViewOptions`](@ref) e
 - `search_match::String`: Inactive search match.
 - `search_active_match::String`: Active search match.
 - `search_columns::String`: Background of the columns that restrict a search, shown while
-    the range is typed.
+    the range is typed or selected.
 - `visual_line::String`: Background of the lines marked in the visual mode.
 - `visual_active_line::String`: Background of the visual line.
 - `freeze_guide::String`: Guide lines of the freeze selection mode.
@@ -470,8 +470,8 @@ anchor, and the bookmarks store source lines, so that they survive a change of t
 - `message::String`: Message shown on the command line until the next keystroke, or an
     empty string.
 - `message_kind::Symbol`: Kind of `message`, `:info` or `:error`.
-- `mode::Symbol`: Current pager mode, `:view`, `:searching`, `:freeze_selection`, or
-    `:title_selection`.
+- `mode::Symbol`: Current pager mode, `:view`, `:searching`, `:freeze_selection`,
+    `:title_selection`, or `:column_selection`.
 - `bookmarks::Dict{Char, Tuple{Int, Int}}`: Line and column of each bookmark, keyed by its
     letter. The lines are marked in the line-number ruler.
 - `last_position::Tuple{Int, Int}`: Line of the text at the first visible row and first
@@ -486,8 +486,11 @@ anchor, and the bookmarks store source lines, so that they survive a change of t
 - `freeze_buf::IOBuffer`: Reused buffer holding the view with the freeze guides or the
     highlighted columns drawn before the scrollbar is added to it.
 - `highlighted_columns::UnitRange{Int}`: Printable columns drawn with the background of the
-    face `search_columns`, which are the ones of the search range being typed, or an empty
-    range.
+    face `search_columns`, which are the ones of the search range being typed or selected,
+    or an empty range.
+- `column_selection_cursor::Int`: Column under the cursor of the column selection mode.
+- `column_selection_anchor::Int`: First column fixed in the column selection mode, or `0`
+    while it was not fixed yet.
 - `title_rows::Int`: Number of title rows.
 - `show_ruler::Bool`: Whether to show the line-number ruler.
 - `show_column_ruler::Bool`: Whether to show the column ruler on top of the view.
@@ -554,6 +557,8 @@ Base.@kwdef mutable struct Pager
     freeze_selection_columns::Int = 0
     freeze_buf::IOBuffer = IOBuffer()
     highlighted_columns::UnitRange{Int} = 1:0
+    column_selection_cursor::Int = 0
+    column_selection_anchor::Int = 0
     title_rows::Int = 0
     show_ruler::Bool = false
     show_column_ruler::Bool = false

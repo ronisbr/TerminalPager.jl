@@ -409,11 +409,16 @@ precompile(_close_input_waiter!, (PagerInput,))
 precompile(_write_all, (Base.TTY, typeof(IOBuffer().data), Int))
 precompile(bytesavailable, (Base.TTY,))
 
-# The workload writes its input at once, as a pasted text, which does not preview the
-# pattern of a search. Hence, the function that highlights its columns is compiled here.
+# The workload writes its input at once, as a pasted text, which neither previews the
+# pattern of a search nor selects its columns on the screen. Hence, the functions that
+# highlight and select the columns are compiled here.
 precompile(
     _draw_highlighted_columns!, (IOBuffer, IOBuffer, Int, Int, Pager, UnitRange{Int})
 )
+precompile(_select_columns_key!, (Pager, Keystroke, Vector{Char}, Int))
+precompile(_select_columns!, (Pager, UnitRange{Int}))
+precompile(_move_column_selection!, (Pager, Symbol, Keystroke))
+precompile(_move_column_selection!, (Pager, Nothing, Keystroke))
 
 # The workload only registers the REPL hook. Running the hook would not help, because it
 # skips its body in the non-interactive precompilation process.

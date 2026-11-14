@@ -125,6 +125,25 @@ function _typed_columns(str::AbstractString)
 end
 
 """
+    _replace_typed_columns(str::AbstractString, columns::UnitRange{Int}) -> String
+
+Return the search input `str`, which begins with `@`, with the range of columns written at
+its beginning replaced by `columns`, keeping the pattern after it. If `str` has no range,
+everything after the `@` is the pattern.
+
+# Arguments
+
+- `str::AbstractString`: Search input typed so far.
+- `columns::UnitRange{Int}`: Range of columns to write.
+"""
+function _replace_typed_columns(str::AbstractString, columns::UnitRange{Int})
+    m = match(r"^@\d*(?::\d*)?(?: (.*))?$"s, str)
+    pattern = isnothing(m) ? SubString(str, 2) : something(m[1], "")
+
+    return string('@', first(columns), ':', Base.last(columns), ' ', pattern)
+end
+
+"""
     _find_matches!(pagerd::Pager, regex::Regex; kwargs...) -> Nothing
 
 Find every match of `regex` and store the search metadata in `pagerd`, keeping only the
@@ -321,7 +340,8 @@ which is tagged at the right of the prompt.
 
 If `select_columns` is set, the pattern can begin with a range of columns, like `@12:20 `.
 The columns of the range are highlighted in the view while the prompt is open, even without
-the preview.
+the preview, and a second `@` typed right after the first one selects the range on the
+screen, as [`_select_columns_key!`](@ref) describes.
 
 # Arguments
 
@@ -369,7 +389,11 @@ function _prompt_pattern!(
         return preview(pattern)
     end
 
-    on_key = (k, _, cursor) -> _toggle_literal_search!(pagerd, k) ? cursor : 0
+    on_key = (k, chars, cursor) -> begin
+        _toggle_literal_search!(pagerd, k) && return cursor
+        select_columns || return 0
+        return _select_columns_key!(pagerd, k, chars, cursor)
+    end
 
     # The columns are highlighted only while the prompt is open.
     cmd_input = try
@@ -419,9 +443,10 @@ Prompt for a search pattern and highlight its matches in `pagerd`.
 While the pattern is typed, the matches in a text with up to `_INCREMENTAL_SEARCH_MAX_LINES`
 lines are previewed, and the prompt shows the active match. ALT-l toggles the literal search,
 shown as `[lit]` and kept for the session. The columns of a range like `@12:20 ` at the
-beginning of the pattern are highlighted while the prompt is open. Cancelling the prompt, or
-leaving it empty, keeps the search state and the viewport from before it. An invalid pattern
-reports an error.
+beginning of the pattern are highlighted while the prompt is open, and a second `@` typed
+right after the first one selects the range on the screen. Cancelling the prompt, or leaving
+it empty, keeps the search state and the viewport from before it. An invalid pattern reports
+an error.
 
 # Arguments
 
