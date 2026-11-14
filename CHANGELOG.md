@@ -111,12 +111,19 @@ Version 0.9.0
   so that `'` and the letter of the table of contents jump to it. The new faces
   `help_keycap`, `help_code`, `help_border`, `help_tip`, `help_note`, and `help_warning`
   style it.
+- ![Feature][badge-feature] The new keywords `has_filter`, `change_frozen_rows`, and
+  `change_frozen_columns` of `pager` disable the line filter and the change of the frozen
+  rows, together with the title rows, or of the frozen columns. The prompts of `f` and the
+  selection of `F` then ask only for what can be changed, and `change_freeze` still disables
+  everything.
 - ![Enhancement][badge-enhancement] The help screen opened by `?` has the look of the
   extended help, and it points to it: a banner, section titles on rules, 92 columns, and a
   new default palette in which each color has one role. The titles and the section titles
   are bold yellow (`help_title` and `help_section`), the keys are bold magenta (`help_key`),
   and the action names are cyan (`help_action`), instead of bold cyan, bold, cyan, and bold
   yellow.
+- ![Enhancement][badge-enhancement] The helps opened by `?` and `H` do not filter their
+  lines nor freeze columns, which had no use in them. Their rows can still be frozen.
 - ![Enhancement][badge-enhancement] The functions that start a pager session are not
   compiled again for each type of object nor for each combination of keywords, and what a
   session needs at first use is precompiled: `pager(obj)`, the callbacks and the key
