@@ -215,6 +215,8 @@ PrecompileTools.@setup_workload begin
             write(stdin_wr, "?")
             # Exit help mode.
             write(stdin_wr, "q")
+            # Extended help: jump to a chapter and exit.
+            write(stdin_wr, "H'bq")
             # Bookmarks: set, jump, and return.
             write(stdin_wr, "ma'a''")
             # Position report and the goto forms.

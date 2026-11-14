@@ -221,12 +221,12 @@ which hold only the SGR parameters of the background, as [`ViewOptions`](@ref) e
 - `scrollbar_thumb::String`: Thumb of the scrollbar.
 - `command_status::String`: Status shown at the right of the command line.
 - `help_title::String`: Title of the help screen and of the extended help.
-- `help_section::String`: Section titles of the help screen.
-- `help_description::String`: Section descriptions and feature tags of the help screen.
+- `help_section::String`: Section titles of the help screen, and chapter titles, section
+    titles, and list bullets of the extended help.
+- `help_description::String`: Feature tags of the help screen, and comments and labels of
+    the extended help.
 - `help_key::String`: Keys of the help screen and of the tables of the extended help.
 - `help_action::String`: Action names of the help screen.
-- `help_chapter::String`: Chapter titles, title marks, and list bullets of the extended
-    help.
 - `help_keycap::String`: Keys in the text of the extended help.
 - `help_code::String`: Code, commands, and names in the extended help.
 - `help_border::String`: Rules and box borders of the extended help.
@@ -259,7 +259,6 @@ struct DisplayConfig
     help_description::String
     help_key::String
     help_action::String
-    help_chapter::String
     help_keycap::String
     help_code::String
     help_border::String

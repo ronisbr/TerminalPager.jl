@@ -110,12 +110,11 @@ prefix `terminalpager_`. The available faces are:
 | `scrollbar_thumb`     | Thumb of the scrollbar.                                | No attributes.                     |
 | `command_status`      | Status at the right of the command line.               | Bright black.                      |
 | `help_title`          | Title of the help screens.                             | Bold yellow.                       |
-| `help_section`        | Section titles of the help screen.                     | Bold.                              |
-| `help_description`    | Section descriptions and feature tags of the help.     | Bright black.                      |
+| `help_section`        | Section and chapter titles of the help screens.        | Bold yellow.                       |
+| `help_description`    | Feature tags, comments, and labels of the help screens. | Bright black.                      |
 | `help_key`            | Keys of the tables of the help screens.                | Bold.                              |
 | `help_action`         | Action names of the help screen.                       | Cyan.                              |
-| `help_chapter`        | Chapter titles and marks of the extended help.         | Bold yellow.                       |
-| `help_keycap`         | Keys in the text of the extended help (key caps).      | Bold on bright black.              |
+| `help_keycap`         | Keys in the text of the help screens (key caps).       | Bold on bright black.              |
 | `help_code`           | Code, commands, and names in the extended help.        | Cyan.                              |
 | `help_border`         | Rules and box borders of the extended help.            | Bright black.                      |
 | `help_tip`            | Label of the tip boxes of the extended help.           | Bold green.                        |

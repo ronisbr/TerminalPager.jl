@@ -68,9 +68,22 @@ end
     end
 
     # The cheat sheet fits its width, and the features are shown.
-    @test occursin("── Movement ", plain)
-    @test occursin("(feature :visual_mode)", plain)
+    @test occursin("  ━━ Movement ━", plain)
+    @test occursin("━━ Visual Mode · feature :visual_mode ━", plain)
     @test occursin(":help [help]", plain)
+
+    # The screen has the banner and the marked text of the extended help, and it points to
+    # the manual.
+    lines = split(plain, '\n')
+    @test startswith(lines[1], "  ╭─")
+    @test occursin("·  Help", lines[2])
+    @test occursin("[H] opens the extended help", plain)
+    @test !any(line -> endswith(line, ' '), lines)
+
+    style = TerminalPager.HelpStyle(true, TerminalPager.DisplayConfig())
+    @test occursin(style.section * "Movement" * style.reset, colored)
+    @test occursin(style.code * "TerminalPager.set_keybinding" * style.reset, colored)
+    @test occursin(style.action * ":quit" * style.reset, colored)
 
     for line in eachsplit(plain, '\n')
         @test textwidth(line) <= TerminalPager._HELP_WIDTH

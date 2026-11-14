@@ -36,11 +36,10 @@ const _FACES = Pair{Symbol, Face}[
     :scrollbar_thumb => Face(),
     :command_status => Face(; foreground = :bright_black),
     :help_title => Face(; weight = :bold, foreground = :yellow),
-    :help_section => Face(; weight = :bold),
+    :help_section => Face(; weight = :bold, foreground = :yellow),
     :help_description => Face(; foreground = :bright_black),
     :help_key => Face(; weight = :bold),
     :help_action => Face(; foreground = :cyan),
-    :help_chapter => Face(; weight = :bold, foreground = :yellow),
     :help_keycap => Face(; weight = :bold, background = :bright_black),
     :help_code => Face(; foreground = :cyan),
     :help_border => Face(; foreground = :bright_black),
@@ -156,16 +155,16 @@ See also: [`drop_face!`](@ref).
     (**Default**: bright black)
 - `"help_title"`: Title of the help screen and of the extended help.
     (**Default**: bold yellow)
-- `"help_section"`: Section titles of the help screen.
-    (**Default**: bold)
-- `"help_description"`: Section descriptions and feature tags of the help screen.
+- `"help_section"`: Section titles of the help screen, and chapter titles, section titles,
+    and list bullets of the extended help.
+    (**Default**: bold yellow)
+- `"help_description"`: Feature tags of the help screen, and comments and labels of the
+    extended help.
     (**Default**: bright black)
 - `"help_key"`: Keys of the help screen and of the tables of the extended help.
     (**Default**: bold)
 - `"help_action"`: Action names of the help screen.
     (**Default**: cyan)
-- `"help_chapter"`: Chapter titles, title marks, and list bullets of the extended help.
-    (**Default**: bold yellow)
 - `"help_keycap"`: Keys in the text of the extended help. A face with a background, or with
     `inverse = true`, draws them as filled key caps. Otherwise, they are written between
     brackets.
@@ -420,7 +419,6 @@ function _display_config(face_of::F = _current_face) where {F <: Function}
         sgr(:help_description),
         sgr(:help_key),
         sgr(:help_action),
-        sgr(:help_chapter),
         sgr(:help_keycap),
         sgr(:help_code),
         sgr(:help_border),

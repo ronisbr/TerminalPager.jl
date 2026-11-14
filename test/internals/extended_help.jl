@@ -1,29 +1,44 @@
 ## Description #############################################################################
 #
-# Tests for the extended help, which is the manual shown inside the pager.
+# Tests for the extended help, which is the manual shown inside the pager, and for the text
+# marks it shares with the help screen.
 #
 ############################################################################################
 
 """
-    _manual_plain(width::Int) -> Vector{String}
+    _manual_plain(source::AbstractString) -> Vector{String}
 
-Return the lines of the extended help laid out for `width` columns without decorations.
+Return the lines of the `source` of a manual laid out without decorations.
 """
-function _manual_plain(width::Int)
-    manual = TerminalPager._manual(false, TerminalPager.DisplayConfig(), width)
-    return String.(split(manual.text, '\n'))
+function _manual_plain(source::AbstractString)
+    style = TerminalPager.HelpStyle(false, TerminalPager.DisplayConfig())
+    return TerminalPager._manual_lines(source, style)[1]
 end
 
 """
-    _manual_block_lines(block::TerminalPager.ManualBlock, width::Int) -> Vector{String}
+    _manual_block_lines(source::AbstractString) -> Vector{String}
 
-Return the lines of `block` laid out for a content `width` columns wide without decorations.
+Return the lines of the block in `source` laid out without decorations.
 """
-function _manual_block_lines(block::TerminalPager.ManualBlock, width::Int)
+function _manual_block_lines(source::AbstractString)
     lines = String[]
-    style = TerminalPager.ManualStyle(false, TerminalPager.DisplayConfig())
-    TerminalPager._manual_block!(lines, block, style, width)
+    style = TerminalPager.HelpStyle(false, TerminalPager.DisplayConfig())
+    block = only(TerminalPager._manual_blocks(source))
+    TerminalPager._manual_block!(lines, block, style)
     return lines
+end
+
+"""
+    _keycap_style(face::TerminalPager.Face) -> TerminalPager.HelpStyle
+
+Return the decorated style of the help screens with `face` as the face of the key caps.
+"""
+function _keycap_style(face::TerminalPager.Face)
+    config = TerminalPager._display_config() do name
+        name === :help_keycap ? face : TerminalPager._default_face(name)
+    end
+
+    return TerminalPager.HelpStyle(true, config)
 end
 
 @testset "Extended Help Key Binding and Feature Gate" begin
@@ -36,8 +51,8 @@ end
     @test isnothing(TerminalPager._action_event(:extended_help, Symbol[]))
 end
 
-@testset "Extended Help Text Marks" begin
-    atoms = TerminalPager._manual_atoms("Press {:quit}, `a b` or *very strong* {Enter}.")
+@testset "Help Text Marks" begin
+    atoms = TerminalPager._help_atoms("Press {:quit}, `a b` or *very strong* {Enter}.")
     @test [atom.text for atom in atoms] ==
         ["Press", "q", ",", "a b", "or", "very", "strong", "Enter", "."]
     @test [atom.style for atom in atoms] ==
@@ -46,54 +61,48 @@ end
         [false, false, true, false, false, false, false, false, true]
 
     # Nothing is marked inside code, and an unbalanced mark is written as it is.
-    atoms = TerminalPager._manual_atoms("`{:quit} *x*` and `open")
+    atoms = TerminalPager._help_atoms("`{:quit} *x*` and `open {x")
     @test [(atom.text, atom.style) for atom in atoms] ==
-        [("{:quit} *x*", :code), ("and", :plain), ("`open", :plain)]
+        [("{:quit} *x*", :code), ("and", :plain), ("`open", :plain), ("{x", :plain)]
 
     # An action without a key is named as such.
-    @test TerminalPager._manual_key_name(":not_an_action") == "unbound"
-    @test TerminalPager._manual_key_name("Enter") == "Enter"
+    @test TerminalPager._help_key_name(":not_an_action") == "unbound"
+    @test TerminalPager._help_key_name("Enter") == "Enter"
     @test TerminalPager._manual_key_names(":not_an_action") == "—"
     @test TerminalPager._manual_key_names("Alt-l") == "Alt-l"
 
     # The keys are preferred to the mouse events, and the tables show the shortest ones.
-    @test TerminalPager._manual_key_name(":fastleft") == "Shift-←"
+    @test TerminalPager._help_key_name(":fastleft") == "Shift-←"
     @test TerminalPager._manual_key_names(":up") == "k, ↑"
     @test TerminalPager._manual_key_names(":wheel_up") == "Wheel↑"
 
-    # A key cap has a blank at each side, and brackets without colors.
-    plain = TerminalPager.ManualStyle(false, TerminalPager.DisplayConfig())
-    colored = TerminalPager.ManualStyle(true, TerminalPager.DisplayConfig())
-    atoms = TerminalPager._manual_atoms("Press {:quit}, `a b`.")
-
-    buf = IOBuffer()
-    @test TerminalPager._write_manual_atoms!(buf, atoms, plain) == 15
-    @test String(take!(buf)) == "Press [q], a b."
-
-    @test TerminalPager._write_manual_atoms!(buf, atoms, colored) == 15
-    text = String(take!(buf))
-    @test occursin(colored.keycap * " q " * colored.reset, text)
-    @test occursin(colored.code * "a b" * colored.reset, text)
-    @test TerminalPager.remove_decorations(text) == "Press  q , a b."
-    @test TerminalPager._manual_atoms_width(atoms) == 15
-
-    # A face that does not fill its cells writes the key between brackets drawn as the
-    # borders, with the same width.
-    bracketed = TerminalPager.ManualStyle(
-        true,
-        TerminalPager._display_config() do name
-            if name === :help_keycap
-                TerminalPager.Face(; weight = :bold, foreground = :yellow)
-            else
-                TerminalPager._default_face(name)
-            end
-        end,
-    )
-    @test colored.keycap_filled
-    @test !bracketed.keycap_filled
+    # A key cap has one column at each side of the key: brackets without colors, and
+    # blanks with the face of the key caps if the face fills its cells.
+    plain = TerminalPager.HelpStyle(false, TerminalPager.DisplayConfig())
+    filled = _keycap_style(TerminalPager.Face(; background = :bright_black))
+    atoms = TerminalPager._help_atoms("Press {:quit}, `a b`.")
+    @test TerminalPager._help_atoms_width(atoms) == 15
+    @test filled.keycap_filled
     @test !plain.keycap_filled
 
-    @test TerminalPager._write_manual_atoms!(buf, atoms, bracketed) == 15
+    buf = IOBuffer()
+    @test TerminalPager._write_help_atoms!(buf, atoms, plain) == 15
+    @test String(take!(buf)) == "Press [q], a b."
+
+    @test TerminalPager._write_help_atoms!(buf, atoms, filled) == 15
+    text = String(take!(buf))
+    @test occursin(filled.keycap * " q " * filled.reset, text)
+    @test occursin(filled.code * "a b" * filled.reset, text)
+    @test TerminalPager.remove_decorations(text) == "Press  q , a b."
+
+    # A reversed face fills its cells too.
+    @test _keycap_style(TerminalPager.Face(; inverse = true)).keycap_filled
+
+    # A face that does not fill its cells writes the key between brackets drawn as the
+    # borders.
+    bracketed = _keycap_style(TerminalPager.Face(; foreground = :yellow))
+    @test !bracketed.keycap_filled
+    @test TerminalPager._write_help_atoms!(buf, atoms, bracketed) == 15
     text = String(take!(buf))
     border = bracketed.border
     reset = bracketed.reset
@@ -101,29 +110,16 @@ end
         border * "[" * reset * bracketed.keycap * "q" * reset * border * "]" * reset, text
     )
     @test TerminalPager.remove_decorations(text) == "Press [q], a b."
-
-    # A reversed face fills its cells too.
-    reversed = TerminalPager.ManualStyle(
-        true,
-        TerminalPager._display_config() do name
-            if name === :help_keycap
-                TerminalPager.Face(; inverse = true)
-            else
-                TerminalPager._default_face(name)
-            end
-        end,
-    )
-    @test reversed.keycap_filled
 end
 
-@testset "Extended Help Text Wrapping" begin
-    atoms = TerminalPager._manual_atoms("one two (`three four`), five {Esc}. six")
-    plain = TerminalPager.ManualStyle(false, TerminalPager.DisplayConfig())
+@testset "Help Text Wrapping" begin
+    atoms = TerminalPager._help_atoms("one two (`three four`), five {Esc}. six")
+    plain = TerminalPager.HelpStyle(false, TerminalPager.DisplayConfig())
 
     function rows(width)
-        return map(TerminalPager._wrap_manual_atoms(atoms, width)) do row
+        return map(TerminalPager._wrap_help_atoms(atoms, width)) do row
             buf = IOBuffer()
-            TerminalPager._write_manual_atoms!(buf, row, plain)
+            TerminalPager._write_help_atoms!(buf, row, plain)
             return String(take!(buf))
         end
     end
@@ -136,200 +132,226 @@ end
 
     # A word wider than the width gets a row of its own.
     @test rows(3) == ["one", "two", "(three four),", "five", "[Esc].", "six"]
-    @test isempty(TerminalPager._wrap_manual_atoms(TerminalPager.ManualAtom[], 10))
+    @test isempty(TerminalPager._wrap_help_atoms(TerminalPager.HelpAtom[], 10))
+
+    # A text is wrapped after the margin and the indentation.
+    lines = String[]
+    TerminalPager._help_text!(lines, "aaa bbb ccc ddd", plain, "> ", "  ", 9)
+    @test lines == ["  > aaa bbb", "    ccc ddd"]
+end
+
+@testset "Extended Help Source" begin
+    source = """
+    intro one
+    intro two
+
+    # First
+
+    + a  b
+      c
+    + d  e
+
+    ```Title
+    code
+
+    more  ## comment
+    ```
+
+    ~~~
+    art
+
+    ~~~
+    """
+
+    # The blocks are separated by blank lines, but for the examples and the figures.
+    @test TerminalPager._manual_blocks(source) == [
+        ["intro one", "intro two"],
+        ["# First"],
+        ["+ a  b", "  c", "+ d  e"],
+        ["```Title", "code", "", "more  ## comment", "```"],
+        ["~~~", "art", "", "~~~"],
+    ]
+    @test isempty(TerminalPager._manual_blocks("\n\n"))
+
+    # A row continues on the lines that begin with a blank, and it is split at its first
+    # two blanks.
+    block = ["+ a  b", "  c  d", "+ e"]
+    @test TerminalPager._manual_rows(block, 2) == ["a  b c  d", "e"]
+    @test TerminalPager._manual_pairs(block) == [("a", "b c  d"), ("e", "")]
+    @test TerminalPager._manual_split("code  ## note", "  ## ") == ("code", "note")
+    @test TerminalPager._manual_split("code   ", "  ## ") == ("code", "")
 end
 
 @testset "Extended Help Blocks" begin
-    # A paragraph is wrapped after the margin.
-    block = TerminalPager._manual_paragraph("aaa bbb ccc ddd")
-    @test _manual_block_lines(block, 7) == ["  aaa bbb", "  ccc ddd"]
+    width = TerminalPager._HELP_WIDTH
 
-    @test _manual_block_lines(TerminalPager._manual_heading("Title"), 20) == ["  ▌ Title"]
+    # A paragraph is wrapped after the margin, with its lines joined.
+    lines = _manual_block_lines("aaa bbb\nccc " * "x"^85 * " ddd")
+    @test lines == ["  aaa bbb ccc", "  " * "x"^85, "  ddd"]
+
+    @test _manual_block_lines("## Title") == ["  ▌ Title"]
 
     # A key table has two columns when every description fits in half the width.
-    items = ["Enter" => "Apply.", ":quit" => "Quit.", "Esc" => "Cancel it."]
-    block = TerminalPager._manual_keys(items)
-    @test _manual_block_lines(block, 60) ==
-        ["    Enter  Apply.                 q      Quit.", "    Esc    Cancel it."]
-    @test _manual_block_lines(block, 30) ==
-        ["    Enter  Apply.", "    q      Quit.", "    Esc    Cancel it."]
+    @test _manual_block_lines("+ Enter  Apply.\n+ :quit  Quit.\n+ Esc  Cancel it.") ==
+        ["    Enter  Apply." * " "^31 * "q      Quit.", "    Esc    Cancel it."]
+    @test _manual_block_lines("+ Enter  Apply.") == ["    Enter  Apply."]
 
     # Otherwise, the descriptions are wrapped at the side of the keys.
-    block = TerminalPager._manual_keys(["Esc" => "aaa bbb ccc ddd", "x" => "eee"])
-    @test _manual_block_lines(block, 16) ==
-        ["    Esc  aaa bbb", "         ccc ddd", "    x    eee"]
+    long = join(fill("word", 20), ' ')
+    lines = _manual_block_lines("+ Esc  " * long * "\n+ x  short")
+    @test lines == [
+        "    Esc  " * join(fill("word", 16), ' '),
+        "         " * join(fill("word", 4), ' '),
+        "    x    short",
+    ]
 
     # The descriptions are at the side of short terms and below long ones.
-    block = TerminalPager._manual_definitions(["ab" => "aaa bbb ccc", "c" => "ddd"])
-    @test _manual_block_lines(block, 14) ==
-        ["    ab  aaa bbb", "        ccc", "    c   ddd"]
+    @test _manual_block_lines(": ab  aaa bbb\n: c  ddd") ==
+        ["    ab  aaa bbb", "    c   ddd"]
 
-    long = "x"^30
-    block = TerminalPager._manual_definitions([long => "aaa bbb", "c" => "ddd"])
-    @test _manual_block_lines(block, 40) ==
-        ["    " * long, "        aaa bbb", "", "    c", "        ddd"]
+    term = "x"^30
+    @test _manual_block_lines(": " * term * "  aaa bbb\n: c  ddd") ==
+        ["    " * term, "        aaa bbb", "", "    c", "        ddd"]
 
-    # The lists hang their items after the bullet or the number.
-    block = TerminalPager._manual_list(["aaa bbb ccc", "ddd"])
-    @test _manual_block_lines(block, 11) == ["    • aaa bbb", "      ccc", "    • ddd"]
-    block = TerminalPager._manual_list(["aaa bbb ccc", "ddd"]; numbered = true)
-    @test _manual_block_lines(block, 12) == ["    1. aaa bbb", "       ccc", "    2. ddd"]
+    # The lists hang their items after the bullet or the number, and an item can have two
+    # blanks in it.
+    @test _manual_block_lines("- aaa  bbb\n  ccc\n- ddd") ==
+        ["    • aaa bbb ccc", "    • ddd"]
+    @test _manual_block_lines("- " * "x"^50 * " " * "y"^50) ==
+        ["    • " * "x"^50, "      " * "y"^50]
+    @test _manual_block_lines("1. aaa\n2. bbb") == ["    1. aaa", "    2. bbb"]
 
     # A remark is a box with the width of the content.
-    block = TerminalPager._manual_remark(:tip, "aaa bbb ccc ddd eee")
-    @test _manual_block_lines(block, 16) == [
-        "  ╭─ Tip ────────╮",
-        "  │ aaa bbb ccc  │",
-        "  │ ddd eee      │",
-        "  ╰──────────────╯",
+    lines = _manual_block_lines("!tip aaa bbb\n  ccc")
+    @test lines == [
+        "  ╭─ Tip " * "─"^(width - 12) * "╮",
+        "  │ aaa bbb ccc" * " "^(width - 18) * "│",
+        "  ╰" * "─"^(width - 6) * "╯",
     ]
-    @test startswith(
-        _manual_block_lines(TerminalPager._manual_remark(:note, "a"), 16)[1], "  ╭─ Note ─"
-    )
-    @test startswith(
-        _manual_block_lines(TerminalPager._manual_remark(:warning, "a"), 16)[1],
-        "  ╭─ Warning ─",
-    )
+    @test all(line -> textwidth(line) == width - 2, lines)
+    @test startswith(_manual_block_lines("!note a")[1], "  ╭─ Note ─")
+    @test startswith(_manual_block_lines("!warning a")[1], "  ╭─ Warning ─")
 
-    # The comments of an example are at the side of the code, or above it if they do not
-    # fit.
-    items = ["f(x)" => "call", "" => "", "long_name(x)" => ""]
-    block = TerminalPager._manual_example("Calls", items)
-    @test _manual_block_lines(block, 40) ==
-        ["  ┌ Calls", "  │ f(x)           call", "  │", "  │ long_name(x)", "  └"]
-    @test _manual_block_lines(block, 12) ==
-        ["  ┌ Calls", "  │ # call", "  │ f(x)", "  │", "  │ long_name(x)", "  └"]
-    @test _manual_block_lines(TerminalPager._manual_example("", ["x" => ""]), 12)[1] ==
-        "  ┌ Example"
-
-    # A figure is written as it is, with its labels.
-    block = TerminalPager._manual_figure(["ab  " => "label", "c   " => ""])
-    @test _manual_block_lines(block, 40) == ["    ab    label", "    c"]
-
-    # The box of a remark is drawn as the borders, and only its label has the color of
-    # its kind.
-    style = TerminalPager.ManualStyle(true, TerminalPager.DisplayConfig())
+    # The box is drawn as the borders, and only its label has the color of its kind.
+    style = TerminalPager.HelpStyle(true, TerminalPager.DisplayConfig())
     lines = String[]
-    remark = TerminalPager._manual_remark(:warning, "a")
-    TerminalPager._manual_block!(lines, remark, style, 16)
+    TerminalPager._manual_block!(lines, ["!warning a"], style)
     border = style.border
     reset = style.reset
-    @test lines[1] ==
-        "  " * border * "╭─ " * reset * style.warning * "Warning" * reset * border *
-          " ────╮" * reset
-    @test lines[2] == "  " * border * "│" * reset * " a" * " "^12 * border * "│" * reset
-    @test lines[3] == "  " * border * "╰" * "─"^14 * "╯" * reset
+    @test startswith(
+        lines[1], "  " * border * "╭─ " * reset * style.warning * "Warning" * reset * border
+    )
+    @test lines[2] ==
+        "  " * border * "│" * reset * " a" * " "^(width - 8) * border * "│" * reset
     @test !occursin(style.warning, lines[2] * lines[3])
 
-    unknown = TerminalPager.ManualBlock(:unknown, "", "", Pair{String, String}[])
-    @test_throws ArgumentError _manual_block_lines(unknown, 40)
+    # The comments of an example are aligned at the side of the code.
+    @test _manual_block_lines("```Calls\nf(x)          ## call\n\nlong_name(x)\n```") ==
+        ["  ┌ Calls", "  │ f(x)           call", "  │", "  │ long_name(x)", "  └"]
+
+    # A figure is written as it is, with its labels.
+    @test _manual_block_lines("~~~\nab    ## label\n c\n~~~") ==
+        ["    ab    label", "     c"]
 end
 
 @testset "Extended Help Document" begin
-    chapters = TerminalPager._manual_chapters()
-    @test length(chapters) <= 26
+    lines = _manual_plain("intro\n\n# One\n\ntext\n\n# Two\n\n## Section\n")
+    style = TerminalPager.HelpStyle(false, TerminalPager.DisplayConfig())
+    width = TerminalPager._HELP_WIDTH
 
-    for width in (60, 72, 80, 96)
-        manual = TerminalPager._manual(false, TerminalPager.DisplayConfig(), width)
-        lines = String.(split(manual.text, '\n'))
+    # The manual begins with the banner and the introduction, which are followed by the
+    # table of contents and by the chapters, each one with its title on a rule.
+    @test lines[1] == "  ╭" * "─"^(width - 6) * "╮"
+    @test startswith(lines[2], "  │  TerminalPager.jl $(TerminalPager._pkg_version())  ·  ")
+    @test occursin("Extended help", lines[2])
+    @test lines[3:end] == [
+        "  ╰" * "─"^(width - 6) * "╯",
+        "",
+        "  intro",
+        "",
+        "  CONTENTS",
+        "",
+        "   [a] One" * " "^37 * "[b] Two",
+        "",
+        "",
+        "  ━━ a · One " * "━"^(width - 15),
+        "",
+        "  text",
+        "",
+        "",
+        "  ━━ b · Two " * "━"^(width - 15),
+        "",
+        "  ▌ Section",
+    ]
 
-        # The manual fits in the width it was laid out for, and it has no decorations.
-        @test all(line -> textwidth(line) <= width, lines)
-        @test !occursin('\e', manual.text)
-        @test length(manual.layout) == length(lines)
+    _, bookmarks = TerminalPager._manual_lines("intro\n\n# One\n\ntext\n\n# Two\n", style)
+    @test bookmarks == Dict('a' => (12, 1), 'b' => (17, 1))
 
-        # It begins with the banner, and it has the table of contents.
-        @test startswith(lines[1], "  ╭─")
-        @test occursin("TerminalPager.jl $(TerminalPager._pkg_version())", lines[2])
-        @test occursin("Extended help", lines[2])
-        @test "  CONTENTS" in lines
+    # The whole manual fits in its width, and it has no decorations without colors.
+    config = TerminalPager.DisplayConfig()
+    manual = TerminalPager._manual(false, config)
+    lines = String.(split(manual.text, '\n'))
+    @test all(line -> textwidth(line) <= width, lines)
+    @test !occursin('\e', manual.text)
+    @test length(manual.layout) == length(lines)
 
-        # Each chapter has a bookmark on its title, which is on a rule.
-        letters = TerminalPager._manual_letter.(eachindex(chapters))
-        @test sort!(collect(keys(manual.bookmarks))) == letters
+    # Each chapter is in the table of contents and has a bookmark on its title.
+    titles = [
+        String(SubString(first(block), 3)) for
+        block in TerminalPager._manual_blocks(TerminalPager._manual_source()) if
+        startswith(first(block), "# ")
+    ]
+    @test 10 < length(titles) <= 26
+    @test titles[end] == "Action reference"
+    @test sort!(collect(keys(manual.bookmarks))) ==
+        TerminalPager._manual_letter.(eachindex(titles))
 
-        for (i, chapter) in enumerate(chapters)
-            letter = TerminalPager._manual_letter(i)
-            line, column = manual.bookmarks[letter]
-            @test column == 1
-            @test startswith(lines[line], "  ━━ $letter · $(chapter.title) ━")
-            @test any(l -> occursin("[$letter] $(chapter.title)", l), lines)
-        end
+    for (i, title) in enumerate(titles)
+        letter = TerminalPager._manual_letter(i)
+        line, column = manual.bookmarks[letter]
+        @test column == 1
+        @test startswith(lines[line], "  ━━ $letter · $title ━")
+        @test any(l -> occursin("[$letter] $title", l), lines)
+    end
 
-        # The boxes are closed at the same column on every row.
-        box_width = width - 2
-        for line in lines
-            startswith(line, "  │ ") && endswith(line, "│") &&
-                @test textwidth(line) == box_width
-        end
+    # The boxes are closed at the same column on every row.
+    for line in lines
+        startswith(line, "  │ ") && endswith(line, "│") &&
+            @test textwidth(line) == width - 2
     end
 
     # The decorated manual has the same text, but for the key caps.
-    plain = _manual_plain(72)
-    colored = TerminalPager._manual(true, TerminalPager.DisplayConfig(), 72)
+    colored = TerminalPager._manual(true, config)
     colored_lines = split(TerminalPager.remove_decorations(colored.text), '\n')
     @test occursin('\e', colored.text)
-    @test length(colored_lines) == length(plain)
-    @test textwidth.(colored_lines) == textwidth.(plain)
-    @test replace.(colored_lines, r"[\[\]]" => " ") == replace.(plain, r"[\[\]]" => " ")
-
-    # The width follows the view between its bounds.
-    @test TerminalPager._manual_width(20) == 60
-    @test TerminalPager._manual_width(75) == 75
-    @test TerminalPager._manual_width(200) == 96
+    @test textwidth.(colored_lines) == textwidth.(lines)
+    @test replace.(colored_lines, r"[\[\]]" => " ") == replace.(lines, r"[\[\]]" => " ")
 end
 
 @testset "Extended Help Content" begin
     actions = TerminalPager._ACTIONS
-    chapters = TerminalPager._manual_chapters()
-    kinds = (
-        :paragraph,
-        :heading,
-        :keys,
-        :definitions,
-        :list,
-        :steps,
-        :tip,
-        :note,
-        :warning,
-        :example,
-        :figure,
-    )
+    source = TerminalPager._manual_source()
 
     # Every action named in the manual exists, so that a renamed action cannot leave a key
     # shown as unbound. The empty action is the example of an unbound one.
-    for chapter in chapters, block in chapter.blocks
-        @test block.kind in kinds
+    for m in eachmatch(r"\{:(\w+)\}", source)
+        @test Symbol(m[1]) in actions
+    end
 
-        texts = String[block.text]
-        block.kind in (:example, :figure) || append!(texts, last.(block.items))
-
-        for text in texts, m in eachmatch(r"\{:(\w+)\}", text)
-            @test Symbol(m[1]) in actions
-        end
-
-        block.kind === :keys || continue
-
-        for (key, _) in block.items
-            startswith(key, ':') && @test Symbol(key[2:end]) in actions
-        end
+    for m in eachmatch(r"^\+ :(\w+)  "m, source)
+        @test Symbol(m[1]) in actions
     end
 
     # The last chapter lists every action of the cheat sheet with its name.
-    reference_lines = String[]
-
-    for block in chapters[end].blocks
-        append!(reference_lines, _manual_block_lines(block, 200))
-    end
-
-    reference = join(reference_lines, '\n')
+    reference = source[last(findfirst("# Action reference", source)):end]
 
     for section in TerminalPager._HELP_SECTIONS, entry in section.actions
-        @test occursin(":$(entry.action)", reference)
+        @test occursin("+ :$(entry.action)  ", reference)
+        @test occursin("`:$(entry.action)`", reference)
     end
 
     # Every preference and every face is described.
-    text = join(_manual_plain(96), '\n')
+    text = TerminalPager._manual(false, TerminalPager.DisplayConfig()).text
 
     for preference in keys(TerminalPager._AVAILABLE_PREFERENCES)
         preference == "always_use_alternate_screen_buffer_in_repl_mode" && continue
@@ -343,25 +365,24 @@ end
 
 @testset "Extended Help Follows the Key Bindings" begin
     config = TerminalPager.DisplayConfig()
-    manual = TerminalPager._manual(false, config, 72)
+    manual = TerminalPager._manual(false, config)
 
-    # The manual is rendered once for the same key bindings, faces, colors, and width.
-    @test TerminalPager._manual(false, config, 72) === manual
-    @test TerminalPager._manual(false, config, 80) !== manual
-    @test TerminalPager._manual(true, config, 72) !== manual
+    # The manual is rendered once for the same key bindings, faces, and colors.
+    @test TerminalPager._manual(false, config) === manual
+    @test TerminalPager._manual(true, config) !== manual
 
     try
         TerminalPager.set_keybinding("X", :search)
         TerminalPager.delete_keybinding("/")
-        rebound = TerminalPager._manual(false, config, 72)
+        rebound = TerminalPager._manual(false, config)
         @test rebound !== manual
         @test occursin(r"search with\s+\[X\]", rebound.text)
-        @test TerminalPager._manual_key_name(":search") == "X"
+        @test TerminalPager._help_key_name(":search") == "X"
     finally
         TerminalPager.reset_keybindings()
     end
 
-    @test TerminalPager._manual_key_name(":search") == "/"
+    @test TerminalPager._help_key_name(":search") == "/"
 end
 
 @testset "Extended Help Session" begin
@@ -391,7 +412,4 @@ end
     @test pagerd.text_layout === parent_layout
     @test !pagerd.frame_cache.valid
     @test pagerd.redraw
-
-    # Without the feature, the key does nothing.
-    @test isnothing(TerminalPager._action_event(:extended_help, [:visual_mode]))
 end

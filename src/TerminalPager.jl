@@ -47,6 +47,9 @@ const CSI = "\x1b["
 # SGR sequence resetting every text attribute. The other sequences come from the faces.
 const _SGR_RESET = "$(CSI)0m"
 
+# SGR sequence that resets the attributes and selects the bold one.
+const _SGR_BOLD = "$(CSI)0;1m"
+
 # Sequences that open a hyperlink (OSC 8), before and after its URL, and that close it.
 const _HYPERLINK_OPEN = "\e]8;;"
 const _HYPERLINK_END = "\e\\"
@@ -58,11 +61,11 @@ const _HYPERLINK_CLOSE = _HYPERLINK_OPEN * _HYPERLINK_END
 
 include("./command_line.jl")
 include("./debug.jl")
-include("./extended_help.jl")
-include("./extended_help_content.jl")
 include("./faces.jl")
 include("./filter.jl")
 include("./help.jl")
+include("./extended_help.jl")
+include("./extended_help_content.jl")
 include("./helpers.jl")
 include("./history.jl")
 include("./preferences.jl")
@@ -258,16 +261,16 @@ available faces are listed as follows:
     (**Default**: bright black)
 - `"help_title"`: Title of the help screen and of the extended help.
     (**Default**: bold yellow)
-- `"help_section"`: Section titles of the help screen.
-    (**Default**: bold)
-- `"help_description"`: Section descriptions and feature tags of the help screen.
+- `"help_section"`: Section titles of the help screen, and chapter titles, section titles,
+    and list bullets of the extended help.
+    (**Default**: bold yellow)
+- `"help_description"`: Feature tags of the help screen, and comments and labels of the
+    extended help.
     (**Default**: bright black)
 - `"help_key"`: Keys of the help screen and of the tables of the extended help.
     (**Default**: bold)
 - `"help_action"`: Action names of the help screen.
     (**Default**: cyan)
-- `"help_chapter"`: Chapter titles, title marks, and list bullets of the extended help.
-    (**Default**: bold yellow)
 - `"help_keycap"`: Keys in the text of the extended help. A face with a background, or with
     `inverse = true`, draws them as filled key caps. Otherwise, they are written between
     brackets.

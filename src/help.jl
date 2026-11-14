@@ -1,6 +1,8 @@
 ## Description #############################################################################
 #
-# Functions related to help screen.
+# Functions related to the help screen, which is a cheat sheet of the actions, and what it
+# shares with the extended help: the style, the banner, the section titles, and the marked
+# text.
 #
 ############################################################################################
 
@@ -17,8 +19,10 @@ const _ACTION_KEYS_GENERATION = Ref(-1)
 # was built for, the help text, and its prepared layout.
 const _HELP_CACHE = Dict{Bool, Tuple{Int, DisplayConfig, String, ViewLayout}}()
 
-# Layout of the help screen: its width, and the widths of the key and description columns.
-const _HELP_WIDTH = 90
+# Layout of the help screens: their width, the blank columns at their left and at their
+# right, and the widths of the key and description columns of the cheat sheet.
+const _HELP_WIDTH = 92
+const _HELP_MARGIN = 2
 const _HELP_KEY_WIDTH = 20
 const _HELP_DESCRIPTION_WIDTH = 40
 
@@ -203,12 +207,12 @@ const _HELP_SECTIONS = HelpSection[
     HelpSection(
         "Searching",
         "The search is case-insensitive unless the pattern has an uppercase letter. " *
-            "Alt-l at the prompt toggles the literal mode, which searches the pattern as " *
-            "typed. A pattern like `@12:20 x` matches only in the printable columns 12 " *
-            "to 20; `@12 x` and `@:20 x` open one end. The columns are highlighted while " *
+            "{Alt-l} at the prompt toggles the literal mode, which searches the pattern " *
+            "as typed. A pattern like `@12:20 x` matches only in the printable columns " *
+            "12 to 20; `@12 x` and `@:20 x` open one end. The columns are highlighted while " *
             "the range is typed, and `@@` selects them on the screen: move the cursor, " *
-            "press Enter on the first column and again on the last one. Esc clears the " *
-            "search, and then the filter.",
+            "press {Enter} on the first column and again on the last one. {Esc} clears " *
+            "the search, and then the filter.",
         nothing,
         ActionHelp[
             ActionHelp(:search, "Search for a regex."),
@@ -222,8 +226,8 @@ const _HELP_SECTIONS = HelpSection[
         "Freezing Data",
         "Frozen rows and columns stay visible while scrolling. Title rows are frozen rows " *
             "that do not scroll horizontally either. The selections on the screen are " *
-            "moved with the movement keys or the mouse, applied with Enter, and " *
-            "cancelled with Esc.",
+            "moved with the movement keys or the mouse, applied with {Enter}, and " *
+            "cancelled with {Esc}.",
         :change_freeze,
         ActionHelp[
             ActionHelp(:change_freeze, "Set the frozen rows and columns."),
@@ -257,7 +261,8 @@ Assemble the pager help screen from `_HELP_SECTIONS` and the current key binding
 
 The screen is a cheat sheet with one row per action: the keys, the description, and the
 action name to use with [`set_keybinding`](@ref). Long key lists and descriptions continue
-on the following rows. Its introduction points to the extended help if a key is bound to it.
+on the following rows. It has the banner, the section titles, and the marked text of the
+extended help, and its introduction points to it if a key is bound to it.
 
 # Arguments
 
@@ -266,51 +271,41 @@ on the following rows. Its introduction points to the extended help if a key is 
     (**Default**: `DisplayConfig()`)
 """
 function _help_string(use_color::Bool, display_config::DisplayConfig = DisplayConfig())
-    if use_color
-        _b = display_config.help_section
-        _c = display_config.help_key
-        _cb = display_config.help_title
-        _d = _SGR_RESET
-        _g = display_config.help_description
-        _y = display_config.help_action
-    else
-        _b = ""
-        _c = ""
-        _cb = ""
-        _d = ""
-        _g = ""
-        _y = ""
-    end
+    style = HelpStyle(use_color, display_config)
+    reset = style.reset
+    lines = String[]
 
-    buf = IOBuffer()
-
-    print(buf, "  ", _cb, "TerminalPager.jl ", _pkg_version(), _d, "\n\n")
-    print(
-        buf,
-        "  The key bindings can be changed with ", _c, "set_keybinding", _d, ". A section or\n",
-        "  an action marked with a feature is only available when the feature is enabled,\n",
-        "  which depends on how the pager was called.\n",
+    _help_banner!(lines, style, "Help")
+    push!(lines, "")
+    _help_text!(
+        lines,
+        "The key bindings can be changed with `TerminalPager.set_keybinding`. A section " *
+        "or an action marked with a feature is only available when the feature is " *
+        "enabled, which depends on how the pager was called.",
+        style,
+        "",
+        "",
     )
 
     # The cheat sheet points to the manual, which explains what it only lists.
-    manual_key = _primary_key(:extended_help)
-
-    if !isnothing(manual_key)
-        print(
-            buf,
-            "\n  ", _c, manual_key, _d, " opens the extended help, a manual that explains ",
-            "every feature in detail.\n",
+    if !isempty(_action_keys(:extended_help))
+        push!(lines, "")
+        _help_text!(
+            lines,
+            "{:extended_help} opens the extended help, a manual that explains every " *
+            "feature in detail.",
+            style,
+            "",
+            "",
         )
     end
 
     for section in _HELP_SECTIONS
-        title = section.title
-        isnothing(section.feature) || (title *= " (feature :$(section.feature))")
-        rule = "─"^max(_HELP_WIDTH - textwidth(title) - 4, 0)
-        print(buf, '\n', _b, "── ", title, " ", rule, _d, '\n')
+        push!(lines, "", "", _help_rule(style, _help_section_title(section)), "")
 
-        for line in _wrap_words(section.description, _HELP_WIDTH - 2)
-            print(buf, "  ", _g, line, _d, '\n')
+        if !isempty(section.description)
+            _help_text!(lines, section.description, style, "", "")
+            push!(lines, "")
         end
 
         for entry in section.actions
@@ -321,24 +316,491 @@ function _help_string(use_color::Bool, display_config::DisplayConfig = DisplayCo
             for i in 1:num_rows
                 keys = i <= length(key_rows) ? key_rows[i] : ""
                 description = i <= length(description_rows) ? description_rows[i] : ""
+                buf = IOBuffer()
 
-                print(buf, "  ", _c, keys, _d)
-                print(buf, " "^max(_HELP_KEY_WIDTH - textwidth(keys), 0), "  ")
+                _write_blanks(buf, _HELP_MARGIN + 2)
+                write(buf, style.key, keys, reset)
+
+                # A row that only continues the keys has nothing after them.
+                if (i == 1) || !isempty(description)
+                    _write_blanks(buf, max(_HELP_KEY_WIDTH - textwidth(keys), 0) + 2)
+                    write(buf, description)
+                end
 
                 if i == 1
                     padding = max(_HELP_DESCRIPTION_WIDTH - textwidth(description), 0)
-                    print(buf, description, " "^padding, "  ", _y, ':', entry.action, _d)
-                    isnothing(entry.feature) || print(buf, _g, " [", entry.feature, "]", _d)
-                else
-                    print(buf, description)
+                    _write_blanks(buf, padding + 2)
+                    write(buf, style.action, ":", String(entry.action), reset)
+                    isnothing(entry.feature) ||
+                        write(buf, style.dim, " [", String(entry.feature), "]", reset)
                 end
 
-                print(buf, '\n')
+                push!(lines, String(take!(buf)))
             end
         end
     end
 
+    return join(lines, '\n')
+end
+
+"""
+    _help_section_title(section::HelpSection) -> String
+
+Return the title of `section` as the help screens show it, followed by the feature the
+section requires, if any.
+
+# Arguments
+
+- `section::HelpSection`: Section of the help screen.
+"""
+function _help_section_title(section::HelpSection)
+    isnothing(section.feature) && return section.title
+    return string(section.title, " · feature :", section.feature)
+end
+
+############################################################################################
+#                                          Style                                           #
+############################################################################################
+
+"""
+    struct HelpStyle
+
+Store the escape sequences that decorate the help screens, which are all empty when the
+terminal has no color support.
+
+# Fields
+
+- `title::String`: Title of the screen.
+- `section::String`: Section titles, with their marks, and list bullets.
+- `strong::String`: Strong text, which is bold.
+- `key::String`: Keys of the tables.
+- `keycap::String`: Keys in the text, drawn as key caps.
+- `keycap_filled::Bool`: Whether the face of the key caps has a background or is reversed,
+    in which case a key cap is the key between two blanks with that face. Otherwise, it is
+    the key between two brackets drawn as the borders.
+- `code::String`: Code, commands, and names.
+- `action::String`: Action names of the cheat sheet.
+- `dim::String`: Comments, labels, and secondary text.
+- `border::String`: Rules and box borders.
+- `tip::String`: Label of the tip boxes.
+- `note::String`: Label of the note boxes.
+- `warning::String`: Label of the warning boxes.
+- `reset::String`: Reset of the attributes.
+"""
+struct HelpStyle
+    title::String
+    section::String
+    strong::String
+    key::String
+    keycap::String
+    keycap_filled::Bool
+    code::String
+    action::String
+    dim::String
+    border::String
+    tip::String
+    note::String
+    warning::String
+    reset::String
+end
+
+"""
+    HelpStyle(use_color::Bool, display_config::DisplayConfig) -> HelpStyle
+
+Create the style of the help screens from the faces in `display_config`, or a style without
+decorations if `use_color` is `false`.
+
+# Arguments
+
+- `use_color::Bool`: Decorate the help screens with ANSI escape sequences.
+- `display_config::DisplayConfig`: Session display configuration with the help faces.
+"""
+function HelpStyle(use_color::Bool, display_config::DisplayConfig)
+    use_color ||
+        return HelpStyle("", "", "", "", "", false, "", "", "", "", "", "", "", "")
+
+    # A face that paints the cell of a key is drawn as a filled key cap.
+    keycap = parse_decoration(display_config.help_keycap)
+    keycap_filled =
+        !isempty(keycap.background) || (keycap.reversed == StringManipulation.active)
+
+    return HelpStyle(
+        display_config.help_title,
+        display_config.help_section,
+        _SGR_BOLD,
+        display_config.help_key,
+        display_config.help_keycap,
+        keycap_filled,
+        display_config.help_code,
+        display_config.help_action,
+        display_config.help_description,
+        display_config.help_border,
+        display_config.help_tip,
+        display_config.help_note,
+        display_config.help_warning,
+        _SGR_RESET,
+    )
+end
+
+############################################################################################
+#                                          Layout                                          #
+############################################################################################
+
+"""
+    _help_banner!(lines::Vector{String}, style::HelpStyle, subtitle::String) -> Nothing
+
+Append to `lines` the banner of a help screen, which is a rounded box with the name and the
+version of the package and the `subtitle` that tells which screen it is.
+
+# Arguments
+
+- `lines::Vector{String}`: Lines of the screen, which are appended.
+- `style::HelpStyle`: Escape sequences that decorate the screen.
+- `subtitle::String`: Name of the screen.
+"""
+function _help_banner!(lines::Vector{String}, style::HelpStyle, subtitle::String)
+    margin = " "^_HELP_MARGIN
+    border = style.border
+    reset = style.reset
+    name = string("TerminalPager.jl ", _pkg_version())
+    separator = "  ·  "
+    inner = _HELP_WIDTH - 2 * _HELP_MARGIN - 2
+    used = 2 + textwidth(name) + textwidth(separator) + textwidth(subtitle)
+
+    buf = IOBuffer()
+    write(buf, margin, border, "│", reset, "  ", style.title, name, reset)
+    write(buf, style.dim, separator, reset, style.strong, subtitle, reset)
+    _write_blanks(buf, inner - used)
+    write(buf, border, "│", reset)
+
+    push!(lines, string(margin, border, "╭", "─"^inner, "╮", reset))
+    push!(lines, String(take!(buf)))
+    push!(lines, string(margin, border, "╰", "─"^inner, "╯", reset))
+
+    return nothing
+end
+
+"""
+    _help_rule(style::HelpStyle, title::String) -> String
+
+Return the line that begins a section of a help screen: its `title` on a heavy rule that
+spans the width of the screen.
+
+# Arguments
+
+- `style::HelpStyle`: Escape sequences that decorate the screen.
+- `title::String`: Title of the section.
+"""
+function _help_rule(style::HelpStyle, title::String)
+    border = style.border
+    reset = style.reset
+    rule = "━"^max(_HELP_WIDTH - 2 * _HELP_MARGIN - textwidth(title) - 4, 0)
+
+    buf = IOBuffer()
+    _write_blanks(buf, _HELP_MARGIN)
+    write(buf, border, "━━ ", reset, style.section, title, reset)
+    write(buf, border, " ", rule, reset)
+
     return String(take!(buf))
+end
+
+############################################################################################
+#                                           Text                                           #
+############################################################################################
+
+"""
+    struct HelpAtom
+
+Represent an unbreakable piece of a text of the help screens.
+
+# Fields
+
+- `text::String`: Text of the piece.
+- `style::Symbol`: Style of the piece: `:plain`, `:strong`, `:code`, or `:key`.
+- `glued::Bool`: Whether the piece follows the previous one without a blank, in which case
+    a line cannot be broken between them.
+"""
+struct HelpAtom
+    text::String
+    style::Symbol
+    glued::Bool
+end
+
+"""
+    _help_text!(
+        lines::Vector{String},
+        text::AbstractString,
+        style::HelpStyle,
+        first_indent::String,
+        indent::String,
+        width::Int = _HELP_WIDTH - 2 * _HELP_MARGIN
+    ) -> Nothing
+
+Append to `lines` the marked `text` wrapped so that it fits in `width` columns. The first
+line starts with `first_indent`, which can be decorated, and the others with `indent`, both
+after the margin of the screen and both with the same printable width.
+
+# Arguments
+
+- `lines::Vector{String}`: Lines of the screen, which are appended.
+- `text::AbstractString`: Text to lay out, with the marks of [`_help_atoms`](@ref).
+- `style::HelpStyle`: Escape sequences that decorate the screen.
+- `first_indent::String`: Beginning of the first line.
+- `indent::String`: Beginning of the other lines.
+- `width::Int`: Number of columns of the text, with the indentation.
+    (**Default**: the width of the screen without its margins)
+"""
+function _help_text!(
+    lines::Vector{String},
+    text::AbstractString,
+    style::HelpStyle,
+    first_indent::String,
+    indent::String,
+    width::Int = _HELP_WIDTH - 2 * _HELP_MARGIN,
+)
+    rows = _wrap_help_atoms(_help_atoms(text), width - textwidth(indent))
+
+    for (i, row) in enumerate(rows)
+        buf = IOBuffer()
+        _write_blanks(buf, _HELP_MARGIN)
+        write(buf, i == 1 ? first_indent : indent)
+        _write_help_atoms!(buf, row, style)
+        push!(lines, String(take!(buf)))
+    end
+
+    return nothing
+end
+
+"""
+    _help_atoms(text::AbstractString) -> Vector{HelpAtom}
+
+Split the marked `text` of a help screen into its unbreakable pieces.
+
+The words are separated by blanks. A text between backticks is one piece of code, in which
+nothing else is marked. `{:action}` is the shortest key bound to the action, or `unbound` if
+there is none, and `{Key}` is the key with that name, both drawn as key caps. The words
+between asterisks are strong.
+
+# Arguments
+
+- `text::AbstractString`: Marked text.
+"""
+function _help_atoms(text::AbstractString)
+    atoms = HelpAtom[]
+    word = IOBuffer()
+    strong = false
+    glued = false
+    i = firstindex(text)
+    last_index = lastindex(text)
+
+    while i <= last_index
+        c = text[i]
+        mark = (c == '`') || (c == '{')
+        stop = mark ? findnext(c == '`' ? '`' : '}', text, nextind(text, i)) : nothing
+
+        # The word read so far ends at a blank and at a mark. Notice that an unbalanced
+        # mark is a character of the word.
+        if (position(word) > 0) && (isspace(c) || (c == '*') || !isnothing(stop))
+            push!(atoms, HelpAtom(String(take!(word)), strong ? :strong : :plain, glued))
+            glued = true
+        end
+
+        if isspace(c)
+            glued = false
+        elseif c == '*'
+            strong = !strong
+        elseif !isnothing(stop)
+            content = SubString(text, nextind(text, i), prevind(text, stop))
+
+            if c == '`'
+                push!(atoms, HelpAtom(String(content), :code, glued))
+            else
+                push!(atoms, HelpAtom(_help_key_name(content), :key, glued))
+            end
+
+            glued = true
+            i = stop
+        else
+            write(word, c)
+        end
+
+        i = nextind(text, i)
+    end
+
+    (position(word) > 0) &&
+        push!(atoms, HelpAtom(String(take!(word)), strong ? :strong : :plain, glued))
+
+    return atoms
+end
+
+"""
+    _help_key_name(key::AbstractString) -> String
+
+Return the name of the key marked as `{key}` in a text of a help screen: the shortest key
+bound to the action if `key` is written as `:action`, or `unbound` if there is none, and
+`key` itself otherwise.
+
+# Arguments
+
+- `key::AbstractString`: Name of a key, or an action written as `:action`.
+"""
+function _help_key_name(key::AbstractString)
+    startswith(key, ':') || return String(key)
+    names = _keyboard_keys(Symbol(SubString(key, 2)))
+    return isempty(names) ? "unbound" : first(names)
+end
+
+"""
+    _keyboard_keys(action::Symbol) -> Vector{String}
+
+Return the names of the keys bound to `action` that the texts of the help screens show, from
+the shortest to the longest one. The mouse events are left out if a key is also bound to the
+action, because the texts explain the actions with the keyboard.
+
+# Arguments
+
+- `action::Symbol`: Pager action.
+"""
+function _keyboard_keys(action::Symbol)
+    names = _action_keys(action)
+    keys = String[]
+
+    for name in names
+        (occursin("Wheel", name) || occursin("Click", name)) || push!(keys, name)
+    end
+
+    return isempty(keys) ? names : keys
+end
+
+"""
+    _help_atom_width(atom::HelpAtom) -> Int
+
+Return the printable width of `atom`. A key cap has one column at each side of the key.
+
+# Arguments
+
+- `atom::HelpAtom`: Piece of a text.
+"""
+_help_atom_width(atom::HelpAtom) = textwidth(atom.text) + (atom.style === :key ? 2 : 0)
+
+"""
+    _help_atoms_width(atoms::AbstractVector{HelpAtom}) -> Int
+
+Return the printable width of `atoms` written in one line, with one blank before every piece
+that is not glued to the previous one.
+
+# Arguments
+
+- `atoms::AbstractVector{HelpAtom}`: Pieces of a text.
+"""
+function _help_atoms_width(atoms::AbstractVector{HelpAtom})
+    width = 0
+
+    for (i, atom) in enumerate(atoms)
+        width += _help_atom_width(atom) + (((i > 1) && !atom.glued) ? 1 : 0)
+    end
+
+    return width
+end
+
+"""
+    _wrap_help_atoms(atoms::Vector{HelpAtom}, width::Int) -> Vector{Vector{HelpAtom}}
+
+Wrap `atoms` greedily into rows of at most `width` columns, breaking only before a piece
+that is not glued to the previous one. Pieces that do not fit in `width` get a row of their
+own. No piece yields no row.
+
+# Arguments
+
+- `atoms::Vector{HelpAtom}`: Pieces of a text.
+- `width::Int`: Maximum width of a row.
+"""
+function _wrap_help_atoms(atoms::Vector{HelpAtom}, width::Int)
+    rows = Vector{HelpAtom}[]
+    row = HelpAtom[]
+    row_width = 0
+    num_atoms = length(atoms)
+    i = 1
+
+    while i <= num_atoms
+        # A word is a piece and the ones glued to it.
+        stop = i
+        word_width = _help_atom_width(atoms[i])
+
+        while (stop < num_atoms) && atoms[stop + 1].glued
+            stop += 1
+            word_width += _help_atom_width(atoms[stop])
+        end
+
+        if !isempty(row) && (row_width + 1 + word_width > width)
+            push!(rows, row)
+            row = HelpAtom[]
+            row_width = 0
+        end
+
+        row_width += word_width + (isempty(row) ? 0 : 1)
+
+        for j in i:stop
+            push!(row, atoms[j])
+        end
+
+        i = stop + 1
+    end
+
+    isempty(row) || push!(rows, row)
+
+    return rows
+end
+
+"""
+    _write_help_atoms!(io::IO, atoms::Vector{HelpAtom}, style::HelpStyle) -> Int
+
+Write `atoms` to `io` in one line, decorated with `style`, and return the printable width
+that was written. A piece that is not glued to the previous one is preceded by a blank, but
+for the first one.
+
+A key is drawn as a key cap with the same width in every case: the key between two blanks,
+all with the face of the key caps, if the face fills its cells, the key between two brackets
+drawn as the borders otherwise, and the key between plain brackets without colors.
+
+# Arguments
+
+- `io::IO`: Output stream to update.
+- `atoms::Vector{HelpAtom}`: Pieces of a text.
+- `style::HelpStyle`: Escape sequences that decorate the screen.
+"""
+function _write_help_atoms!(io::IO, atoms::Vector{HelpAtom}, style::HelpStyle)
+    width = 0
+    reset = style.reset
+
+    for (i, atom) in enumerate(atoms)
+        if (i > 1) && !atom.glued
+            write(io, " ")
+            width += 1
+        end
+
+        text = atom.text
+        kind = atom.style
+
+        if kind === :plain
+            write(io, text)
+        elseif kind === :code
+            write(io, style.code, text, reset)
+        elseif kind === :strong
+            write(io, style.strong, text, reset)
+        elseif isempty(style.keycap)
+            write(io, "[", text, "]")
+        elseif style.keycap_filled
+            write(io, style.keycap, " ", text, " ", reset)
+        else
+            write(io, style.border, "[", reset, style.keycap, text, reset)
+            write(io, style.border, "]", reset)
+        end
+
+        width += _help_atom_width(atom)
+    end
+
+    return width
 end
 
 ############################################################################################

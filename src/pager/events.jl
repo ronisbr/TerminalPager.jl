@@ -424,11 +424,7 @@ function _pager_event_process!(pagerd::Pager)
     elseif event == :help
         _help!(pagerd)
     elseif event == :extended_help
-        # NOTE: The call is not resolved statically on purpose. Otherwise, the renderer and
-        # the text of the manual are compiled into the image of the package, which makes
-        # every load 3 ms slower on Julia 1.13 for something most sessions never open.
-        # Compiling them when the manual is opened for the first time takes about 10 ms.
-        Base.invokelatest(_extended_help!, pagerd)
+        _extended_help!(pagerd)
     elseif event == :search
         _search!(pagerd)
     elseif event == :filter
