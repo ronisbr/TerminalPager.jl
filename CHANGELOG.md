@@ -111,6 +111,10 @@ Version 0.9.0
   is a bookmark, so that `'` and the letter of the table of contents jump to it. The new
   faces `help_chapter`, `help_keycap`, `help_code`, `help_border`, `help_tip`, `help_note`,
   and `help_warning` style it, and the cheat sheet opened by `?` points to it.
+- ![Enhancement][badge-enhancement] The help screens have a new default palette with one
+  accent color: the titles are bold yellow (`help_title`), the keys are bold (`help_key`),
+  and the action names of the cheat sheet are cyan (`help_action`), instead of bold cyan,
+  cyan, and bold yellow.
 - ![Enhancement][badge-enhancement] The functions that start a pager session are not
   compiled again for each type of object nor for each combination of keywords, and what a
   session needs at first use is precompiled: `pager(obj)`, the callbacks and the key
