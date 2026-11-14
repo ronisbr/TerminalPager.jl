@@ -83,7 +83,7 @@ julia> result.selection
 decorations; a path starting with `!` keeps them, `~` is expanded, and an existing file is
 overwritten only after a confirmation. `e` opens the whole text, or the selection, in the
 editor selected by `JULIA_EDITOR`, `VISUAL`, or `EDITOR`, at the current line; the pager is
-repainted when the editor returns.
+repainted when the editor returns. The file is removed when the pager quits.
 
 `m` followed by a letter bookmarks the top line, or the visual line in the visual mode, and
 `'` followed by the letter jumps back to it. `''` returns to the position before the last
