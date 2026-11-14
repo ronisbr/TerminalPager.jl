@@ -33,7 +33,8 @@ keys they show are the ones currently bound. The table of contents of the manual
 letter to each chapter, which is a bookmark of the session: `'` followed by the letter jumps
 to the chapter, and `''` returns to the previous position. Every other key of the pager
 works in it too, like `/` to search for a topic and `v` and `y` to copy an example. `q`
-closes it. Both helps need the keyword `has_help` of `pager` to be `true`, which is the
+closes it. The lines of the helps cannot be filtered and their columns cannot be frozen, but
+their rows can. Both helps need the keyword `has_help` of `pager` to be `true`, which is the
 default.
 
 ## Inside the Pager
@@ -91,6 +92,7 @@ the pattern is typed, the frozen and the title rows are always shown, the line n
 keeps the source line numbers, `:` goes to source lines, and the status line shows `FILTER`,
 the pattern, and the visible lines over the total. The search runs over the visible lines.
 `&` with an empty pattern clears the filter, and so does `Esc` once the search is cleared.
+The keyword `has_filter = false` of `pager` disables the filter.
 
 The visual mode, toggled with `v`, highlights a visual line that the movements and the mouse
 move. `M` marks the visual line, `V` anchors a range that follows the visual line until `V`
@@ -123,10 +125,13 @@ The bookmarks last for the session.
 Rows and columns can be frozen with `f`, so that they stay visible while scrolling, and `t`
 selects how many frozen rows are titles, which do not scroll horizontally either. `F`
 selects the frozen rows and columns on the screen: the view moves to the top-left corner,
-two guide lines mark the rows and the columns that would be frozen, the movement keys or
-the mouse move them, `Enter` applies the selection, and `Esc` cancels it. `T` selects the
-title rows the same way with a single guide line, and freezes them if fewer rows were
-frozen.
+two guide lines mark the rows and the columns that would be frozen, the movement keys or the
+mouse move them, `Enter` applies the selection, and `Esc` cancels it. `T` selects the title
+rows the same way with a single guide line, and freezes them if fewer rows were frozen. The
+keyword `change_freeze = false` of `pager` disables these commands, whereas
+`change_frozen_rows = false` and `change_frozen_columns = false` disable only the change of
+the rows, together with the title rows, or of the columns: the prompts and the selection on
+the screen then ask only for what can be changed.
 
 ## Helpers
 
