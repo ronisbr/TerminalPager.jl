@@ -28,8 +28,8 @@ with key tables, examples, and tips, and it covers the screen, the movements, th
 and the filter, the frozen rows and columns, the visual mode, the REPL modes, the keywords
 of `pager`, and the customization of the preferences, the key bindings, and the faces.
 
-The manual is laid out for the width of the terminal when it is opened, between 60 and 96
-columns, and the keys it shows are the ones currently bound. Its table of contents gives a
+Both screens are 92 columns wide, so a narrower terminal scrolls them horizontally, and the
+keys they show are the ones currently bound. The table of contents of the manual gives a
 letter to each chapter, which is a bookmark of the session: `'` followed by the letter jumps
 to the chapter, and `''` returns to the previous position. Every other key of the pager
 works in it too, like `/` to search for a topic and `v` and `y` to copy an example. `q`
