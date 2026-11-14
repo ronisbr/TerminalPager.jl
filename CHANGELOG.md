@@ -104,6 +104,13 @@ Version 0.9.0
   `Enter` fixes it, and the second one writes the range in the prompt, before the pattern.
   The mouse selects the range by pressing and dragging. A pattern that begins with `@@` must
   now be written as `\@@`.
+- ![Feature][badge-feature] `H` (action `:extended_help`) opens the extended help, a manual
+  of the pager shown inside the pager itself. It explains every feature in detail in 18
+  chapters, with key tables, examples, tips, and a reference of the actions. It is laid out
+  for the width of the terminal, the keys it shows follow the key bindings, and each chapter
+  is a bookmark, so that `'` and the letter of the table of contents jump to it. The new
+  faces `help_chapter`, `help_keycap`, `help_code`, `help_border`, `help_tip`, `help_note`,
+  and `help_warning` style it, and the cheat sheet opened by `?` points to it.
 - ![Enhancement][badge-enhancement] The functions that start a pager session are not
   compiled again for each type of object nor for each combination of keywords, and what a
   session needs at first use is precompiled: `pager(obj)`, the callbacks and the key
