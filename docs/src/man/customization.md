@@ -100,6 +100,7 @@ prefix `terminalpager_`. The available faces are:
 | `message_error`       | Error message on the status line.                      | Red.                               |
 | `search_match`        | Inactive search match.                                 | Black on white.                    |
 | `search_active_match` | Active search match.                                   | Black on yellow.                   |
+| `search_columns`      | Columns that restrict a search (background only).      | Bright black background.           |
 | `visual_line`         | Lines marked in the visual mode (background only).     | Bright black background.           |
 | `visual_active_line`  | Visual line (background only).                         | Blue background.                   |
 | `freeze_guide`        | Guide lines of the freeze selection.                   | Bold cyan.                         |

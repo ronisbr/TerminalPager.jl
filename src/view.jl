@@ -51,6 +51,10 @@ function _view!(pagerd::Pager)
         pagerd.start_column = start_column
     end
 
+    # The columns of the search range being typed get a background.
+    highlighted_columns = _highlighted_columns(pagerd)
+    show_columns = !isempty(highlighted_columns)
+
     # The column ruler is the first two rows of the frame, before the rows of the text.
     if pagerd.show_column_ruler
         _write_column_ruler!(buf.io, pagerd, cols, get(buf, :color, true)::Bool)
@@ -64,12 +68,12 @@ function _view!(pagerd::Pager)
         (active_match.line, active_match.index_in_line)
     end
 
-    # With the scrollbar or the freeze selection, the view is rendered into a scratch
-    # buffer, and the frame is assembled from it with the freeze guides drawn and the
-    # scrollbar appended to every row.
+    # With the scrollbar, the freeze selection, or the highlighted columns, the view is
+    # rendered into a scratch buffer, and the frame is assembled from it with the freeze
+    # guides or the background of the columns drawn and the scrollbar appended to every row.
     show_scrollbar = pagerd.show_scrollbar
     selecting = _selecting_on_screen(pagerd)
-    target = if show_scrollbar || selecting
+    target = if show_scrollbar || selecting || show_columns
         IOContext(_reset_buffer!(pagerd.view_buf), buf)
     else
         buf
@@ -114,6 +118,13 @@ function _view!(pagerd::Pager)
         drawn = show_scrollbar ? _reset_buffer!(pagerd.freeze_buf) : buf.io
 
         _draw_freeze_guides!(drawn, frame, rows, cols, pagerd)
+        frame = drawn
+    elseif show_columns
+        # The highlighted columns are not drawn together with the guides, because the
+        # selection modes are exclusive.
+        drawn = show_scrollbar ? _reset_buffer!(pagerd.freeze_buf) : buf.io
+
+        _draw_highlighted_columns!(drawn, frame, rows, cols, pagerd, highlighted_columns)
         frame = drawn
     end
 
@@ -235,7 +246,8 @@ fifth one, and the first row prints the number of each tenth column right above 
 The ruler numbers the text columns the view shows: the frozen columns first, and then the
 columns from the first visible one. The columns of the line-number ruler are left blank, and
 the ruler stops at the widest line of the text. If the numbering jumps between the frozen and
-the scrolled columns, the line carries a break mark on the first scrolled column.
+the scrolled columns, the line carries a break mark on the first scrolled column. The cells
+of the highlighted columns of `pagerd` get the background of the face `search_columns`.
 
 # Arguments
 
@@ -248,6 +260,14 @@ function _write_column_ruler!(out::IOBuffer, pagerd::Pager, cols::Int, use_color
     ruler_width = _shown_ruler_width(pagerd)
     width = max(cols - ruler_width, 0)
     text_width = _text_width(pagerd)
+
+    # The cells of the highlighted columns are marked with their background.
+    marked = if use_color
+        _view_cells(pagerd, _highlighted_columns(pagerd), width, false)
+    else
+        _NO_COLUMNS
+    end
+    background = pagerd.display_config.search_columns
 
     # These are the sanitized values `_textview` uses for the frozen columns and for the
     # first scrolled column.
@@ -276,9 +296,11 @@ function _write_column_ruler!(out::IOBuffer, pagerd::Pager, cols::Int, use_color
         )
     end
 
-    _write_column_ruler_row!(out, numbers, ruler_width, pagerd.display_config, use_color)
+    face = use_color ? pagerd.display_config.ruler : ""
+
+    _write_column_ruler_row!(out, numbers, ruler_width, face, marked, background)
     write(out, UInt8('\n'))
-    _write_column_ruler_row!(out, ticks, ruler_width, pagerd.display_config, use_color)
+    _write_column_ruler_row!(out, ticks, ruler_width, face, marked, background)
 
     return nothing
 end
@@ -344,38 +366,261 @@ function _fill_column_ruler_segment!(
 end
 
 """
-    _write_column_ruler_row!(out::IOBuffer, cells::Vector{Char}, ruler_width::Int,
-        display_config::DisplayConfig, use_color::Bool) -> Nothing
+    _write_column_ruler_row!(
+        out::IOBuffer,
+        cells::Vector{Char},
+        ruler_width::Int,
+        face::String,
+        marked::UnitRange{Int},
+        background::String
+    ) -> Nothing
 
 Write one row of the column ruler to `out`: `ruler_width` blank columns for the line-number
-ruler, and then `cells` without their trailing blanks.
+ruler, and then `cells` without their trailing blanks. The `marked` cells are always
+written, with the SGR parameters `background` selected.
 
 # Arguments
 
 - `out::IOBuffer`: Buffer receiving the row.
 - `cells::Vector{Char}`: Cells of the row.
 - `ruler_width::Int`: Number of columns of the line-number ruler, or `0` if it is hidden.
-- `display_config::DisplayConfig`: Session display configuration with the ruler face.
-- `use_color::Bool`: Decorate the row with the face `ruler`.
+- `face::String`: Escape sequence of the face of the ruler, or an empty string to write the
+    row without decorations.
+- `marked::UnitRange{Int}`: Cells written with `background`, which can be empty.
+- `background::String`: SGR parameters of the background of the marked cells.
 """
 function _write_column_ruler_row!(
     out::IOBuffer,
     cells::Vector{Char},
     ruler_width::Int,
-    display_config::DisplayConfig,
-    use_color::Bool,
+    face::String,
+    marked::UnitRange{Int},
+    background::String,
 )
-    last = findlast(!=(' '), cells)
-    last === nothing && (last = 0)
+    last_cell = findlast(!=(' '), cells)
+    last_cell === nothing && (last_cell = 0)
 
-    use_color && write(out, display_config.ruler)
+    # An empty range marks no cell. The marked cells are written even if they are blank.
+    first_marked = isempty(marked) ? 0 : first(marked)
+    last_marked = isempty(marked) ? 0 : Base.last(marked)
+    last_cell = max(last_cell, last_marked)
+
+    write(out, face)
     _write_blanks(out, ruler_width)
 
-    @inbounds for i in 1:last
+    @inbounds for i in 1:last_cell
+        (i == first_marked) && write(out, CSI, background, UInt8('m'))
         write(out, cells[i])
+        (i == last_marked) && write(out, CSI, "49m")
     end
 
-    use_color && write(out, _SGR_RESET)
+    isempty(face) || write(out, _SGR_RESET)
+
+    return nothing
+end
+
+"""
+    _highlighted_columns(pagerd::Pager) -> UnitRange{Int}
+
+Return the printable columns of the text of `pagerd` that are drawn with the background of
+the face `search_columns`, which is an empty range if there is none or if the face has no
+background. The range ends at the widest line of the text.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _highlighted_columns(pagerd::Pager)
+    columns = pagerd.highlighted_columns
+
+    (isempty(columns) || isempty(pagerd.display_config.search_columns)) &&
+        return _NO_COLUMNS
+
+    return max(first(columns), 1):min(Base.last(columns), _text_width(pagerd))
+end
+
+"""
+    _view_cells(pagerd::Pager, columns::UnitRange{Int}, width::Int, title::Bool) ->
+        UnitRange{Int}
+
+Return the cells of a row of the view of `pagerd` that show the printable `columns` of the
+text, where the first cell is the one after the line-number ruler and the row has `width`
+cells. The range is empty if none of the columns is visible.
+
+The frozen columns are the first cells and the scrolled ones follow them, so the visible
+part of a range of columns is always one range of cells. A title row is not scrolled, so
+that its cells are the columns of the text if `title` is set.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state with the viewport.
+- `columns::UnitRange{Int}`: Printable columns of the text.
+- `width::Int`: Number of cells of the row.
+- `title::Bool`: Whether the row is a title row.
+"""
+function _view_cells(pagerd::Pager, columns::UnitRange{Int}, width::Int, title::Bool)
+    (isempty(columns) || (width <= 0)) && return _NO_COLUMNS
+
+    first_column = max(first(columns), 1)
+    last_column = Base.last(columns)
+
+    title && return first_column:min(last_column, width)
+
+    # These are the sanitized values `_textview` uses for the frozen columns and for the
+    # first scrolled column.
+    frozen_columns = clamp(pagerd.frozen_columns, 0, width)
+    start_column = max(pagerd.start_column, pagerd.frozen_columns + 1)
+
+    first_cell = if first_column <= frozen_columns
+        first_column
+    else
+        frozen_columns + max(first_column - start_column + 1, 1)
+    end
+
+    # The last column can be the largest integer, which marks an open range.
+    last_cell = if last_column <= frozen_columns
+        last_column
+    elseif last_column < start_column
+        frozen_columns
+    else
+        frozen_columns + min(last_column - start_column + 1, width)
+    end
+
+    return first_cell:min(last_cell, width)
+end
+
+"""
+    _shown_title_rows(pagerd::Pager) -> Int
+
+Return the number of title rows the view of `pagerd` shows, which are not scrolled
+horizontally.
+
+# Arguments
+
+- `pagerd::Pager`: Pager state to inspect.
+"""
+function _shown_title_rows(pagerd::Pager)
+    return clamp(pagerd.title_rows, 0, min(pagerd.frozen_rows, pagerd.num_lines))
+end
+
+"""
+    _draw_highlighted_columns!(
+        out::IOBuffer,
+        frame::IOBuffer,
+        rows::Int,
+        cols::Int,
+        pagerd::Pager,
+        columns::UnitRange{Int}
+    ) -> Nothing
+
+Copy the view in `frame` to `out`, drawing the printable `columns` of the text with the
+background of the face `search_columns` of `pagerd`.
+
+The background covers the columns on every row of the view, including the rows shorter than
+the columns and the rows after the end of the text, so that it reads as a band. The text
+that has its own background keeps it. Notice that the background is written even if the
+terminal has no color support, because it is the only mark of the columns.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer receiving the frame.
+- `frame::IOBuffer`: Rendered view, one row per line.
+- `rows::Int`: Number of rows of the view.
+- `cols::Int`: Number of columns of the view.
+- `pagerd::Pager`: Pager state with the viewport and the display configuration.
+- `columns::UnitRange{Int}`: Printable columns of the text to draw.
+"""
+function _draw_highlighted_columns!(
+    out::IOBuffer,
+    frame::IOBuffer,
+    rows::Int,
+    cols::Int,
+    pagerd::Pager,
+    columns::UnitRange{Int},
+)
+    background = pagerd.display_config.search_columns
+    ruler_width = _shown_ruler_width(pagerd)
+    width = max(cols - ruler_width, 0)
+    title_rows = _shown_title_rows(pagerd)
+
+    # The title rows are not scrolled, so they show the columns in other cells.
+    cells = _view_cells(pagerd, columns, width, false)
+    title_cells = _view_cells(pagerd, columns, width, true)
+
+    _foreach_frame_row(out, frame, rows) do data, row_first, row_size, row
+        row_cells = row <= title_rows ? title_cells : cells
+
+        if isempty(row_cells)
+            row_size > 0 && GC.@preserve data unsafe_write(
+                out, pointer(data, row_first), UInt(row_size)
+            )
+        else
+            line = if row_size > 0
+                GC.@preserve data unsafe_string(pointer(data, row_first), row_size)
+            else
+                ""
+            end
+
+            _draw_highlighted_columns_row!(out, line, row_cells, ruler_width, background)
+        end
+    end
+
+    return nothing
+end
+
+"""
+    _draw_highlighted_columns_row!(
+        out::IOBuffer,
+        line::String,
+        cells::UnitRange{Int},
+        ruler_width::Int,
+        background::String
+    ) -> Nothing
+
+Write the view row `line` to `out` with the default background of its `cells`, counted after
+the `ruler_width` columns of the ruler, replaced by the SGR parameters `background`. A row
+that ends before the last cell is padded with blanks up to it.
+
+# Arguments
+
+- `out::IOBuffer`: Buffer receiving the row.
+- `line::String`: Rendered row, without the trailing newline.
+- `cells::UnitRange{Int}`: Cells of the row that get the background, which is not empty.
+- `ruler_width::Int`: Number of columns of the ruler, or `0` if it is hidden.
+- `background::String`: SGR parameters of the background.
+"""
+function _draw_highlighted_columns_row!(
+    out::IOBuffer,
+    line::String,
+    cells::UnitRange{Int},
+    ruler_width::Int,
+    background::String,
+)
+    num_before = ruler_width + first(cells) - 1
+    num_cells = length(cells)
+
+    # Both splits replace a wide character at the split point by blanks, so that the widths
+    # are kept.
+    before, rest = split_string(line, num_before)
+    band, after = split_string(rest, num_cells)
+
+    write(out, before)
+    _write_blanks(out, num_before - printable_textwidth(before))
+
+    # The decorations in effect at the first cell are written again, so that the text with
+    # its own background is recognized, and the ones in effect after the last cell are
+    # restored for the rest of the row.
+    decorations = get_decorations(before)
+    band_state = String(parse_decoration(decorations))
+    after_state = String(parse_decoration(decorations * get_decorations(band)))
+
+    # A reset that is still in effect was already written with the text before the cells.
+    (band_state == _SGR_RESET) && (band_state = "")
+
+    write(out, _fill_visual(band_state * band, num_cells, background))
+    write(out, _SGR_RESET)
+    write(out, after_state)
+    write(out, after)
 
     return nothing
 end

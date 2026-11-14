@@ -26,6 +26,7 @@ const _FACES = Pair{Symbol, Face}[
     :message_error => Face(; foreground = :red),
     :search_match => Face(; foreground = :black, background = :white),
     :search_active_match => Face(; foreground = :black, background = :yellow),
+    :search_columns => Face(; background = :bright_black),
     :visual_line => Face(; background = :bright_black),
     :visual_active_line => Face(; background = :blue),
     :freeze_guide => Face(; weight = :bold, foreground = :cyan),
@@ -126,6 +127,9 @@ See also: [`drop_face!`](@ref).
     (**Default**: black on white)
 - `"search_active_match"`: Active search match.
     (**Default**: black on yellow)
+- `"search_columns"`: Columns that restrict a search, shown while the range is typed at
+    the search prompt. Only its background is used.
+    (**Default**: bright black background)
 - `"visual_line"`: Lines marked in the visual mode. Only its background is used.
     (**Default**: bright black background)
 - `"visual_active_line"`: Visual line. Only its background is used.
@@ -354,9 +358,9 @@ _default_face(name::Symbol) = _DEFAULT_FACES[name]
 Render every pager face into the escape sequences used by a pager session.
 
 The faces are converted by **StringManipulation.jl**, so that each sequence resets the
-terminal attributes and then selects the ones set in the face. The visual faces keep only
-the SGR parameters of their background, like `"44"`, as `_textview` expects for the visual
-line backgrounds.
+terminal attributes and then selects the ones set in the face. The visual faces and the one
+of the search columns keep only the SGR parameters of their background, like `"44"`, as
+`_textview` expects for the visual line backgrounds.
 
 # Arguments
 
@@ -379,6 +383,7 @@ function _display_config(face_of::F = _current_face) where {F <: Function}
         sgr(:message_error),
         sgr(:search_match),
         sgr(:search_active_match),
+        background(:search_columns),
         background(:visual_line),
         background(:visual_active_line),
         sgr(:freeze_guide),

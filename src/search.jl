@@ -45,6 +45,9 @@ end
 # Column range of a search that is not restricted to a range of printable columns.
 const _UNRESTRICTED_COLUMNS = 1:typemax(Int)
 
+# Empty range of columns.
+const _NO_COLUMNS = 1:0
+
 """
     _parse_search_input(str::AbstractString) ->
         Union{Nothing, Tuple{String, UnitRange{Int}}}
@@ -64,23 +67,61 @@ function _parse_search_input(str::AbstractString)
     isnothing(m) && return String(str), _UNRESTRICTED_COLUMNS
 
     first_str = m[1]
-    last_str = m[2]
-    (isempty(first_str) && (isnothing(last_str) || isempty(last_str))) &&
-        return String(str), _UNRESTRICTED_COLUMNS
+    last_str = something(m[2], "")
+    (isempty(first_str) && isempty(last_str)) && return String(str), _UNRESTRICTED_COLUMNS
 
-    # `parse` is qualified because **JuliaSyntax.jl** exports a function with the same name.
-    # A number that does not fit in an integer makes the range invalid. Notice that
-    # `tryparse` must be used because the regex accepts any number of digits.
+    columns = _column_range(first_str, last_str)
+    isnothing(columns) && return nothing
+
+    return String(m[3]), columns
+end
+
+"""
+    _column_range(first_str::AbstractString, last_str::AbstractString) ->
+        Union{Nothing, UnitRange{Int}}
+
+Return the range of columns whose bounds are written in `first_str` and `last_str`, where an
+empty bound is open, or `nothing` if the range is invalid, that is, if it starts before the
+first column, if it ends before it starts, or if a bound does not fit in an integer.
+
+# Arguments
+
+- `first_str::AbstractString`: Digits of the first column, or an empty string.
+- `last_str::AbstractString`: Digits of the last column, or an empty string.
+"""
+function _column_range(first_str::AbstractString, last_str::AbstractString)
+    # Notice that `tryparse` must be used because the callers accept any number of digits.
     first_column = isempty(first_str) ? 1 : tryparse(Int, first_str)
-    last_column = if isnothing(last_str) || isempty(last_str)
-        typemax(Int)
-    else
-        tryparse(Int, last_str)
-    end
+    last_column = isempty(last_str) ? typemax(Int) : tryparse(Int, last_str)
     (isnothing(first_column) || isnothing(last_column)) && return nothing
     ((first_column < 1) || (last_column < first_column)) && return nothing
 
-    return String(m[3]), first_column:last_column
+    return first_column:last_column
+end
+
+"""
+    _typed_columns(str::AbstractString) -> UnitRange{Int}
+
+Return the range of columns written at the beginning of the search input `str`, as `@a:b`,
+`@a`, or `@:b`, even if the pattern was not typed yet. The range is empty if `str` has no
+range or if the range is invalid.
+
+Unlike [`_parse_search_input`](@ref), this function recognizes the range before the blank
+that ends it, so that its columns can be shown while it is typed.
+
+# Arguments
+
+- `str::AbstractString`: Search input typed so far.
+"""
+function _typed_columns(str::AbstractString)
+    m = match(r"^@(\d*)(?::(\d*))?(?: |$)"s, str)
+    isnothing(m) && return _NO_COLUMNS
+
+    first_str = m[1]
+    last_str = something(m[2], "")
+    (isempty(first_str) && isempty(last_str)) && return _NO_COLUMNS
+
+    return something(_column_range(first_str, last_str), _NO_COLUMNS)
 end
 
 """
@@ -264,7 +305,8 @@ const _INCREMENTAL_SEARCH_MAX_LINES = 100_000
         pagerd::Pager,
         num_lines::Int,
         prefix::String,
-        history::Vector{String}
+        history::Vector{String};
+        kwargs...
     ) -> Union{Nothing, String}, Bool where {F}
 
 Read a pattern from the command line of `pagerd` with the prompt `prefix` and the recall of
@@ -277,6 +319,10 @@ returns is shown at the right of the prompt. A text with more than
 applying the pattern at every keystroke would be too slow. ALT-l toggles the literal search,
 which is tagged at the right of the prompt.
 
+If `select_columns` is set, the pattern can begin with a range of columns, like `@12:20 `.
+The columns of the range are highlighted in the view while the prompt is open, even without
+the preview.
+
 # Arguments
 
 - `preview::F`: Function that applies a pattern and returns its status.
@@ -284,9 +330,19 @@ which is tagged at the right of the prompt.
 - `num_lines::Int`: Number of lines the pattern is applied to.
 - `prefix::String`: Prompt displayed before the pattern.
 - `history::Vector{String}`: Patterns confirmed before, from the oldest to the newest.
+
+# Keywords
+
+- `select_columns::Bool`: Whether the pattern can begin with a range of columns.
+    (**Default**: `false`)
 """
 function _prompt_pattern!(
-    preview::F, pagerd::Pager, num_lines::Int, prefix::String, history::Vector{String}
+    preview::F,
+    pagerd::Pager,
+    num_lines::Int,
+    prefix::String,
+    history::Vector{String};
+    select_columns::Bool = false,
 ) where {F}
     incremental = num_lines <= _INCREMENTAL_SEARCH_MAX_LINES
 
@@ -295,8 +351,17 @@ function _prompt_pattern!(
     previewed_literal = Ref(pagerd.literal_search)
 
     on_change = pattern -> begin
+        # The columns of the range being typed are highlighted by the next paint of the
+        # view, which is the one of the preview unless the text is not previewed.
+        columns = select_columns ? _typed_columns(pattern) : _NO_COLUMNS
+        columns_changed = columns != pagerd.highlighted_columns
+        pagerd.highlighted_columns = columns
+
         # Without the preview, the prompt still shows that the pattern is literal.
-        incremental || return _literal_status("", pagerd.literal_search)
+        if !incremental
+            columns_changed && _paint_view!(pagerd)
+            return _literal_status("", pagerd.literal_search)
+        end
 
         previewed[] = pattern
         previewed_literal[] = pagerd.literal_search
@@ -306,9 +371,18 @@ function _prompt_pattern!(
 
     on_key = (k, _, cursor) -> _toggle_literal_search!(pagerd, k) ? cursor : 0
 
-    cmd_input = _read_cmd!(
-        pagerd; prefix = prefix, history = history, on_change = on_change, on_key = on_key
-    )
+    # The columns are highlighted only while the prompt is open.
+    cmd_input = try
+        _read_cmd!(
+            pagerd;
+            prefix = prefix,
+            history = history,
+            on_change = on_change,
+            on_key = on_key,
+        )
+    finally
+        pagerd.highlighted_columns = _NO_COLUMNS
+    end
 
     # The pattern was already applied by the preview if it and the literal option did not
     # change since then. A pasted pattern is confirmed without being previewed.
@@ -344,8 +418,10 @@ Prompt for a search pattern and highlight its matches in `pagerd`.
 
 While the pattern is typed, the matches in a text with up to `_INCREMENTAL_SEARCH_MAX_LINES`
 lines are previewed, and the prompt shows the active match. ALT-l toggles the literal search,
-shown as `[lit]` and kept for the session. Cancelling the prompt, or leaving it empty, keeps
-the search state and the viewport from before it. An invalid pattern reports an error.
+shown as `[lit]` and kept for the session. The columns of a range like `@12:20 ` at the
+beginning of the pattern are highlighted while the prompt is open. Cancelling the prompt, or
+leaving it empty, keeps the search state and the viewport from before it. An invalid pattern
+reports an error.
 
 # Arguments
 
@@ -355,7 +431,7 @@ function _search!(pagerd::Pager)
     saved = _search_state(pagerd)
 
     cmd_input, previewed = _prompt_pattern!(
-        pagerd, pagerd.num_lines, "/", _SEARCH_HISTORY
+        pagerd, pagerd.num_lines, "/", _SEARCH_HISTORY; select_columns = true
     ) do pattern
         _preview_search!(pagerd, pattern, saved)
     end

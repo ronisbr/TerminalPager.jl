@@ -195,8 +195,8 @@ PagerInput(stream::IO) = PagerInput(stream, UInt8[], nothing, true, nothing, not
 Store the pager faces rendered into escape sequences for one pager session.
 
 Every field holds a complete SGR sequence that resets the attributes and then selects the
-ones of the face, except the visual line backgrounds, which hold only the SGR parameters of
-the background, as [`ViewOptions`](@ref) expects.
+ones of the face, except the backgrounds of the visual lines and of the search columns,
+which hold only the SGR parameters of the background, as [`ViewOptions`](@ref) expects.
 
 # Fields
 
@@ -210,6 +210,8 @@ the background, as [`ViewOptions`](@ref) expects.
 - `message_error::String`: Error message on the status line.
 - `search_match::String`: Inactive search match.
 - `search_active_match::String`: Active search match.
+- `search_columns::String`: Background of the columns that restrict a search, shown while
+    the range is typed.
 - `visual_line::String`: Background of the lines marked in the visual mode.
 - `visual_active_line::String`: Background of the visual line.
 - `freeze_guide::String`: Guide lines of the freeze selection mode.
@@ -235,6 +237,7 @@ struct DisplayConfig
     message_error::String
     search_match::String
     search_active_match::String
+    search_columns::String
     visual_line::String
     visual_active_line::String
     freeze_guide::String
@@ -480,8 +483,11 @@ anchor, and the bookmarks store source lines, so that they survive a change of t
 - `freeze_selection_rows::Int`: Number of rows selected in the freeze and title selection
     modes.
 - `freeze_selection_columns::Int`: Number of columns selected in the freeze selection mode.
-- `freeze_buf::IOBuffer`: Reused buffer holding the view with the freeze guides drawn
-    before the scrollbar is added to it.
+- `freeze_buf::IOBuffer`: Reused buffer holding the view with the freeze guides or the
+    highlighted columns drawn before the scrollbar is added to it.
+- `highlighted_columns::UnitRange{Int}`: Printable columns drawn with the background of the
+    face `search_columns`, which are the ones of the search range being typed, or an empty
+    range.
 - `title_rows::Int`: Number of title rows.
 - `show_ruler::Bool`: Whether to show the line-number ruler.
 - `show_column_ruler::Bool`: Whether to show the column ruler on top of the view.
@@ -547,6 +553,7 @@ Base.@kwdef mutable struct Pager
     freeze_selection_rows::Int = 0
     freeze_selection_columns::Int = 0
     freeze_buf::IOBuffer = IOBuffer()
+    highlighted_columns::UnitRange{Int} = 1:0
     title_rows::Int = 0
     show_ruler::Bool = false
     show_column_ruler::Bool = false

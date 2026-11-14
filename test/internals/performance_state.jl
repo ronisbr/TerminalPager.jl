@@ -18,11 +18,11 @@ module InlineHelpModule end
     @test @inferred(TerminalPager._validate_preference("pager_mode", "vi")) == "vi"
 
     # The default configuration renders the default faces, and only the background of the
-    # visual faces is used.
+    # visual faces and of the search columns is used.
     defaults = TerminalPager._AVAILABLE_PREFERENCES
     default_config = TerminalPager.DisplayConfig()
     for (name, face) in TerminalPager._FACES
-        expected = if name in (:visual_line, :visual_active_line)
+        expected = if name in (:visual_line, :visual_active_line, :search_columns)
             TerminalPager.Decoration(face).background
         else
             String(TerminalPager.Decoration(face))

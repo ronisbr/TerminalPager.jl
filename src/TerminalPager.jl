@@ -233,6 +233,9 @@ available faces are listed as follows:
     (**Default**: black on white)
 - `"search_active_match"`: Active search match.
     (**Default**: black on yellow)
+- `"search_columns"`: Columns that restrict a search, shown while the range is typed at
+    the search prompt. Only its background is used.
+    (**Default**: bright black background)
 - `"visual_line"`: Lines marked in the visual mode. Only its background is used.
     (**Default**: bright black background)
 - `"visual_active_line"`: Visual line. Only its background is used.

@@ -409,6 +409,12 @@ precompile(_close_input_waiter!, (PagerInput,))
 precompile(_write_all, (Base.TTY, typeof(IOBuffer().data), Int))
 precompile(bytesavailable, (Base.TTY,))
 
+# The workload writes its input at once, as a pasted text, which does not preview the
+# pattern of a search. Hence, the function that highlights its columns is compiled here.
+precompile(
+    _draw_highlighted_columns!, (IOBuffer, IOBuffer, Int, Int, Pager, UnitRange{Int})
+)
+
 # The workload only registers the REPL hook. Running the hook would not help, because it
 # skips its body in the non-interactive precompilation process.
 precompile(_init_repl_integrations, (REPL.LineEditREPL,))
