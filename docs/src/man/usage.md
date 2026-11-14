@@ -19,6 +19,23 @@ julia> @doc(write) |> pager
 All the functionalities can be seen in the built-in help system, accessible by typing `?`
 inside the `pager`.
 
+## Built-in Help
+
+The pager documents itself in two ways. `?` opens a cheat sheet with one row per action: its
+keys, a short description, and the name of the action. `H` opens the extended help, which is
+a manual of the pager shown inside the pager itself. It explains every feature in detail,
+with key tables, examples, and tips, and it covers the screen, the movements, the search
+and the filter, the frozen rows and columns, the visual mode, the REPL modes, the keywords
+of `pager`, and the customization of the preferences, the key bindings, and the faces.
+
+The manual is laid out for the width of the terminal when it is opened, between 60 and 96
+columns, and the keys it shows are the ones currently bound. Its table of contents gives a
+letter to each chapter, which is a bookmark of the session: `'` followed by the letter jumps
+to the chapter, and `''` returns to the previous position. Every other key of the pager
+works in it too, like `/` to search for a topic and `v` and `y` to copy an example. `q`
+closes it. Both helps need the keyword `has_help` of `pager` to be `true`, which is the
+default.
+
 ## Inside the Pager
 
 The last row is a status line with the prompt `❯` in the normal mode, the search or the
