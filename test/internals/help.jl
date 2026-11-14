@@ -186,3 +186,25 @@ end
     @test !occursin("TerminalPager.jl", session(; has_help = false))
     @test_throws MethodError session(; hashelp = false)
 end
+
+@testset "Help Session Features" begin
+    # Only the rows can be frozen in the cheat sheet, and its lines cannot be filtered.
+    text = join(("line $i" for i in 1:20), '\n')
+
+    output = _session_output(text, "?&1\rf2\rFjj\rqq")
+    @test !occursin(r"FILTER 1 \d+/\d+", output)
+    @test occursin("Frozen rows [0] › ", output)
+    @test !occursin("Frozen columns", output)
+    @test occursin("Frozen 2 rows × 0 columns", output)
+    @test occursin("Frozen 4 rows × 0 columns", output)
+    @test occursin("FREEZE", output)
+    @test !occursin(TerminalPager._FREEZE_GUIDE_VERTICAL, output)
+
+    # The session that opens the cheat sheet is not restricted by it.
+    output = _session_output(text, "?q&1\rf\r\rq")
+    @test occursin(r"FILTER 1 11/20", output)
+    @test occursin("Frozen columns [0] › ", output)
+
+    # The filter history is shared by the sessions.
+    empty!(TerminalPager._FILTER_HISTORY)
+end

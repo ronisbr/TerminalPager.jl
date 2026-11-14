@@ -60,7 +60,8 @@ closed.
 The manual has the fixed width of the help screens, so a narrower display scrolls it
 horizontally. The session starts with one bookmark per chapter, which are the letters of the
 table of contents, so that the keys bound to `:goto_bookmark` and a letter jump to a
-chapter. The visual mode is available in it, so that the examples can be copied.
+chapter. The visual mode is available in it, so that the examples can be copied. The line
+filter and the freeze of columns are not, but the rows can be frozen.
 
 # Arguments
 
@@ -71,9 +72,12 @@ function _extended_help!(pagerd::Pager)
     manual = _manual(get(pagerd.buf, :color, true)::Bool, pagerd.display_config)
 
     # The nested session must not toggle the alternate screen buffer, as explained in
-    # `_help!`. A column ruler would only add noise to a text that is not a table.
+    # `_help!`. A column ruler would only add noise to a text that is not a table, which
+    # also has nothing to filter and no leading columns to freeze.
     options = SessionOptions(;
+        change_frozen_columns = false,
         display_config = pagerd.display_config,
+        has_filter = false,
         has_help = false,
         input = pagerd.input,
         show_column_ruler = false,

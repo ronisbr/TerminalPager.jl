@@ -31,6 +31,9 @@ const _HELP_DESCRIPTION_WIDTH = 40
 
 Open a new pager with the help and request a full repaint of `pagerd` after it is closed.
 
+The help, the visual mode, the line filter, and the freeze of columns are not available in
+it, but the rows can be frozen.
+
 # Arguments
 
 - `pagerd::Pager`: Parent pager state whose terminal and input are reused.
@@ -46,9 +49,12 @@ function _help!(pagerd::Pager)
     # The nested session must not toggle the alternate screen buffer: leaving it would
     # switch the terminal back to the normal screen while the parent session keeps painting
     # as if it were on the alternate one. The help clears the screen instead, and the parent
-    # repaints everything afterwards.
+    # repaints everything afterwards. A help has nothing to filter and no leading columns to
+    # freeze, but its banner can be frozen.
     options = SessionOptions(;
+        change_frozen_columns = false,
         display_config = pagerd.display_config,
+        has_filter = false,
         has_help = false,
         has_visual_mode = false,
         input = pagerd.input,

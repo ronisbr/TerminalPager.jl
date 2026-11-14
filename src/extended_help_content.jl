@@ -52,6 +52,10 @@ rand(100, 100) |> pager  ## the same, as a pipe
 name of the action. {:extended_help} opens this manual, which explains each feature in
 detail. Both are closed with {:quit}.
 
+Both helps are shown by the pager itself, so everything that moves and searches works in
+them. The line filter and the freeze of columns do not, since a help has nothing to filter
+and no leading columns, but the rows can be frozen.
+
 !tip The keys of this manual are the ones bound right now. If you change a key binding, the
   manual, the cheat sheet, and the hints of the status line follow it. An action without a
   key is shown as {:} in the text and as a dash in the tables.
