@@ -870,9 +870,12 @@ CTRL-U to clear the command, and the up and down keys to recall the commands in 
     no other keystroke is buffered, or `nothing`. It must return a `String`, which is shown
     at the right of the prompt row when it fits, for example a live match count.
     (**Default**: `nothing`)
-- `on_key::Any`: Callable object invoked with every `Keystroke` before the editor handles
-    it, or `nothing`. It must return `true` if it consumed the keystroke, in which case the
-    command is treated as changed, so that `on_change` runs and the prompt is repainted.
+- `on_key::Any`: Callable object invoked as `on_key(k, chars, cursor)` with every
+    `Keystroke` before the editor handles it, together with the characters of the command
+    and the one-based insertion index of the cursor, or `nothing`. It must return `0` if it
+    did not consume the keystroke. Otherwise, it can modify `chars`, and it must return the
+    new index of the cursor. The command is then treated as changed, so that `on_change`
+    runs and the prompt is repainted.
     (**Default**: `nothing`)
 """
 function _read_cmd!(
@@ -956,9 +959,14 @@ function _read_cmd!(
             k = _read_keystroke!(pagerd.input)
             value = k.value
 
-            if !isnothing(on_key) && on_key(k)::Bool
+            new_cursor = isnothing(on_key) ? 0 : on_key(k, chars, cursor)::Int
+
+            if new_cursor > 0
                 # The caller handled the keystroke, for example a toggle of a search option,
-                # which can change the result of the command without changing its text.
+                # which can change the result of the command without changing its text. It
+                # can also have changed the text and the display size.
+                cursor = clamp(new_cursor, 1, length(chars) + 1)
+                display_size = pagerd.display_size
                 changed = true
 
             elseif value == "<enter>"

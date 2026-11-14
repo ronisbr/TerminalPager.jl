@@ -334,7 +334,7 @@ end
     # changed, so that the change callback runs again with the same text.
     consumed = TerminalPager.Keystroke[]
     calls = String[]
-    on_key = k -> (k.value == "a") ? (push!(consumed, k); true) : false
+    on_key = (k, _, cursor) -> (k.value == "a") ? (push!(consumed, k); cursor) : 0
     on_change = text -> (push!(calls, text); "K:$(length(consumed))")
     pagerd = _create_modal_pagerd(["x"], "bab\n")
     cmd = TerminalPager._read_cmd!(pagerd; on_change = on_change, on_key = on_key)
@@ -345,7 +345,7 @@ end
 
     # A hook that consumes nothing leaves the editor untouched.
     pagerd = _create_modal_pagerd(["x"], "ab\n")
-    @test TerminalPager._read_cmd!(pagerd; on_key = _ -> false) == "ab"
+    @test TerminalPager._read_cmd!(pagerd; on_key = (_, _, _) -> 0) == "ab"
 end
 
 @testset "Command Line Change Callback With Pasted Input" begin

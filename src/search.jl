@@ -304,7 +304,7 @@ function _prompt_pattern!(
         return preview(pattern)
     end
 
-    on_key = k -> _toggle_literal_search!(pagerd, k)
+    on_key = (k, _, cursor) -> _toggle_literal_search!(pagerd, k) ? cursor : 0
 
     cmd_input = _read_cmd!(
         pagerd; prefix = prefix, history = history, on_change = on_change, on_key = on_key
