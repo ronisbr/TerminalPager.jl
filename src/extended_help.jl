@@ -169,7 +169,7 @@ function _manual_source()
     write(buf, _MANUAL_SOURCE)
     write(
         buf,
-        "\n# Action reference\n\n",
+        "\n# Action Reference\n\n",
         "Every action of the pager, with the keys bound to it, what it does, and its ",
         "name, which is what `TerminalPager.set_keybinding` receives. A section marked ",
         "with a feature is available only when the feature is enabled.\n",
@@ -249,7 +249,7 @@ function _manual_lines(source::AbstractString, style::HelpStyle)
         startswith(head, "# ") && push!(titles, String(SubString(head, 3)))
     end
 
-    _help_banner!(lines, style, "Extended help")
+    _help_banner!(lines, style, "Extended Help")
 
     num_chapters = 0
 

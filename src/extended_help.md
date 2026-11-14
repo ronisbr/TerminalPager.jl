@@ -24,7 +24,7 @@ here already works: scroll with <kbd>:down</kbd> and <kbd>:up</kbd>, search with
 bookmark: press <kbd>:goto_bookmark</kbd> and the letter to jump to the chapter, and
 <kbd>:goto_bookmark</kbd> twice to return to where you were.
 
-# Getting started
+# Getting Started
 
 **TerminalPager.jl** shows a text that does not fit in the terminal and lets you move
 through it. It is written entirely in Julia, it follows the keys of `less` and Vi, and it
@@ -35,14 +35,14 @@ The function `pager` opens it for any object. A string is shown as it is, with i
 and every other object is rendered like the REPL shows it, with `show` and the MIME type
 `text/plain`.
 
-```julia title="Opening the pager"
+```julia title="Opening the Pager"
 pager(rand(100, 100))    # page a large matrix
 rand(100, 100) |> pager  # the same, as a pipe
 @help write              # page a docstring
 @out2pr versioninfo()    # page what a command prints
 ```
 
-## The first keys
+## The First Keys
 
 | Key | Action |
 |:--|:--|
@@ -55,7 +55,7 @@ rand(100, 100) |> pager  # the same, as a pipe
 | <kbd>:help</kbd> | Show the cheat sheet. |
 | <kbd>:extended_help</kbd> | Show this manual. |
 
-## Two kinds of help
+## Two Kinds of Help
 
 <kbd>:help</kbd> opens a cheat sheet: one row per action with its keys, a short description,
 and the name of the action. <kbd>:extended_help</kbd> opens this manual, which explains each
@@ -70,7 +70,7 @@ and no leading columns, but the rows can be frozen.
 > manual, the cheat sheet, and the hints of the status line follow it. An action without a
 > key is shown as <kbd>:</kbd> in the text and as a dash in the tables.
 
-# The screen
+# The Screen
 
 The text takes the whole terminal but its last row, which is the status line. Three optional
 elements can be added around the text: a line number ruler at the left, a column ruler on
@@ -93,7 +93,7 @@ top, and a scrollbar at the right.
 | <kbd>:toggle_scrollbar</kbd> | Toggle the scrollbar. |
 | <kbd>:show_position</kbd> | Report the visible lines and columns. |
 
-## The status line
+## The Status Line
 
 From the left to the right, the status line shows:
 
@@ -115,7 +115,7 @@ then the state of the view, and so on. The mode and the position are the last on
 A message replaces the left side of the row until the next key: `✓` begins an information,
 like `3 lines copied`, and `✗` begins an error, like `Invalid regex`.
 
-## The rulers and the scrollbar
+## The Rulers and the Scrollbar
 
 The line number ruler shows the number of each line. It ends with a foot on the last frozen
 row, it marks the bookmarked lines with `•`, and it keeps the numbers of the original lines
@@ -136,7 +136,7 @@ The thumb of the scrollbar shows which part of the text is visible. The report o
 > `"show_scrollbar"` show those elements in every pager. See the chapter about the
 > preferences.
 
-# Moving around
+# Moving Around
 
 The movements follow `less` and Vi. The view never scrolls beyond the end of the text or
 beyond its widest line, so the screen stays full.
@@ -164,7 +164,7 @@ A page is the number of rows of the view that scroll, so the frozen rows and the
 not counted. The frozen rows and columns never move: the movements scroll what is below and
 at the right of them.
 
-## The mouse wheel
+## The Mouse Wheel
 
 The wheel scrolls three lines at a time. Holding <kbd>Shift</kbd> while turning it, or using
 a horizontal wheel, scrolls ten columns at a time.
@@ -178,9 +178,9 @@ a horizontal wheel, scrolls ten columns at a time.
 > to half a page down and up, like Vi does. Otherwise, <kbd>Ctrl-D</kbd> quits the search if
 > there is one, or the pager.
 
-# Jumping to a position
+# Jumping to a Position
 
-## Going to a line
+## Going to a Line
 
 <kbd>:goto_line</kbd> opens a prompt for a position, which is shown at the top of the view.
 <kbd>Enter</kbd> confirms it and <kbd>Esc</kbd> cancels it.
@@ -237,7 +237,7 @@ the view and the previous search.
 - After the last match, the search wraps to the first one, and a message tells that it did.
 - A match outside the view scrolls it, vertically and horizontally.
 
-## Regular expressions and literal text
+## Regular Expressions and Literal Text
 
 The patterns use the regular expressions of Julia, which are the ones of the PCRE library.
 
@@ -257,7 +257,7 @@ can also be quoted between `\Q` and `\E`.
 > A pattern that is not a valid regular expression is reported as `invalid regex` while it
 > is typed, and it keeps the previous search if it is confirmed.
 
-## Editing the prompt
+## Editing the Prompt
 
 The prompts of the search, of the filter, of the positions, and of the file names are edited
 with the same keys:
@@ -281,7 +281,7 @@ remembered until Julia quits.
 > A text with more than 100,000 lines is not searched while the pattern is typed, because
 > every key would search all of it. The search runs when <kbd>Enter</kbd> is pressed.
 
-# Searching in columns
+# Searching in Columns
 
 In a table, the same value can appear in many columns. A search can be restricted to a range
 of columns of the screen by writing the range before the pattern, separated from it by a
@@ -300,7 +300,7 @@ blank.
 - While the range is typed, its columns get a background in the view, and the column ruler
   marks them if it is shown.
 
-## Selecting the columns on the screen
+## Selecting the Columns on the Screen
 
 The range does not need to be counted. Typing a second `@` right after the first one enters
 the column selection, whose mode is shown as `COLUMN`.
@@ -330,7 +330,7 @@ the column selection, whose mode is shown as `COLUMN`.
 > Show the column ruler with <kbd>:toggle_column_ruler</kbd> before searching, and freeze
 > the header of the table, so that the columns are easy to find.
 
-# Filtering lines
+# Filtering Lines
 
 <kbd>:filter</kbd> opens the filter prompt. The pager then shows only the lines that match
 the regular expression, and the result is previewed while the pattern is typed.
@@ -361,7 +361,7 @@ the regular expression, and the result is previewed while the pattern is typed.
 > The filter needs the feature `:filter`, which is disabled when the pager is called with
 > `has_filter = false`.
 
-# Freezing rows and columns
+# Freezing Rows and Columns
 
 Frozen rows stay at the top of the view while the text scrolls vertically, and frozen
 columns stay at its left while it scrolls horizontally. They are the first rows and the
@@ -377,14 +377,14 @@ first columns of the text, like the header and the labels of a table.
 At the prompts, <kbd>Enter</kbd> with a number changes the value, <kbd>Enter</kbd> alone
 keeps it, and <kbd>Esc</kbd> cancels. The status line shows the result, like `frozen 2×1`.
 
-## Title rows
+## Title Rows
 
 A title row is a frozen row that does not scroll horizontally either. It is meant for a line
 that describes the whole text, like the summary `100×100 Matrix{Float64}:` of an array,
 which would make no sense scrolled. Since the titles are frozen rows, asking for more titles
 than frozen rows freezes them as well.
 
-## Selecting on the screen
+## Selecting on the Screen
 
 <kbd>:select_freeze</kbd> moves the view to the top-left corner of the text and draws two
 guide lines. Everything above the horizontal guide and at the left of the vertical one will
@@ -402,7 +402,7 @@ be frozen.
 The fast movements move the guides by five rows or ten columns, and the mouse puts them on
 the pointer. <kbd>:select_title_rows</kbd> works in the same way with a single guide.
 
-```julia title="Freezing from Julia"
+```julia title="Freezing From Julia"
 pager(table; frozen_rows = 2)
 pager(table; frozen_rows = 2, frozen_columns = 8)
 pager(matrix; frozen_rows = 1, title_rows = 1)
@@ -415,7 +415,7 @@ pager(matrix; frozen_rows = 1, title_rows = 1)
 > title rows, or of the columns. The prompts and the selection on the screen then ask only
 > for what can be changed.
 
-# Visual mode
+# Visual Mode
 
 The visual mode selects lines. <kbd>:toggle_visual_mode</kbd> enters it and highlights the
 **visual line**, which the vertical movements move. The selection is the visual line, the
@@ -430,7 +430,7 @@ has, like `VISUAL  3 lines`.
 | <kbd>:yank</kbd> | Copy the selection to the clipboard. |
 | <kbd>:yank_quit</kbd> | Copy the selection and quit the pager. |
 
-## Selecting a range
+## Selecting a Range
 
 1. Press <kbd>:toggle_visual_mode</kbd> and move the visual line to the first line.
 2. Press <kbd>:toggle_visual_anchor</kbd> to anchor the range there.
@@ -448,7 +448,7 @@ has, like `VISUAL  3 lines`.
 > The visual mode needs the feature `:visual_mode`, which is disabled when the pager is
 > called with `has_visual_mode = false`.
 
-# Copying, saving, and editing
+# Copying, Saving, and Editing
 
 | Key | Action |
 |:--|:--|
@@ -460,12 +460,12 @@ has, like `VISUAL  3 lines`.
 
 The text is copied without its colors, and a message tells how many lines were copied.
 
-## Getting the selection in Julia
+## Getting the Selection in Julia
 
 The lines of the last copy are also kept for Julia. `TerminalPager.yanked()` returns them,
 and the keyword `return_selection` makes `pager` return a `PagerResult` when it quits.
 
-```julia title="Using the result"
+```julia title="Using the Result"
 r = pager(x; return_selection = true)
 r.selection                            # lines of the last copy
 r.start_row                            # line at the top of the view
@@ -473,7 +473,7 @@ r.start_column                         # first visible column
 r.search_pattern                       # pattern of the search
 ```
 
-## Saving to a file
+## Saving to a File
 
 <kbd>:save</kbd> asks for a path and saves the whole text, or the selection in the visual
 mode.
@@ -484,14 +484,14 @@ mode.
 - An existing file is overwritten only after `y` confirms it.
 - <kbd>↑</kbd> and <kbd>↓</kbd> recall the previous paths.
 
-## Opening an editor
+## Opening an Editor
 
 <kbd>:edit</kbd> writes the whole text, or the selection, without colors, to a temporary
 file and opens it in your editor at the current line. The editor is the one of the
 environment variables `JULIA_EDITOR`, `VISUAL`, or `EDITOR`. The pager is repainted when the
 editor returns, and the file is removed when the pager quits.
 
-# Using the mouse
+# Using the Mouse
 
 | Key | Action |
 |:--|:--|
@@ -508,11 +508,11 @@ editor returns, and the file is removed when the pager quits.
 The preference `"mouse"` set to `false` disables the mouse in the pager and gives it back to
 the terminal:
 
-```julia title="Disabling the mouse"
+```julia title="Disabling the Mouse"
 TerminalPager.set_preference!("mouse", false)
 ```
 
-# The REPL modes
+# The REPL Modes
 
 The package adds two modes to the Julia REPL. In the **pager mode**, the output of a command
 is shown in the pager when it does not fit in the terminal, and printed as usual when it
@@ -530,7 +530,7 @@ does. In the **pager help mode**, every docstring is shown in the pager.
 <kbd>Alt-h</kbd> inside the arguments of a call shows the help of the function, which helps
 to complete the call.
 
-## The history
+## The History
 
 The pager uses the alternate screen of the terminal, so the text is gone when it quits. The
 last texts are kept in a history, which reopens them with the position and the search they
@@ -545,7 +545,7 @@ had.
 The preferences `"history_size"` and `"history_max_bytes"` limit the number and the size of
 the texts that are kept.
 
-## The helpers
+## The Helpers
 
 | Macro | Meaning |
 |:--|:--|
@@ -553,7 +553,7 @@ the texts that are kept.
 | `@stdout_to_pager ex` | Run `ex` and show what it prints in the pager. It also accepts a block, like a `for` loop. |
 | `@out2pr ex` | A shorter name for the previous one. |
 
-## Related preferences
+## Related Preferences
 
 - `"repl_mode_display"`: with `"stack"`, the default, a display pushed by a package, like
   the window of a plot, still shows the values it accepts. With `"pager"`, every value goes
@@ -567,7 +567,7 @@ the texts that are kept.
 > Add `using TerminalPager` to the file `~/.julia/config/startup.jl` to have the pager, its
 > modes, and its shortcuts in every Julia session.
 
-# Calling the pager from code
+# Calling the Pager From Code
 
 `pager(obj; kwargs...)` accepts the following keywords. They are the same for the macro
 `@stdout_to_pager`.
@@ -602,7 +602,7 @@ A recipe gives the default keywords for a type, so that its objects open in the 
 already configured. It is a method of `TerminalPager.pager_options` that returns a named
 tuple. The keywords passed to `pager` win over the recipe.
 
-```julia title="A recipe for a table type"
+```julia title="A Recipe for a Table Type"
 import TerminalPager: pager_options
 
 pager_options(::MyTable) =
@@ -621,7 +621,7 @@ pager_options(::MyTable) =
 The preferences are options that persist between the Julia sessions. They are stored by
 **Preferences.jl** in the file `LocalPreferences.toml` of the active environment.
 
-```julia title="Changing a preference"
+```julia title="Changing a Preference"
 using TerminalPager
 TerminalPager.set_preference!("show_scrollbar", true)
 TerminalPager.drop_preference!("show_scrollbar")
@@ -631,7 +631,7 @@ TerminalPager.drop_all_preferences!()
 The first function sets a value, the second one restores a default, and the third one
 restores all the defaults, including the faces and the persisted key bindings.
 
-## The view
+## The View
 
 | Preference | Meaning |
 |:--|:--|
@@ -640,7 +640,7 @@ restores all the defaults, including the faces and the persisted key bindings.
 | `"status_position" = "percent"` | Position shown at the right of the status line: `"percent"`, `"line"` for the top line over the number of lines, or `"both"`. |
 | `"mouse" = true` | Report the mouse to the pager. |
 
-## The keys
+## The Keys
 
 | Preference | Meaning |
 |:--|:--|
@@ -656,20 +656,20 @@ restores all the defaults, including the faces and the persisted key bindings.
 | `"history_size" = 5` | Number of texts kept in the history. |
 | `"history_max_bytes" = 50_000_000` | Size of the texts kept in the history. The most recent text is always kept. |
 
-## The terminal
+## The Terminal
 
 | Preference | Meaning |
 |:--|:--|
 | `"block_alternate_screen_buffer" = false` | Never use the alternate screen, for the terminals that do not support it. |
 | `"use_scroll_regions" = true` | Scroll by asking the terminal to shift the rows it already shows, which is much faster on large windows and slow connections. Disable it if the scrolling leaves garbage on the screen. |
 
-# Key bindings
+# Key Bindings
 
 Every key of the pager is a binding between a key and an **action**, like `:quit` or
 `:search`. The last chapter of this manual and the cheat sheet, <kbd>:help</kbd>, list the
 actions.
 
-```julia title="Changing the keys"
+```julia title="Changing the Keys"
 using TerminalPager
 TerminalPager.set_keybinding("x", :quit)
 TerminalPager.delete_keybinding("q")
@@ -679,18 +679,18 @@ TerminalPager.reset_keybindings()
 A change lasts for the Julia session. With the keyword `persist = true`, it is stored as a
 preference and applied in every session:
 
-```julia title="Keeping a change"
+```julia title="Keeping a Change"
 TerminalPager.set_keybinding("x", :quit; persist = true)
 TerminalPager.reset_keybindings(; persist = true)
 ```
 
-## Naming a key
+## Naming a Key
 
 A key is a character, like `"x"`, or the name of a special key between angle brackets, like
 `"<left>"`, `"<enter>"`, or `"<pagedown>"`. The keywords `alt`, `ctrl`, and `shift` select
 the modifiers.
 
-```julia title="Keys with modifiers"
+```julia title="Keys With Modifiers"
 TerminalPager.set_keybinding("<left>", :bol; alt = true)
 TerminalPager.set_keybinding("b", :pageup; ctrl = true)
 ```
@@ -702,7 +702,7 @@ its name and its modifiers, until `q` is pressed. Use it to find the name of a k
 > Not every combination reaches the pager. The terminal keeps some keys for itself, and it
 > sends others without telling which modifiers were held.
 
-## The persisted bindings
+## The Persisted Bindings
 
 The persisted bindings are the table `[TerminalPager.keybindings]` of
 `LocalPreferences.toml`. Each key is the modifiers `alt+`, `ctrl+`, and `shift+`, in this
@@ -716,12 +716,12 @@ x = "quit"
 q = "delete"
 ```
 
-# Faces and colors
+# Faces and Colors
 
 Every color and text attribute of the pager is a **face** of **StyledStrings.jl**.
 `TerminalPager.set_face!` changes a face for the next pager and stores it as a preference.
 
-```julia title="Changing a face"
+```julia title="Changing a Face"
 using TerminalPager
 TerminalPager.set_face!("search_match";
     foreground = :black, background = :green)
@@ -736,7 +736,7 @@ TerminalPager.drop_face!("search_match")
 - The attributes are merged into the current face, so only what is passed changes.
 - `TerminalPager.drop_face!` restores the default of a face.
 
-## The status line and the messages
+## The Status Line and the Messages
 
 | Face | Meaning |
 |:--|:--|
@@ -750,7 +750,7 @@ TerminalPager.drop_face!("search_match")
 | `message_error` | Error message. Red. |
 | `command_status` | Status at the right of a prompt. Bright black. |
 
-## The text
+## The Text
 
 | Face | Meaning |
 |:--|:--|
@@ -765,7 +765,7 @@ TerminalPager.drop_face!("search_match")
 | `scrollbar_track` | Track of the scrollbar. Bright black. |
 | `scrollbar_thumb` | Thumb of the scrollbar. No attributes. |
 
-## The help screens
+## The Help Screens
 
 | Face | Meaning |
 |:--|:--|
@@ -790,7 +790,7 @@ they are written between brackets, like `[Enter]`.
 > draws it as a bar that matches light and dark themes. Custom colors for the bar must come
 > with `inverse = false`.
 
-## Other places to set the faces
+## Other Places to Set the Faces
 
 The faces are registered with the prefix `terminalpager_`, so they can also be set in the
 file `config/faces.toml` of the Julia depot, usually `~/.julia/config/faces.toml`. The pager
@@ -802,40 +802,40 @@ foreground = "white"
 background = "red"
 ```
 
-# Terminals and troubleshooting
+# Terminals and Troubleshooting
 
-## The Alt shortcuts do nothing on macOS
+## The Alt Shortcuts Do Nothing on macOS
 
 The shortcuts with <kbd>Alt</kbd> need the terminal to send <kbd>Esc</kbd> followed by the
 key. The terminals of macOS type a special character instead, so that <kbd>Option</kbd> and
 `l` type `¬`. Enable the setting that treats the Option key as Meta: **Use Option as Meta
 key** in Terminal.app, or **Left Option key: Esc+** in iTerm2.
 
-## The mouse does not select text
+## The Mouse Does Not Select Text
 
 The pager receives the mouse. Hold <kbd>Shift</kbd>, or <kbd>Option</kbd> on some terminals,
 to select text with the terminal, or disable the preference `"mouse"`.
 
-## The text is gone after quitting
+## The Text Is Gone After Quitting
 
 The pager runs on the alternate screen, which the terminal discards when the pager quits.
 `TerminalPager.last()` reopens the text where it was. The pager does not use the alternate
 screen when it is called with `use_alternate_screen_buffer = false`, or when the preference
 `"block_alternate_screen_buffer"` is set.
 
-## The screen is garbled
+## The Screen Is Garbled
 
 The pager uses the escape sequences of XTerm, which most terminals understand. If scrolling
 leaves wrong rows on the screen, disable the preference `"use_scroll_regions"`. If the
 screen is wrong from the start, set the preference `"block_alternate_screen_buffer"`.
 
-## The copy fails
+## The Copy Fails
 
 The pager copies with the clipboard of Julia, which needs a program of the system: `pbcopy`
 on macOS, `clip` on Windows, and `xclip`, `xsel`, or `wl-copy` on Linux. The copied lines
 are still returned by `TerminalPager.yanked()` when the clipboard is not available.
 
-## The text looks different from the original
+## The Text Looks Different From the Original
 
 The lines are cleaned before they are shown, so that every character takes the columns the
 pager expects. The tabs are expanded to the next multiple of eight columns, and the carriage
@@ -843,7 +843,7 @@ returns, the other control characters, and the escape sequences that do not set 
 text attributes are removed. The copied and the saved text is the original one, without the
 escape sequences.
 
-## Getting more help
+## Getting More Help
 
 The docstrings of the package are available in the help mode of Julia, like `?pager` and
 `?TerminalPager.set_face!`, and the documentation and the issue tracker are at

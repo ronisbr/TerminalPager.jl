@@ -407,7 +407,7 @@ end
     # table of contents and by the chapters, each one with its title on a rule.
     @test lines[1] == "  ╭" * "─"^(width - 6) * "╮"
     @test startswith(lines[2], "  │  TerminalPager.jl $(TerminalPager._pkg_version())  ·  ")
-    @test occursin("Extended help", lines[2])
+    @test occursin("Extended Help", lines[2])
     @test lines[3:end] == [
         "  ╰" * "─"^(width - 6) * "╯",
         "",
@@ -446,7 +446,7 @@ end
         startswith(first(block), "# ")
     ]
     @test 10 < length(titles) <= 26
-    @test titles[end] == "Action reference"
+    @test titles[end] == "Action Reference"
     @test sort!(collect(keys(manual.bookmarks))) ==
         TerminalPager._manual_letter.(eachindex(titles))
 
@@ -487,7 +487,7 @@ end
     @test !occursin(r"^(\+ |: |!\w)"m, source)
 
     # The last chapter lists every action of the cheat sheet with its name.
-    reference = source[last(findfirst("# Action reference", source)):end]
+    reference = source[last(findfirst("# Action Reference", source)):end]
 
     for section in TerminalPager._HELP_SECTIONS, entry in section.actions
         @test occursin("| <kbd>:$(entry.action)</kbd> | ", reference)
@@ -550,7 +550,7 @@ end
     @test TerminalPager._pager_event_process!(pagerd)
 
     text = replace(String(take!(output)), r"\e\[[0-9;?]*[A-Za-z]" => "")
-    @test occursin("Extended help", text)
+    @test occursin("Extended Help", text)
     @test occursin("━━ e · Searching ━", text)
     @test !occursin("━━ f · ", text)
     @test pagerd.text_layout === parent_layout
